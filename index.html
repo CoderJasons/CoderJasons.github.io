@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Jason的博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="个人技术博客">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Jason的博客">
+<meta property="og:url" content="http://yujiusheng.com/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="个人技术博客">
+<meta property="og:locale" content="en_US">
+<meta property="article:author" content="Jason">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Jason的博客" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Jason的博客</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yujiusheng.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-macOS下搭建iOS端监控系统Sentry" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/01/30/macOS%E4%B8%8B%E6%90%AD%E5%BB%BAiOS%E7%AB%AF%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9FSentry/" class="article-date">
+  <time datetime="2019-01-30T15:08:25.000Z" itemprop="datePublished">2019-01-30</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/01/30/macOS%E4%B8%8B%E6%90%AD%E5%BB%BAiOS%E7%AB%AF%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9FSentry/">macOS下搭建iOS端监控系统Sentry</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h4 id="什么是sentry"><a href="#什么是sentry" class="headerlink" title="什么是sentry"></a>什么是sentry</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sentry是一个强大的分布式报错信息收集平台，图形化程度很高，可以帮助我们直观的发现当前部署的系统存在哪些问题。</span><br></pre></td></tr></table></figure>
+
+<h4 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h4><p>官方提供了两种部署方案</p>
+<ul>
+<li>Docker <a href="https://baike.baidu.com/item/Docker/13344470?fr=aladdin" target="_blank" rel="noopener">什么是docker</a></li>
+<li>Python</li>
+</ul>
+<p>出于方便考虑，这里选择了docker</p>
+<h4 id="安装docker-只是Mac"><a href="#安装docker-只是Mac" class="headerlink" title="安装docker(只是Mac)"></a>安装docker(只是Mac)</h4><p>mac版docker 下载地址: <a href="https://download.docker.com/mac/stable/Docker.dmg" target="_blank" rel="noopener">https://download.docker.com/mac/stable/Docker.dmg</a></p>
+<p>安装完成后终端执行 <code>docker --version</code>来查看版本号，确认是否安装成功。</p>
+<h4 id="搭建sentry-linux和Mac通用"><a href="#搭建sentry-linux和Mac通用" class="headerlink" title="搭建sentry(linux和Mac通用)"></a>搭建sentry(linux和Mac通用)</h4><ol>
+<li><p>获取sentry</p>
+<p>从GitHub上获取最新的sentry</p>
+<p><code>git clone https://github.com/getsentry/onpremise.git</code></p>
+</li>
+<li><p>搭建sentry</p>
+<p>sentry的readme文件里有步骤</p>
+<ol>
+<li><p>创建本地数据库和sentry容器</p>
+<p><code>docker volume create --name=sentry-data &amp;&amp; docker volume create --name=sentry-postgres</code></p>
+<p>Docker volumes have to be created manually, as they are declared as external to be more durable.</p>
+</li>
+<li><p>创建配置文件.env</p>
+<p><code>cp -n .env.example .env</code></p>
+</li>
+<li><p>编译docker服务</p>
+<p><code>docker-compose build</code></p>
+</li>
+<li><p>生成secret key</p>
+<p><code>docker-compose run --rm web config generate-secret-key</code></p>
+<p>将key配置到.env文件里，SENTRY_SECRET_KEY: ‘<strong><strong><strong><strong>***</strong></strong></strong></strong>‘</p>
+</li>
+<li><p>构建数据库，创建一个超级用户</p>
+<p><code>docker-compose run --rm web upgrade</code></p>
+<p>这步会提示创建超级用户，用户名是邮箱，记住用户名和密码后面要用到。</p>
+</li>
+<li><p>启动所有服务</p>
+<p><code>docker-compose up -d</code></p>
+</li>
+<li><p>浏览器中输入localhost:9000，即可访问sentry服务了，用户名和密码用第5步设置的。</p>
+</li>
+</ol>
+</li>
+</ol>
+<h4 id="iOS项目接入sentry"><a href="#iOS项目接入sentry" class="headerlink" title="iOS项目接入sentry"></a>iOS项目接入sentry</h4><p>可以参考sentry官方文档<a href="https://docs.sentry.io/clients/cocoa/" target="_blank" rel="noopener">https://docs.sentry.io/clients/cocoa/</a></p>
+<ol>
+<li><p>导入sentry</p>
+<p>podfile文件加入</p>
+<p><code>pod &#39;Sentry&#39;, :git =&gt; &#39;https://github.com/getsentry/sentry-cocoa.git&#39;, :tag =&gt; &#39;4.1.0&#39;</code></p>
+<p>terminal执行<code>pod install</code></p>
+</li>
+<li><p>项目配置</p>
+<p>appdelegate文件didfinishLaunch方法中，dsn登录sentry后在新建Objective-C项目里查看。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">NSError *error &#x3D; nil;</span><br><span class="line">SentryClient *client &#x3D; [[SentryClient alloc] initWithDsn:@&quot;https:&#x2F;&#x2F;&lt;key&gt;@sentry.io&#x2F;&lt;project&gt;&quot; didFailWithError:&amp;error];</span><br><span class="line">SentryClient.sharedClient &#x3D; client;</span><br><span class="line">[SentryClient.sharedClient startCrashHandlerWithError:&amp;error];</span><br><span class="line">if (nil !&#x3D; error) &#123;</span><br><span class="line">    NSLog(@&quot;%@&quot;, error);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>以上两步之后，就可以正常上传crash日志了</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yujiusheng.com/2019/01/30/macOS%E4%B8%8B%E6%90%AD%E5%BB%BAiOS%E7%AB%AF%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9FSentry/" data-id="ckcvyrd670001ihtf9pnd3em9" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-iOS捕获异常崩溃发送钉钉方法" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/01/30/iOS%E6%8D%95%E8%8E%B7%E5%BC%82%E5%B8%B8%E5%B4%A9%E6%BA%83%E5%8F%91%E9%80%81%E9%92%89%E9%92%89%E6%96%B9%E6%B3%95/" class="article-date">
+  <time datetime="2019-01-30T15:06:09.000Z" itemprop="datePublished">2019-01-30</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/01/30/iOS%E6%8D%95%E8%8E%B7%E5%BC%82%E5%B8%B8%E5%B4%A9%E6%BA%83%E5%8F%91%E9%80%81%E9%92%89%E9%92%89%E6%96%B9%E6%B3%95/">iOS捕获异常崩溃发送钉钉方法</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>由于项目最近crash率比较高，为了更好地监控线上程序包的crash，所以开发将异常崩溃捕获发送钉钉消息的功能。</p>
+<h3 id="异常的捕获"><a href="#异常的捕获" class="headerlink" title="异常的捕获"></a>异常的捕获</h3><p>通过使用NSSetUncaughtExceptionHandler方法将异常捕获然后进行处理。</p>
+<p>在Appdelegate中定义如下函数，用来处理捕获到的异常。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">void uncaughtExceptionHandler(NSException *exception)</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">    &#x2F;&#x2F; 异常的堆栈信息</span><br><span class="line">    NSArray *stackArray &#x3D; [exception callStackSymbols];</span><br><span class="line">    &#x2F;&#x2F; 出现异常的原因</span><br><span class="line">    NSString *reason &#x3D; [exception reason];</span><br><span class="line">    &#x2F;&#x2F; 异常名称</span><br><span class="line">    NSString *name &#x3D; [exception name];</span><br><span class="line">    &#x2F;&#x2F;TODO 发送钉钉消息</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>下面是捕获异常的代码，didFinishLaunchingWithOptions方法中写入:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">NSSetUncaughtExceptionHandler(&amp;uncaughtExceptionHandler);</span><br></pre></td></tr></table></figure>
+
+<p>到这里就可以进行异常捕获了，下面我们写一段让程序崩溃的代码进行测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">- (void)crashMethod&#123;</span><br><span class="line">    [self performSelector:@selector(thisMthodDoesNotExist) withObject:nil];&#x2F;&#x2F;调用一个不存在的方法。</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>到这里uncaughtExceptionHandler就可以捕获到应用的崩溃Exception了。</p>
+<h3 id="第三方冲突"><a href="#第三方冲突" class="headerlink" title="第三方冲突"></a>第三方冲突</h3><p>如果项目里使用了友盟等第三方异常监控分析工具，会和我们NSSetUncaughtExceptionHandler方法冲突，导致第三方不会上传异常信息，解决方案是使用NSGetUncaughtExceptionHandler()获取到第三方捕获异常的Handler，当我们处理完异常将NSException对象传给第三方的Handler。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">static NSUncaughtExceptionHandler *_previousHandler;&#x2F;&#x2F;Appdelegate定义一个全局静态变量用来保存第三方的异常Handler</span><br></pre></td></tr></table></figure>
+
+<p>didFinishLaunchingWithOptions方法中在NSSetUncaughtExceptionHandler之前先保存之前的Handler:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; 保存第三方处理异常的handler</span><br><span class="line">_previousHandler &#x3D; NSGetUncaughtExceptionHandler();</span><br><span class="line">NSSetUncaughtExceptionHandler(&amp;uncaughtExceptionHandler);</span><br></pre></td></tr></table></figure>
+
+<p>最后在uncaughtExceptionHandler函数最后(即我们自定义的异常处理之后)，将exception回传给第三方Handler。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;将exception回传给第三方Handler</span><br><span class="line">if (_previousHandler) &#123;</span><br><span class="line">	_previousHandler(exception);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="给钉钉群发送消息"><a href="#给钉钉群发送消息" class="headerlink" title="给钉钉群发送消息"></a>给钉钉群发送消息</h3><p>#####1、首先是在钉钉群里新建一个自定义机器人，获取到机器人的webhook。详细的步骤可以看钉钉API文档：</p>
+<p><a href="https://open-doc.dingtalk.com/docs/doc.htm?spm=a219a.7629140.0.0.Uf9uaN&amp;treeId=257&amp;articleId=105735&amp;docType=1#s1" target="_blank" rel="noopener">https://open-doc.dingtalk.com/docs/doc.htm?spm=a219a.7629140.0.0.Uf9uaN&amp;treeId=257&amp;articleId=105735&amp;docType=1#s1</a></p>
+<p>#####2、向机器人的webhook发送post消息。</p>
+<p>下面是用AFNetworking发送post请求的代码，注意请求参数的格式</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">   NSDictionary *dict &#x3D; @&#123;</span><br><span class="line">                          @&quot;msgtype&quot;:@&quot;text&quot;,</span><br><span class="line">                          @&quot;text&quot;:@&#123;@&quot;content&quot;:self.errorMessage?self.errorMessage:@&quot;&quot;&#125;,</span><br><span class="line">                          @&quot;at&quot;:@&#123;</span><br><span class="line">                                  @&quot;atMobiles&quot;:self.arrayAtPhones?self.arrayAtPhones:@[],</span><br><span class="line">                                  @&quot;isAtAll&quot;:@NO</span><br><span class="line">                                  &#125;</span><br><span class="line">                          &#125;;</span><br><span class="line">   NSError *error;</span><br><span class="line">   NSData *jsonData &#x3D; [NSJSONSerialization dataWithJSONObject:dict options:NSJSONWritingPrettyPrinted error:&amp;error];</span><br><span class="line">   AFURLSessionManager *sessionManager &#x3D; [[AFURLSessionManager alloc] init];</span><br><span class="line">   AFJSONResponseSerializer *responseSerializer &#x3D; [AFJSONResponseSerializer serializer];</span><br><span class="line">   responseSerializer.acceptableContentTypes &#x3D; [NSSet setWithObjects:@&quot;application&#x2F;json&quot;, @&quot;text&#x2F;json&quot;, @&quot;text&#x2F;javascript&quot;,@&quot;text&#x2F;html&quot;, @&quot;text&#x2F;plain&quot;, @&quot;image&#x2F;jpeg&quot;,  nil];</span><br><span class="line">   sessionManager.responseSerializer &#x3D; responseSerializer;</span><br><span class="line">   NSMutableURLRequest *req &#x3D; [[NSMutableURLRequest alloc] initWithURL:[NSURL URLWithString:self.dingdingUploadUrl]];</span><br><span class="line">   [req setHTTPMethod:@&quot;POST&quot;];</span><br><span class="line">   [req setHTTPBody:jsonData];</span><br><span class="line">&#x2F;&#x2F;不设置会返回参数错误</span><br><span class="line">   [req setValue:@&quot;application&#x2F;json&quot; forHTTPHeaderField:@&quot;Content-Type&quot;];</span><br><span class="line">   [[sessionManager dataTaskWithRequest:req uploadProgress:nil downloadProgress:nil completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) &#123;</span><br><span class="line">       </span><br><span class="line">   &#125;]resume];</span><br></pre></td></tr></table></figure>
+
+<p>到这里就可以正常给钉钉发送消息了。纯手敲难免有手误，哪里不准确的地方请指出。</p>
+<p>demo工程地址：<a href="https://github.com/CoderJasons/-CatchCrashTest" target="_blank" rel="noopener">https://github.com/CoderJasons/-CatchCrashTest</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yujiusheng.com/2019/01/30/iOS%E6%8D%95%E8%8E%B7%E5%BC%82%E5%B8%B8%E5%B4%A9%E6%BA%83%E5%8F%91%E9%80%81%E9%92%89%E9%92%89%E6%96%B9%E6%B3%95/" data-id="ckcvyrd5y0000ihtf4hfkdhem" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-结构体内存对齐规则及作用" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2018/02/24/%E7%BB%93%E6%9E%84%E4%BD%93%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90%E8%A7%84%E5%88%99%E5%8F%8A%E4%BD%9C%E7%94%A8/" class="article-date">
+  <time datetime="2018-02-24T07:08:23.000Z" itemprop="datePublished">2018-02-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/02/24/%E7%BB%93%E6%9E%84%E4%BD%93%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90%E8%A7%84%E5%88%99%E5%8F%8A%E4%BD%9C%E7%94%A8/">结构体内存对齐规则及作用</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="什么是内存对齐"><a href="#什么是内存对齐" class="headerlink" title="什么是内存对齐"></a>什么是内存对齐</h3><p>从一个例子开始</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#inclued <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">A</span>&#123;</span></span><br><span class="line">  <span class="keyword">char</span> a;</span><br><span class="line">  <span class="keyword">int</span> b;</span><br><span class="line">  <span class="keyword">double</span> c;</span><br><span class="line">&#125;A1;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">  <span class="built_in">cout</span>&lt;&lt;<span class="keyword">sizeof</span>(A1)&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">  <span class="built_in">cout</span>&lt;&lt;<span class="keyword">sizeof</span>(A1.a)&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">  <span class="built_in">cout</span>&lt;&lt;<span class="keyword">sizeof</span>(A1.b)&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">  <span class="built_in">cout</span>&lt;&lt;<span class="keyword">sizeof</span>(A1.c)&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>打印的结果是16，1，4，8。我们发现结构体占用内存的总量并不是其包含的所有元素占用内存的和，这是为什么呢，这就涉及到指针对齐的问题。对齐有两个原则：</p>
+<h5 id="1、结构体中元素是按照定义顺序一个一个放到内存中去的，但并不是紧密排列的。从结构体存储的首地址开始，每一个元素放置到内存中时，它都会认为内存是以它自己的大小来划分的，因此元素放置的位置一定会在自己宽度的整数倍上开始（以结构体变量首地址为0计算）。"><a href="#1、结构体中元素是按照定义顺序一个一个放到内存中去的，但并不是紧密排列的。从结构体存储的首地址开始，每一个元素放置到内存中时，它都会认为内存是以它自己的大小来划分的，因此元素放置的位置一定会在自己宽度的整数倍上开始（以结构体变量首地址为0计算）。" class="headerlink" title="1、结构体中元素是按照定义顺序一个一个放到内存中去的，但并不是紧密排列的。从结构体存储的首地址开始，每一个元素放置到内存中时，它都会认为内存是以它自己的大小来划分的，因此元素放置的位置一定会在自己宽度的整数倍上开始（以结构体变量首地址为0计算）。"></a>1、结构体中元素是按照定义顺序一个一个放到内存中去的，但并不是紧密排列的。从结构体存储的首地址开始，每一个元素放置到内存中时，它都会认为内存是以它自己的大小来划分的，因此元素放置的位置一定会在自己宽度的整数倍上开始（以结构体变量首地址为0计算）。</h5><p>​    比如上面的例子，首先系统会将字符串变量a存入第0个字节（相对地址，指结构体内存开辟的首地址);然后存放整型变量b时，会以4个字节为单位进行存储，由于第一个四字节模块已有数据（a），因此它会存入第二个四字节模块，即4~8字节；同理，存放双精度实例变量c时会以8个字节为单位存储，也就是会找到第一个空的且是8的整数倍的位置开始存储，这个例子中由于第一个8字节模块已被占用，所以将c存入第二个8字节模块。</p>
+<p>再看下面这个例子</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">A</span>&#123;</span></span><br><span class="line">  <span class="keyword">char</span> a;</span><br><span class="line">  <span class="keyword">double</span> b;</span><br><span class="line">  <span class="keyword">int</span> c;</span><br><span class="line">&#125;A2;</span><br></pre></td></tr></table></figure>
+
+<p>这个例子只是互换了b和c的类型，但是结果确不同sizeof(A2)=24,按照第一个规则结果应该是20啊，这是为什么呢，下面就看第二个规则</p>
+<h5 id="2、在经过第一原则分析后，检查计算出的存储单元是否为所有元素中最宽的元素的长度的整数倍，是，则结束；若不是，则补齐为它的整数倍。"><a href="#2、在经过第一原则分析后，检查计算出的存储单元是否为所有元素中最宽的元素的长度的整数倍，是，则结束；若不是，则补齐为它的整数倍。" class="headerlink" title="2、在经过第一原则分析后，检查计算出的存储单元是否为所有元素中最宽的元素的长度的整数倍，是，则结束；若不是，则补齐为它的整数倍。"></a>2、在经过第一原则分析后，检查计算出的存储单元是否为所有元素中最宽的元素的长度的整数倍，是，则结束；若不是，则补齐为它的整数倍。</h5><p>第二个例子根据第一条规则计算的结果是20但是不是double类型宽度（8）的整数倍，所以补齐到24。</p>
+<h3 id="内存对齐的作用"><a href="#内存对齐的作用" class="headerlink" title="内存对齐的作用"></a>内存对齐的作用</h3><h5 id="1、平台原因-移植原因-：不是所有的硬件平台都能访问任意地址上的任意数据的；某些硬件平台只能在某些地址处取某些特定类型的数据，否则抛出硬件异常。"><a href="#1、平台原因-移植原因-：不是所有的硬件平台都能访问任意地址上的任意数据的；某些硬件平台只能在某些地址处取某些特定类型的数据，否则抛出硬件异常。" class="headerlink" title="1、平台原因(移植原因)：不是所有的硬件平台都能访问任意地址上的任意数据的；某些硬件平台只能在某些地址处取某些特定类型的数据，否则抛出硬件异常。"></a>1、平台原因(移植原因)：不是所有的硬件平台都能访问任意地址上的任意数据的；某些硬件平台只能在某些地址处取某些特定类型的数据，否则抛出硬件异常。</h5><p>这点应该很容易理解，不做解释了。</p>
+<h5 id="2、-性能原因：经过内存对齐后，CPU的内存访问速度大大提升。"><a href="#2、-性能原因：经过内存对齐后，CPU的内存访问速度大大提升。" class="headerlink" title="2、 性能原因：经过内存对齐后，CPU的内存访问速度大大提升。"></a>2、 性能原因：经过内存对齐后，CPU的内存访问速度大大提升。</h5><p>CPU把内存当成是一块一块的，块的大小可以是2，4，8，16字节大小，因此CPU在读取内存时是一块一块进行读取的。块大小成为<em>memory access granularity（粒度）</em>。</p>
+<p>假设CPU要读取一个int型4字节大小的数据到寄存器中，分两种情况讨论：</p>
+<p>​    1、数据从0字节开始</p>
+<p>​    2、数据从1字节开始</p>
+<p>假设内存读取粒度为4。当数据从0字节开始时，CPU只需读取内存一次即可吧这4字节的数据完全读取到寄存器中。当该数据是从1字节开始时，问题变得有些复杂，此时该int型数据不是位于内存读取边界上，这就是一类内存未对齐的数据。</p>
+<p>此时CPU先访问一次内存，读取0—3字节的数据进寄存器，并再次读取4—5字节的数据进寄存器，接着把0字节和6，7，8字节的数据剔除，最后合并1，2，3，4字节的数据进寄存器。对一个内存未对齐的数据进行了这么多额外的操作，大大降低了CPU性能。</p>
+<p>这还属于乐观情况了，上文提到内存对齐的作用之一为平台的移植原因，因为以上操作只有有部分CPU肯干，其他一部分CPU遇到未对齐边界就直接罢工了。</p>
+<h6 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h6><p><a href="http://blog.csdn.net/liukun321/article/details/6974282/" target="_blank" rel="noopener">http://blog.csdn.net/liukun321/article/details/6974282/</a></p>
+<p><a href="http://www.cppblog.com/snailcong/archive/2009/03/16/76705.html" target="_blank" rel="noopener">http://www.cppblog.com/snailcong/archive/2009/03/16/76705.html</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yujiusheng.com/2018/02/24/%E7%BB%93%E6%9E%84%E4%BD%93%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90%E8%A7%84%E5%88%99%E5%8F%8A%E4%BD%9C%E7%94%A8/" data-id="ckcvyrd690003ihtf19phh3lj" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-hello-world" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/03/09/hello-world/" class="article-date">
+  <time datetime="2017-03-09T08:38:58.000Z" itemprop="datePublished">2017-03-09</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/03/09/hello-world/">markdown学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="什么是markdown"><a href="#什么是markdown" class="headerlink" title="什么是markdown?"></a>什么是markdown?</h3><p>​    Markdown是一种可以使用普通文本编辑器编写的标记语言，通过简单的标记语法，它可以使普通文本内容具有一定的格式。</p>
+<h3 id="部分语法"><a href="#部分语法" class="headerlink" title="部分语法"></a>部分语法</h3><h6 id="标题"><a href="#标题" class="headerlink" title="标题"></a>标题</h6><ul>
+<li>#             表示 H1 标签</li>
+<li>##           表示 H2 标签 以此类推</li>
+<li>######  表示 H6 标签</li>
+</ul>
+<h6 id="代码区块"><a href="#代码区块" class="headerlink" title="代码区块"></a>代码区块</h6><ul>
+<li><p>使用```和语言名称进行标记。例如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#import &lt;Foundation&#x2F;Foundation.h&gt;</span><br><span class="line"></span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        &#x2F;&#x2F; insert code here...</span><br><span class="line">        NSLog(@&quot;Hello, World!&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h6 id="脚注"><a href="#脚注" class="headerlink" title="脚注"></a>脚注</h6><p>​    使用[^heyword]表示脚注。例如：</p>
+<p>​    这是正文[^这是注释]</p>
+<h6 id="表格"><a href="#表格" class="headerlink" title="表格"></a>表格</h6><p>​    使用|字段一|字段二|字段三|表示表格。例如：</p>
+<table>
+<thead>
+<tr>
+<th>单价</th>
+<th>数量</th>
+<th>金额</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>100</td>
+<td>20</td>
+<td>2000</td>
+</tr>
+</tbody></table>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yujiusheng.com/2017/03/09/hello-world/" data-id="ckcvyrd680002ihtfhkzqa1ob" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">February 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/01/30/macOS%E4%B8%8B%E6%90%AD%E5%BB%BAiOS%E7%AB%AF%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9FSentry/">macOS下搭建iOS端监控系统Sentry</a>
+          </li>
+        
+          <li>
+            <a href="/2019/01/30/iOS%E6%8D%95%E8%8E%B7%E5%BC%82%E5%B8%B8%E5%B4%A9%E6%BA%83%E5%8F%91%E9%80%81%E9%92%89%E9%92%89%E6%96%B9%E6%B3%95/">iOS捕获异常崩溃发送钉钉方法</a>
+          </li>
+        
+          <li>
+            <a href="/2018/02/24/%E7%BB%93%E6%9E%84%E4%BD%93%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90%E8%A7%84%E5%88%99%E5%8F%8A%E4%BD%9C%E7%94%A8/">结构体内存对齐规则及作用</a>
+          </li>
+        
+          <li>
+            <a href="/2017/03/09/hello-world/">markdown学习笔记</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 Jason<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>
