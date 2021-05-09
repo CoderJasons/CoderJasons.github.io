@@ -231,6 +231,217 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/09/iOS%E5%BA%95%E5%B1%82%EF%BC%9Acalloc%E5%92%8Cisa/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2021/05/09/iOS%E5%BA%95%E5%B1%82%EF%BC%9Acalloc%E5%92%8Cisa/" itemprop="url">iOS底层：calloc和isa</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2021-05-09T10:46:01+08:00">
+                2021-05-09
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h3 id="calloc底层"><a href="#calloc底层" class="headerlink" title="calloc底层"></a><code>calloc</code>底层</h3><p>calloc的源码在<code>libMalloc</code>,不是之前用的<code>libObjc</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> *</span><br><span class="line"><span class="built_in">calloc</span>(<span class="keyword">size_t</span> num_items, <span class="keyword">size_t</span> <span class="built_in">size</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">return</span> _malloc_zone_calloc(default_zone, num_items, <span class="built_in">size</span>, MZ_POSIX);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看出<code>calloc</code>调用了<code>_malloc_zone_calloc</code>函数</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">MALLOC_NOINLINE</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> *</span><br><span class="line">_malloc_zone_calloc(<span class="keyword">malloc_zone_t</span> *zone, <span class="keyword">size_t</span> num_items, <span class="keyword">size_t</span> <span class="built_in">size</span>,</span><br><span class="line">		<span class="keyword">malloc_zone_options_t</span> mzo)</span><br><span class="line">&#123;</span><br><span class="line">	MALLOC_TRACE(TRACE_calloc | DBG_FUNC_START, (<span class="keyword">uintptr_t</span>)zone, num_items, <span class="built_in">size</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">void</span> *ptr;</span><br><span class="line">	<span class="keyword">if</span> (malloc_check_start) &#123;</span><br><span class="line">		internal_check();</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// 这里调用了calloc函数 </span></span><br><span class="line">	ptr = zone-&gt;<span class="built_in">calloc</span>(zone, num_items, <span class="built_in">size</span>);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (os_unlikely(malloc_logger)) &#123;</span><br><span class="line">		malloc_logger(MALLOC_LOG_TYPE_ALLOCATE | MALLOC_LOG_TYPE_HAS_ZONE | MALLOC_LOG_TYPE_CLEARED, (<span class="keyword">uintptr_t</span>)zone,</span><br><span class="line">				(<span class="keyword">uintptr_t</span>)(num_items * <span class="built_in">size</span>), <span class="number">0</span>, (<span class="keyword">uintptr_t</span>)ptr, <span class="number">0</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	MALLOC_TRACE(TRACE_calloc | DBG_FUNC_END, (<span class="keyword">uintptr_t</span>)zone, num_items, <span class="built_in">size</span>, (<span class="keyword">uintptr_t</span>)ptr);</span><br><span class="line">	<span class="keyword">if</span> (os_unlikely(ptr == <span class="literal">NULL</span>)) &#123;</span><br><span class="line">		malloc_set_errno_fast(mzo, ENOMEM);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> ptr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，如果继续调用就又回到了<code>calloc</code>函数，这个时候我们借助LLDB打印内存地址。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">p zone-&gt;<span class="built_in">calloc</span></span><br><span class="line">会输出：(<span class="keyword">void</span> *(*)(<span class="keyword">_malloc_zone_t</span> *, <span class="keyword">size_t</span>, <span class="keyword">size_t</span>)) $<span class="number">0</span> = <span class="number">0x00000001002e1b87</span> (.dylib`default_zone_calloc at <span class="built_in">malloc</span>.c:<span class="number">385</span>)</span><br></pre></td></tr></table></figure>
+
+<p>可以看出这里调用了<code>malloc.c</code>文件的385行</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> *</span><br><span class="line">default_zone_calloc(<span class="keyword">malloc_zone_t</span> *zone, <span class="keyword">size_t</span> num_items, <span class="keyword">size_t</span> <span class="built_in">size</span>)</span><br><span class="line">&#123;</span><br><span class="line">	zone = runtime_default_zone();</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">return</span> zone-&gt;<span class="built_in">calloc</span>(zone, num_items, <span class="built_in">size</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>default_zone_calloc</code>里依然会调用<code>calloc</code>,我们用相同的方法查看具体执行的代码。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">p zone-&gt;<span class="built_in">calloc</span></span><br><span class="line">(<span class="keyword">void</span> *(*)(<span class="keyword">_malloc_zone_t</span> *, <span class="keyword">size_t</span>, <span class="keyword">size_t</span>)) $<span class="number">1</span> = <span class="number">0x00000001002e72cd</span> (.dylib`nano_calloc at nano_malloc.c:<span class="number">878</span>)</span><br></pre></td></tr></table></figure>
+
+<p>这次执行的代码在nano_malloc.c的878行。nano_calloc函数的实现</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> *</span><br><span class="line">nano_calloc(<span class="keyword">nanozone_t</span> *nanozone, <span class="keyword">size_t</span> num_items, <span class="keyword">size_t</span> <span class="built_in">size</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">size_t</span> total_bytes;</span><br><span class="line">	<span class="comment">//判断是否有足够内存分配？？</span></span><br><span class="line">	<span class="keyword">if</span> (calloc_get_size(num_items, <span class="built_in">size</span>, <span class="number">0</span>, &amp;total_bytes)) &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (total_bytes &lt;= NANO_MAX_SIZE) &#123;</span><br><span class="line">		<span class="keyword">void</span> *p = _nano_malloc_check_clear(nanozone, total_bytes, <span class="number">1</span>);</span><br><span class="line">		<span class="keyword">if</span> (p) &#123;</span><br><span class="line">			<span class="keyword">return</span> p;</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">/* FALLTHROUGH to helper zone */</span></span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">malloc_zone_t</span> *zone = (<span class="keyword">malloc_zone_t</span> *)(nanozone-&gt;helper_zone);</span><br><span class="line">	<span class="keyword">return</span> zone-&gt;<span class="built_in">calloc</span>(zone, <span class="number">1</span>, total_bytes);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>看代码，我们后面应该继续看<code>_nano_malloc_check_clear</code>函数，分析<code>_nano_malloc_check_clear</code>函数，内存大小分配应该是调用<code>segregated_size_to_fit</code>函数。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">size_t slot_bytes &#x3D; segregated_size_to_fit(nanozone, size, &amp;slot_key);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> MALLOC_INLINE <span class="keyword">size_t</span></span><br><span class="line">segregated_size_to_fit(<span class="keyword">nanozone_t</span> *nanozone, <span class="keyword">size_t</span> <span class="built_in">size</span>, <span class="keyword">size_t</span> *pKey)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">//size = 40</span></span><br><span class="line">	<span class="keyword">size_t</span> k, slot_bytes;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (<span class="number">0</span> == <span class="built_in">size</span>) &#123;</span><br><span class="line">		<span class="built_in">size</span> = NANO_REGIME_QUANTA_SIZE; <span class="comment">// Historical behavior</span></span><br><span class="line">	&#125;</span><br><span class="line">  <span class="comment">// 40 + 16-1 &gt;&gt; 4 &lt;&lt; 4 (先除以16余数舍去，再乘以16)</span></span><br><span class="line">	k = (<span class="built_in">size</span> + NANO_REGIME_QUANTA_SIZE - <span class="number">1</span>) &gt;&gt; SHIFT_NANO_QUANTUM; <span class="comment">// round up and shift for number of quanta</span></span><br><span class="line">	slot_bytes = k &lt;&lt; SHIFT_NANO_QUANTUM;							<span class="comment">// multiply by power of two quanta size</span></span><br><span class="line">	*pKey = k - <span class="number">1</span>;													<span class="comment">// Zero-based!</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> slot_bytes;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里可以看出进行的是 16 字节对齐，那么也就是说我们传入的 <code>size</code> 是 40，在经过 (40 + 16 - 1) &gt;&gt; 4 &lt;&lt; 4 操作后，结果为48，也就是16的整数倍。</p>
+<p>小结：</p>
+<ul>
+<li><p>对象的属性是进行8字节对齐</p>
+</li>
+<li><p>对象自己进行的是16字节对齐，原因：1、内存是连续的，通过 16 字节对齐规避风险和容错，防止访问溢出。2、提高了寻址访问效率，也就是<strong>空间换时间</strong></p>
+</li>
+</ul>
+<h3 id="isa底层"><a href="#isa底层" class="headerlink" title="isa底层"></a><code>isa</code>底层</h3><p><code>isa</code>是一个联合体,是从内存管理层面来设计的，因为联合体是所有成员共享一个内存，联合体内存的大小取决于内部成员内存大小最大的那个元素，对应<code>isa</code>指针来说，就不用额外声明很多属性，直接在内部<code>ISA_BITFIELD</code>保存信息。同时由于联合体属性间是互斥的，所以 <code>cls</code> 和 <code>bits</code> 在 <code>isa</code> 初始化流程时是在两个分支中被赋值的。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">union</span> <span class="keyword">isa_t</span> &#123;</span><br><span class="line">    <span class="keyword">isa_t</span>() &#123; &#125;</span><br><span class="line">    <span class="keyword">isa_t</span>(<span class="keyword">uintptr_t</span> value) : bits(value) &#123; &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">uintptr_t</span> bits;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="comment">// Accessing the class requires custom ptrauth operations, so</span></span><br><span class="line">    <span class="comment">// force clients to go through setClass/getClass by making this</span></span><br><span class="line">    <span class="comment">// private.</span></span><br><span class="line">    Class cls;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(ISA_BITFIELD)</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">        ISA_BITFIELD;  <span class="comment">// defined in isa.h</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">isDeallocating</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> extra_rc == <span class="number">0</span> &amp;&amp; has_sidetable_rc == <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setDeallocating</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        extra_rc = <span class="number">0</span>;</span><br><span class="line">        has_sidetable_rc = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setClass</span><span class="params">(Class cls, objc_object *obj)</span></span>;</span><br><span class="line">    <span class="function">Class <span class="title">getClass</span><span class="params">(<span class="keyword">bool</span> authenticated)</span></span>;</span><br><span class="line">    <span class="function">Class <span class="title">getDecodedClass</span><span class="params">(<span class="keyword">bool</span> authenticated)</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>下面是<code>isa</code>的初始化</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">inline</span> <span class="keyword">void</span> </span><br><span class="line">objc_object::initIsa(Class cls, <span class="keyword">bool</span> nonpointer, UNUSED_WITHOUT_INDEXED_ISA_AND_DTOR_BIT <span class="keyword">bool</span> hasCxxDtor)</span><br><span class="line">&#123; </span><br><span class="line">    ASSERT(!isTaggedPointer()); </span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">isa_t</span> <span class="title">newisa</span><span class="params">(<span class="number">0</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!nonpointer) &#123;</span><br><span class="line">        newisa.setClass(cls, <span class="keyword">this</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        ASSERT(!DisableNonpointerIsa);</span><br><span class="line">        ASSERT(!cls-&gt;instancesRequireRawIsa());</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> SUPPORT_INDEXED_ISA</span></span><br><span class="line">        ASSERT(cls-&gt;classArrayIndex() &gt; <span class="number">0</span>);</span><br><span class="line">        newisa.bits = ISA_INDEX_MAGIC_VALUE;</span><br><span class="line">        <span class="comment">// isa.magic is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        <span class="comment">// isa.nonpointer is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        newisa.has_cxx_dtor = hasCxxDtor;</span><br><span class="line">        newisa.indexcls = (<span class="keyword">uintptr_t</span>)cls-&gt;classArrayIndex();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">        newisa.bits = ISA_MAGIC_VALUE;</span><br><span class="line">        <span class="comment">// isa.magic is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        <span class="comment">// isa.nonpointer is part of ISA_MAGIC_VALUE</span></span><br><span class="line"><span class="meta">#   <span class="meta-keyword">if</span> ISA_HAS_CXX_DTOR_BIT</span></span><br><span class="line">        newisa.has_cxx_dtor = hasCxxDtor;</span><br><span class="line"><span class="meta">#   <span class="meta-keyword">endif</span></span></span><br><span class="line">        newisa.setClass(cls, <span class="keyword">this</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">        newisa.extra_rc = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// This write must be performed in a single store in some cases</span></span><br><span class="line">    <span class="comment">// (for example when realizing a class because other threads</span></span><br><span class="line">    <span class="comment">// may simultaneously try to use the class).</span></span><br><span class="line">    <span class="comment">// fixme use atomics here to guarantee single-store and to</span></span><br><span class="line">    <span class="comment">// guarantee memory order w.r.t. the class index table</span></span><br><span class="line">    <span class="comment">// ...but not too atomic because we don't want to hurt instantiation</span></span><br><span class="line">    isa = newisa;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>isa</code>是一个联合体，有一个结构体属性是<code>ISA_BITFIELD</code>,其大小为 8 个字节，也就是 64 位。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#   <span class="meta-keyword">define</span> ISA_BITFIELD                                                        \</span></span><br><span class="line">      <span class="keyword">uintptr_t</span> nonpointer        : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> has_assoc         : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> has_cxx_dtor      : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> shiftcls          : <span class="number">44</span>; <span class="comment">/*MACH_VM_MAX_ADDRESS 0x7fffffe00000*/</span> \</span><br><span class="line">      <span class="keyword">uintptr_t</span> magic             : <span class="number">6</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> weakly_referenced : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> unused            : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> has_sidetable_rc  : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> extra_rc          : <span class="number">8</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>nonpointer</code>: 表示是否对 <code>isa</code> 指针开启指针优化 0:纯 <code>isa</code> 指针  1:不止是类对象地址, <code>isa</code> 中包含了类信息、对象的引用计数等</li>
+<li>has_assoc: 关联对象标志位，0 没有，1 存在</li>
+<li>has_cxx_dtor: 该对象是否有 C++ 或者 Objc 的析构器,如果有析构函数,则需要做析构逻辑, 如果没有,则可以更快的释放对象</li>
+<li>shiftcls: 存储类指针的值。开启指针优化的情况下，在 arm64 架构中有 33 位用来存储类指针。</li>
+<li>magic: 用于调试器判断当前对象是真的对象还是没有初始化的空间</li>
+<li>weakly_referenced: 标志对象是否被指向或者曾经指向一个 ARC 的弱变量，没有弱引用的对象可以更快释放。</li>
+<li>has_sidetable_rc: 当对象引用技术大于 10 时，则需要借用该变量存储进位</li>
+<li>extra_rc: 当表示该对象的引用计数值，实际上是引用计数值减 1， 例如，如果对象的引用计数为 10，那么 extra_rc 为 9。如果引用计数大于 10， 则需要使用到下面的 has_sidetable_rc。</li>
+</ul>
+<h3 id="isa关联对象和类"><a href="#isa关联对象和类" class="headerlink" title="isa关联对象和类"></a><code>isa</code>关联对象和类</h3><p><code>isa</code> 是对象中的第一个属性，因为这一步是在继承的时候发生的，要早于对象的成员变量，属性列表，方法列表以及所遵循的协议列表。</p>
+<p>我们在探索 <code>alloc</code> 底层原理的时候，有一个方法叫做 <code>initIsa</code>。</p>
+<p>这个方法的作用就是初始化 <code>isa</code> 联合体位域。其中有这么一行代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">newisa.shiftcls = (<span class="keyword">uintptr_t</span>)cls &gt;&gt; <span class="number">3</span>;</span><br></pre></td></tr></table></figure>
+
+<p>通过这行代码，我们知道 <code>shiftcls</code> 这个位域其实存储的是类的信息。这个类就是实例化对象所指向的那个类。</p>
+<p>这里的左移右移操作其实很好理解，首先我们先观察 <code>isa</code> 的 <code>ISA_BITFIELD</code> 位域的结构:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#   <span class="meta-keyword">define</span> ISA_BITFIELD                                                        \</span></span><br><span class="line">      <span class="keyword">uintptr_t</span> nonpointer        : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> has_assoc         : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> has_cxx_dtor      : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> shiftcls          : <span class="number">44</span>; <span class="comment">/*MACH_VM_MAX_ADDRESS 0x7fffffe00000*/</span> \</span><br><span class="line">      <span class="keyword">uintptr_t</span> magic             : <span class="number">6</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> weakly_referenced : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> unused            : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> has_sidetable_rc  : <span class="number">1</span>;                                         \</span><br><span class="line">      <span class="keyword">uintptr_t</span> extra_rc          : <span class="number">8</span></span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到，<code>ISA_BITFIELD</code> 的前 3 位是 <code>nonpointer</code>，<code>has_assoc</code>，<code>has_cxx_dtor</code>，中间 44 位是 <code>shiftcls</code> ，后面 17 位是剩余的内容，同时因为 iOS 是小端模式，那么我们就需要去掉右边的 3 位和左边的 17位，所以就会采用 &gt;&gt;3&lt;&lt;3 然后 &lt;&lt;17&gt;&gt;17 的操作了。</p>
+<p>通过这个测试，我们就知道了 <code>isa</code> 实现了对象与类之间的关联。</p>
+<p>我们还可以探索 <code>object_getClass</code> 底层，可以发现有这样一行代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">return</span> (Class)(isa.bits &amp; ISA_MASK);</span><br></pre></td></tr></table></figure>
+
+<p>这行代码就是将 <code>isa</code> 中的联合体位域与上一个蒙版，这个蒙版定义是怎么样的呢?</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#   <span class="meta-keyword">define</span> ISA_MASK        0x00007ffffffffff8ULL</span></span><br></pre></td></tr></table></figure>
+
+<p><code>x00007ffffffffff8ULL</code> 这个值我们转成二进制表示:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">0000 0000 0000 0000 0111 1111 1111 1111 </span><br><span class="line">1111 1111 1111 1111 1111 1111 1111 1000</span><br></pre></td></tr></table></figure>
+
+<p>结果一目了然，这个蒙版就是帮我们去过滤掉除 <code>shiftcls</code> 之外的内容。</p>
+<p>我们直接将对象的 <code>isa</code> 地址与上这个mask之后，就会得到 <code>object.class</code> 一样的内存地址。</p>
+<h3 id="isa走位分析"><a href="#isa走位分析" class="headerlink" title="isa走位分析"></a>isa走位分析</h3><h3 id="类与元类"><a href="#类与元类" class="headerlink" title="类与元类"></a>类与元类</h3><p>我们都知道对象可以创建多个，但是类是否可以创建多个呢?<br>答案很简单，一个。那么如果来验证呢?</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//MARK: - 分析类对象内存存在个数</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">lgTestClassNum</span><span class="params">()</span></span>&#123;</span><br><span class="line">    Class class1 = [LGPerson class];</span><br><span class="line">    Class class2 = [LGPerson alloc].class;</span><br><span class="line">    Class class3 = object_getClass([LGPerson alloc]);</span><br><span class="line">    Class class4 = [LGPerson alloc].class;</span><br><span class="line">    NSLog(@<span class="string">"\n%p-\n%p-\n%p-\n%p"</span>,class1,class2,class3,class4);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 打印输出如下:</span></span><br><span class="line"></span><br><span class="line"><span class="number">0x100002108</span>-</span><br><span class="line"><span class="number">0x100002108</span>-</span><br><span class="line"><span class="number">0x100002108</span>-</span><br><span class="line"><span class="number">0x100002108</span></span><br></pre></td></tr></table></figure>
+
+<p>所以我们就知道了类在内存中只会存在一份。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">(lldb) x/<span class="number">4</span>gx LGTeacher<span class="class">.<span class="keyword">class</span></span></span><br><span class="line"><span class="class">0<span class="title">x100001420</span>:</span> <span class="number">0x001d8001000013f9</span> <span class="number">0x0000000100b38140</span></span><br><span class="line"><span class="number">0x100001430</span>: <span class="number">0x00000001003db270</span> <span class="number">0x0000000000000000</span></span><br><span class="line">(lldb) po <span class="number">0x001d8001000013f9</span></span><br><span class="line"><span class="number">17082823967917874</span></span><br><span class="line"></span><br><span class="line">(lldb) p <span class="number">0x001d8001000013f9</span></span><br><span class="line">(<span class="keyword">long</span>) $<span class="number">2</span> = <span class="number">8303516107936761</span></span><br><span class="line">(lldb) po <span class="number">0x100001420</span></span><br><span class="line">LGTeacher</span><br></pre></td></tr></table></figure>
+
+<p>我们通过上面的打印，就发现 类的内存结构里面的第一个结构打印出来还是 <code>LGTeacher</code>，那么是不是就意味着 对象-&gt;类-&gt;类 这样的死循环呢？这里的第二个类其实是 <code>元类</code>。是由系统帮我们创建的。这个元类也无法被我们实例化。</p>
+<h3 id="对象的本质"><a href="#对象的本质" class="headerlink" title="对象的本质"></a>对象的本质</h3><p>在我们认知里面，<code>OC</code> 对象的本质就是一个结构体，这个结论在 <code>libObjc</code> 源码的 <code>objc-private.h</code> 源文件中可以得到证实。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">objc_object</span> &#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">isa_t</span> isa;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ISA() assumes this is NOT a tagged pointer object</span></span><br><span class="line">    <span class="function">Class <span class="title">ISA</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// getIsa() allows this to be a tagged pointer object</span></span><br><span class="line">    <span class="function">Class <span class="title">getIsa</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    ...省略其他的内容...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>而对于对象所属的类来说，我们也可以在 <code>objc-runtime-new.h</code> 源文件中找到</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">objc_class</span> :</span> objc_object &#123;</span><br><span class="line">    <span class="comment">// Class ISA;</span></span><br><span class="line">    Class superclass;</span><br><span class="line">    <span class="keyword">cache_t</span> cache;             <span class="comment">// formerly cache pointer and vtable</span></span><br><span class="line">    <span class="keyword">class_data_bits_t</span> bits;    <span class="comment">// class_rw_t * plus custom rr/alloc flags</span></span><br><span class="line">    </span><br><span class="line">    ...省略其他的内容...</span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>也就是说 <code>objc_class</code> 内存中第一个位置是 <code>isa</code>，第二个位置是 <code>superclass</code>。</p>
+<p>不过我们本着求真的态度可以用 <code>clang</code> 来重写我们的 <code>OC</code> 源文件来查看是不是这么回事。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">clang -rewrite-objc main.m -o main.cpp</span><br></pre></td></tr></table></figure>
+
+<p>这行命令会把我们的 <code>main.m</code> 文件编译成 <code>C++</code> 格式，输出为 <code>main.cpp</code>。</p>
+<p>我们可以看到 <code>LGPerson</code> 对象在底层其实是一个结构体 <code>objc_object</code> 。</p>
+<p>而我们的 <code>Class</code> 在底层也是一个结构体 <code>objc_class</code> 。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/09/iOS%E7%9A%84%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1480,7 +1691,7 @@
               
                 <a href="/archives/%20%7C%7C%20archive">
               
-                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-count">9</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
