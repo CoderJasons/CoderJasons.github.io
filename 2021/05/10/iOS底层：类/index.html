@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT" />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="class的本质类是我们面向对象开发中使用很频繁的概念，我们看一下类的结构是什么。 首先我们定义一个类Person 123456789101112NS_ASSUME_NONNULL_BEGIN@interface Person : NSObject@endNS_ASSUME_NONNULL_END&#x2F;&#x2F; Animal.m@implementation Person@end  我们">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS底层：类">
+<meta property="og:url" content="http://yujiusheng.com/2021/05/10/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E7%B1%BB/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="class的本质类是我们面向对象开发中使用很频繁的概念，我们看一下类的结构是什么。 首先我们定义一个类Person 123456789101112NS_ASSUME_NONNULL_BEGIN@interface Person : NSObject@endNS_ASSUME_NONNULL_END&#x2F;&#x2F; Animal.m@implementation Person@end  我们">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2021-05-10T03:53:05.645Z">
+<meta property="article:modified_time" content="2021-05-10T09:22:33.133Z">
+<meta property="article:author" content="Jason">
+<meta name="twitter:card" content="summary">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yujiusheng.com/2021/05/10/iOS底层：类/"/>
+
+
+
+
+
+  <title>iOS底层：类 | Jason的博客</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Jason的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/10/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E7%B1%BB/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">iOS底层：类</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2021-05-10T11:53:05+08:00">
+                2021-05-10
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="class的本质"><a href="#class的本质" class="headerlink" title="class的本质"></a>class的本质</h3><p>类是我们面向对象开发中使用很频繁的概念，我们看一下类的结构是什么。</p>
+<p>首先我们定义一个类<code>Person</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">NS_ASSUME_NONNULL_BEGIN</span><br><span class="line"></span><br><span class="line">@interface Person : NSObject</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">NS_ASSUME_NONNULL_END</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; Animal.m</span><br><span class="line">@implementation Person</span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>我们在main函数里初始化<code>Person</code>对象</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> * argv[])</span> </span>&#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        Person *obj = [[Person alloc] init];</span><br><span class="line">        NSLog(@<span class="string">"%p"</span>,obj);</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在terminal里执行<code>clang</code>命令</p>
+<p><code>clang -rewrite-objc main.m -o main.cpp</code></p>
+<p>会生成main.cpp文件，在main.cpp文件里搜索Person找到下面这段代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> _REWRITER_typedef_Person</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> _REWRITER_typedef_Person</span></span><br><span class="line"><span class="comment">//1</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">objc_object</span> <span class="title">Person</span>;</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span>&#125; _objc_exc_Person;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="comment">//2</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Person_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/* @end */</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> clang assume_nonnull end</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// @implementation Person</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// @end</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> * argv[])</span> </span>&#123;</span><br><span class="line">    <span class="comment">/* @autoreleasepool */</span> &#123; __AtAutoreleasePool __autoreleasepool; </span><br><span class="line">        <span class="comment">//3 objc_getClass("Person")</span></span><br><span class="line">        Person *obj = ((Person *(*)(id, SEL))(<span class="keyword">void</span> *)objc_msgSend)((id)((Person *(*)(id, SEL))(<span class="keyword">void</span> *)objc_msgSend)((id)objc_getClass(<span class="string">"Person"</span>), sel_registerName(<span class="string">"alloc"</span>)), sel_registerName(<span class="string">"init"</span>));</span><br><span class="line">        NSLog((NSString *)&amp;__NSConstantStringImpl__var_folders__s_l_p47fxn36j8d2_n75spyb7c0000gn_T_main_971c67_mi_0,obj);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们主要看代码注释1、2、3的位置，全局搜索<code>typedef struct objc_object</code>,发现有845个结果，结果数有点多，我们再全局搜索<code>*Class</code>，这次比较幸运，只有7个结果，我们可以快速定位到其中的一行</p>
+<p><code>typedef struct objc_class *Class;</code></p>
+<p>看到这里我们就知道了<code>Class</code> 类型的实际是一个叫<code>objc_class</code>的结构体。我们去objc源码里搜索<code>struct objc_class</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">objc_class</span> :</span> objc_object &#123;</span><br><span class="line">  objc_class(<span class="keyword">const</span> objc_class&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">  objc_class(objc_class&amp;&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">  <span class="keyword">void</span> <span class="keyword">operator</span>=(<span class="keyword">const</span> objc_class&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">  <span class="keyword">void</span> <span class="keyword">operator</span>=(objc_class&amp;&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    <span class="comment">// Class ISA;</span></span><br><span class="line">    Class superclass;</span><br><span class="line">    <span class="keyword">cache_t</span> cache;             <span class="comment">// formerly cache pointer and vtable</span></span><br><span class="line">    <span class="keyword">class_data_bits_t</span> bits;  </span><br><span class="line">    <span class="comment">///省略后面的set get函数</span></span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>看源码可以知道<code>objc_class</code>继承自<code>objc_object</code>,说明Class其实也是一个对象。</p>
+<h3 id="类的结构"><a href="#类的结构" class="headerlink" title="类的结构"></a>类的结构</h3><p>看上面这段源码，我们知道类的本质也是对象，我们日常开发中常见的成员变量、属性、方法、协议等都在类里面存在的，我们接下来探索一下这些内容在雷利是怎么存储的。</p>
+<p>从上一小节最后的源码我们看到，类中的四个属性：</p>
+<ul>
+<li><code>isa</code>指针</li>
+<li><code>superclass</code>指针</li>
+<li><code>cache</code></li>
+<li><code>bits</code></li>
+</ul>
+<p><code>isa</code>指针是隐藏属性（继承自<code>objc_object</code>）。</p>
+<h4 id="isa指针"><a href="#isa指针" class="headerlink" title="isa指针"></a><code>isa</code>指针</h4><p>我们之前已经探索过，在对象初始化的时候，通过<code>isa</code>可以让对象和类关联，类中<code>isa</code>的作用也类似，关联类和元类。</p>
+<h4 id="superclass指针"><a href="#superclass指针" class="headerlink" title="superclass指针"></a><code>superclass</code>指针</h4><p>这个看名字就很好理解，指向了父类，一般来说，类的根父类都是<code>NSObject</code>类。根元类的父类也是<code>NSObject</code>类。</p>
+<h4 id="cache"><a href="#cache" class="headerlink" title="cache"></a><code>cache</code></h4><p><code>cache_t</code>里的东西比较多，我们暂时先了解这个是缓存，里面会有方法的缓存。具体内容后面再探究。</p>
+<h4 id="bits属性"><a href="#bits属性" class="headerlink" title="bits属性"></a><code>bits</code>属性</h4><p><code>bits</code> 的数据结构类型是 <code>class_data_bits_t</code>，同时也是一个结构体类型。而我们阅读 <code>objc_class</code> 源码的时候，会发现很多地方都有 <code>bits</code> 的身影，比如:</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">class_rw_t</span> *<span class="title">data</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">return</span> bits.data();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">hasCustomRR</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> ! bits.hasDefaultRR();</span><br><span class="line">&#125;    </span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">canAllocFast</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    assert(!isFuture());</span><br><span class="line">    <span class="keyword">return</span> bits.canAllocFast();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里值得我们注意的是，<code>objc_class</code> 的 <code>data()</code> 方法其实是返回的 <code>bits</code> 的 <code>data()</code> 方法，而通过这个 <code>data()</code> 方法，我们发现诸如类的字节对齐、<code>ARC</code>、元类等特性都有 <code>data()</code> 的出现，这间接说明 <code>bits</code> 属性其实是个大容器，有关于内存管理、C++ 析构等内容在其中有定义。</p>
+<p>这里我们会遇到一个十分重要的知识点: <code>class_rw_t</code>，<code>data()</code> 方法的返回值就是 <code>class_rw_t</code> 类型的指针对象。我们在本文后面会重点介绍。</p>
+<h3 id="探索-bits-属性"><a href="#探索-bits-属性" class="headerlink" title="探索 bits 属性"></a>探索 <code>bits</code> 属性</h3><p><code>bits</code>属性的结构体是<code>class_data_bits_t</code>,看一下它的源码,<code>class_data_bits_t</code>声明了<code>objc_class</code>是它的友元类，可见关系不一般。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">class_data_bits_t</span> &#123;</span></span><br><span class="line">    <span class="keyword">friend</span> objc_class;<span class="comment">//友元类</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// Values are the FAST_ flags above.</span></span><br><span class="line">    <span class="keyword">uintptr_t</span> bits;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">getBit</span><span class="params">(<span class="keyword">uintptr_t</span> <span class="built_in">bit</span>)</span> <span class="keyword">const</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> bits &amp; <span class="built_in">bit</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Atomically set the bits in `set` and clear the bits in `clear`.</span></span><br><span class="line">    <span class="comment">// set and clear must not overlap.</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setAndClearBits</span><span class="params">(<span class="keyword">uintptr_t</span> <span class="built_in">set</span>, <span class="keyword">uintptr_t</span> <span class="built_in">clear</span>)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        ASSERT((<span class="built_in">set</span> &amp; <span class="built_in">clear</span>) == <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">uintptr_t</span> newBits, oldBits = LoadExclusive(&amp;bits);</span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            newBits = (oldBits | <span class="built_in">set</span>) &amp; ~<span class="built_in">clear</span>;</span><br><span class="line">        &#125; <span class="keyword">while</span> (slowpath(!StoreReleaseExclusive(&amp;bits, &amp;oldBits, newBits)));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setBits</span><span class="params">(<span class="keyword">uintptr_t</span> <span class="built_in">set</span>)</span> </span>&#123;</span><br><span class="line">        __c11_atomic_fetch_or((_Atomic(<span class="keyword">uintptr_t</span>) *)&amp;bits, <span class="built_in">set</span>, __ATOMIC_RELAXED);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">clearBits</span><span class="params">(<span class="keyword">uintptr_t</span> <span class="built_in">clear</span>)</span> </span>&#123;</span><br><span class="line">        __c11_atomic_fetch_and((_Atomic(<span class="keyword">uintptr_t</span>) *)&amp;bits, ~<span class="built_in">clear</span>, __ATOMIC_RELAXED);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">class_rw_t</span>* <span class="title">data</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> (<span class="keyword">class_rw_t</span> *)(bits &amp; FAST_DATA_MASK);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setData</span><span class="params">(<span class="keyword">class_rw_t</span> *newData)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        ASSERT(!data()  ||  (newData-&gt;flags &amp; (RW_REALIZING | RW_FUTURE)));</span><br><span class="line">        <span class="comment">// Set during realization or construction only. No locking needed.</span></span><br><span class="line">        <span class="comment">// Use a store-release fence because there may be concurrent</span></span><br><span class="line">        <span class="comment">// readers of data and data's contents.</span></span><br><span class="line">        <span class="keyword">uintptr_t</span> newBits = (bits &amp; ~FAST_DATA_MASK) | (<span class="keyword">uintptr_t</span>)newData;</span><br><span class="line">        atomic_thread_fence(memory_order_release);</span><br><span class="line">        bits = newBits;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Get the class's ro data, even in the presence of concurrent realization.</span></span><br><span class="line">    <span class="comment">// fixme this isn't really safe without a compiler barrier at least</span></span><br><span class="line">    <span class="comment">// and probably a memory barrier when realizeClass changes the data field</span></span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">class_ro_t</span> *<span class="title">safe_ro</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">class_rw_t</span> *maybe_rw = data();</span><br><span class="line">        <span class="keyword">if</span> (maybe_rw-&gt;flags &amp; RW_REALIZED) &#123;</span><br><span class="line">            <span class="comment">// maybe_rw is rw</span></span><br><span class="line">            <span class="keyword">return</span> maybe_rw-&gt;ro();</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// maybe_rw is actually ro</span></span><br><span class="line">            <span class="keyword">return</span> (<span class="keyword">class_ro_t</span> *)maybe_rw;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> SUPPORT_INDEXED_ISA</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setClassArrayIndex</span><span class="params">(<span class="keyword">unsigned</span> Idx)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 0 is unused as then we can rely on zero-initialisation from calloc.</span></span><br><span class="line">        ASSERT(Idx &gt; <span class="number">0</span>);</span><br><span class="line">        data()-&gt;index = Idx;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setClassArrayIndex</span><span class="params">(__unused <span class="keyword">unsigned</span> Idx)</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">unsigned</span> <span class="title">classArrayIndex</span><span class="params">()</span> </span>&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> SUPPORT_INDEXED_ISA</span></span><br><span class="line">        <span class="keyword">return</span> data()-&gt;index;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">isAnySwift</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> isSwiftStable() || isSwiftLegacy();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">isSwiftStable</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> getBit(FAST_IS_SWIFT_STABLE);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setIsSwiftStable</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        setAndClearBits(FAST_IS_SWIFT_STABLE, FAST_IS_SWIFT_LEGACY);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">isSwiftLegacy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> getBit(FAST_IS_SWIFT_LEGACY);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setIsSwiftLegacy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        setAndClearBits(FAST_IS_SWIFT_LEGACY, FAST_IS_SWIFT_STABLE);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// fixme remove this once the Swift runtime uses the stable bits</span></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">isSwiftStable_ButAllowLegacyForNow</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> isAnySwift();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">_objc_swiftMetadataInitializer <span class="title">swiftMetadataInitializer</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// This function is called on un-realized classes without</span></span><br><span class="line">        <span class="comment">// holding any locks.</span></span><br><span class="line">        <span class="comment">// Beware of races with other realizers.</span></span><br><span class="line">        <span class="keyword">return</span> safe_ro()-&gt;swiftMetadataInitializer();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>我们主要看下面两块代码。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">class_rw_t</span>* <span class="title">data</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> (<span class="keyword">class_rw_t</span> *)(bits &amp; FAST_DATA_MASK);</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">const</span> <span class="keyword">class_ro_t</span> *<span class="title">safe_ro</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">class_rw_t</span> *maybe_rw = data();</span><br><span class="line">        <span class="keyword">if</span> (maybe_rw-&gt;flags &amp; RW_REALIZED) &#123;</span><br><span class="line">            <span class="comment">// maybe_rw is rw</span></span><br><span class="line">            <span class="keyword">return</span> maybe_rw-&gt;ro();</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// maybe_rw is actually ro</span></span><br><span class="line">            <span class="keyword">return</span> (<span class="keyword">class_ro_t</span> *)maybe_rw;</span><br><span class="line">        &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>先看<code>class_rw_t</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">class_rw_t</span> &#123;</span></span><br><span class="line">    <span class="comment">// Be warned that Symbolication knows the layout of this structure.</span></span><br><span class="line">    <span class="keyword">uint32_t</span> flags;</span><br><span class="line">    <span class="keyword">uint16_t</span> witness;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> SUPPORT_INDEXED_ISA</span></span><br><span class="line">    <span class="keyword">uint16_t</span> index;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    explicit_atomic&lt;<span class="keyword">uintptr_t</span>&gt; ro_or_rw_ext;</span><br><span class="line"></span><br><span class="line">    Class firstSubclass;</span><br><span class="line">    Class nextSiblingClass;</span><br><span class="line">    <span class="comment">//省略代码 ...</span></span><br><span class="line">    </span><br><span class="line">     <span class="function"><span class="keyword">const</span> <span class="keyword">method_array_t</span> <span class="title">methods</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> v = get_ro_or_rwe();</span><br><span class="line">        <span class="keyword">if</span> (v.is&lt;<span class="keyword">class_rw_ext_t</span> *&gt;()) &#123;</span><br><span class="line">            <span class="keyword">return</span> v.<span class="built_in">get</span>&lt;<span class="keyword">class_rw_ext_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;methods;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">method_array_t</span>&#123;v.<span class="built_in">get</span>&lt;<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;baseMethods()&#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">property_array_t</span> <span class="title">properties</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> v = get_ro_or_rwe();</span><br><span class="line">        <span class="keyword">if</span> (v.is&lt;<span class="keyword">class_rw_ext_t</span> *&gt;()) &#123;</span><br><span class="line">            <span class="keyword">return</span> v.<span class="built_in">get</span>&lt;<span class="keyword">class_rw_ext_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;properties;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">property_array_t</span>&#123;v.<span class="built_in">get</span>&lt;<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;baseProperties&#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">protocol_array_t</span> <span class="title">protocols</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> v = get_ro_or_rwe();</span><br><span class="line">        <span class="keyword">if</span> (v.is&lt;<span class="keyword">class_rw_ext_t</span> *&gt;()) &#123;</span><br><span class="line">            <span class="keyword">return</span> v.<span class="built_in">get</span>&lt;<span class="keyword">class_rw_ext_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;protocols;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">protocol_array_t</span>&#123;v.<span class="built_in">get</span>&lt;<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;baseProtocols&#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个结构体里有一些我们熟悉的字样<code>methods</code>、<code>properties</code>、<code>protocols</code>。这里的<code>properties</code>是不是就是存储属性的地方呢。让我们验证一下。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">#import &lt;Foundation&#x2F;Foundation.h&gt;</span><br><span class="line">#import &lt;objc&#x2F;runtime.h&gt;</span><br><span class="line"></span><br><span class="line">NS_ASSUME_NONNULL_BEGIN</span><br><span class="line"></span><br><span class="line">@interface Person : NSObject</span><br><span class="line">&#123;</span><br><span class="line">    NSString *hobby;</span><br><span class="line">&#125;</span><br><span class="line">@property (nonatomic, copy) NSString *nickName;</span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">NS_ASSUME_NONNULL_END</span><br><span class="line"></span><br><span class="line">@implementation Person</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        &#x2F;&#x2F; insert code here...</span><br><span class="line">        Person *p &#x3D; [[Person alloc] init];</span><br><span class="line">        Class pClass &#x3D; object_getClass(p);</span><br><span class="line">        NSLog(@&quot;%s&quot;, p);</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们定义一个Person类，在里面定义一个成员变量和一个属性。在main函数里打断点，我们用LLDB打印看一下<code>pClass</code>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">(lldb) x/<span class="number">4</span>gx pClass</span><br><span class="line"><span class="number">0x1000081d0</span>: <span class="number">0x00000001000081a8</span> <span class="number">0x0000000100357140</span></span><br><span class="line"><span class="number">0x1000081e0</span>: <span class="number">0x000000010072fdc0</span> <span class="number">0x0001802400000003</span></span><br><span class="line">(lldb) p (<span class="keyword">class_data_bits_t</span> *)<span class="number">0x1000081f0</span><span class="comment">//0x1000081d0+0x20 bits地址偏移量</span></span><br><span class="line">(<span class="keyword">class_data_bits_t</span> *) $<span class="number">16</span> = <span class="number">0x00000001000081f0</span></span><br><span class="line">(lldb) p $<span class="number">16</span>-&gt;data()</span><br><span class="line">(<span class="keyword">class_rw_t</span> *) $<span class="number">17</span> = <span class="number">0x0000000100731e10</span></span><br><span class="line">(lldb) p *$<span class="number">17</span></span><br><span class="line">(<span class="keyword">class_rw_t</span>) $<span class="number">18</span> = &#123;</span><br><span class="line">  flags = <span class="number">2148007936</span></span><br><span class="line">  witness = <span class="number">1</span></span><br><span class="line">  ro_or_rw_ext = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">unsigned</span> <span class="keyword">long</span>&gt; = &#123;</span><br><span class="line">      Value = <span class="number">4295000208</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  firstSubclass = nil</span><br><span class="line">  nextSiblingClass = NSUUID</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看最后<code>$18</code>里面并没有打印出属性列表。我们接着探索<code>class_ro_t</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">class_ro_t</span> &#123;</span></span><br><span class="line">    <span class="keyword">uint32_t</span> flags;</span><br><span class="line">    <span class="keyword">uint32_t</span> instanceStart;</span><br><span class="line">    <span class="keyword">uint32_t</span> instanceSize;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> __LP64__</span></span><br><span class="line">    <span class="keyword">uint32_t</span> reserved;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">union</span> &#123;</span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">uint8_t</span> * ivarLayout;</span><br><span class="line">        Class nonMetaclass;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    explicit_atomic&lt;<span class="keyword">const</span> <span class="keyword">char</span> *&gt; name;</span><br><span class="line">    <span class="comment">// With ptrauth, this is signed if it points to a small list, but</span></span><br><span class="line">    <span class="comment">// may be unsigned if it points to a big list.</span></span><br><span class="line">    <span class="keyword">void</span> *baseMethodList;</span><br><span class="line">    <span class="keyword">protocol_list_t</span> * baseProtocols;</span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">ivar_list_t</span> * ivars;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">uint8_t</span> * weakIvarLayout;</span><br><span class="line">    <span class="keyword">property_list_t</span> *baseProperties;</span><br><span class="line">  <span class="comment">//隐藏代码 </span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>发现<code>class_ro_t</code>接口中包含了<code>baseMethodList</code>、<code>baseProtocols</code>、<code>baseProperties</code>等属性。验证一下属性是不是存储在这里了。和上面方式类似，我们利用LLDB查看</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"> p (<span class="keyword">class_data_bits_t</span> *)<span class="number">0x1000081f0</span></span><br><span class="line">(<span class="keyword">class_data_bits_t</span> *) $<span class="number">19</span> = <span class="number">0x00000001000081f0</span></span><br><span class="line">(lldb) p $<span class="number">19</span>-&gt;safe_ro()</span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *) $<span class="number">20</span> = <span class="number">0x0000000100008090</span></span><br><span class="line">(lldb) p $<span class="number">20</span></span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">class_ro_t</span>) $<span class="number">21</span> = &#123;</span><br><span class="line">  flags = <span class="number">388</span></span><br><span class="line">  instanceStart = <span class="number">8</span></span><br><span class="line">  instanceSize = <span class="number">24</span></span><br><span class="line">  reserved = <span class="number">0</span></span><br><span class="line">   = &#123;</span><br><span class="line">    ivarLayout = <span class="number">0x0000000100003f1d</span> <span class="string">"\x02"</span></span><br><span class="line">    nonMetaclass = <span class="number">0x0000000100003f1d</span></span><br><span class="line">  &#125;</span><br><span class="line">  name = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">const</span> <span class="keyword">char</span> *&gt; = <span class="string">"Person"</span> &#123;</span><br><span class="line">      Value = <span class="number">0x0000000100003f16</span> <span class="string">"Person"</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  baseMethodList = <span class="number">0x00000001000080d8</span></span><br><span class="line">  baseProtocols = <span class="number">0x0000000000000000</span></span><br><span class="line">  ivars = <span class="number">0x0000000100008128</span></span><br><span class="line">  weakIvarLayout = <span class="number">0x0000000000000000</span></span><br><span class="line">  baseProperties = <span class="number">0x0000000100008170</span></span><br><span class="line">  _swiftMetadataInitializer_NEVER_USE = &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">20.b</span>aseProperties</span><br><span class="line">(<span class="keyword">property_list_t</span> *<span class="keyword">const</span>) $<span class="number">22</span> = <span class="number">0x0000000100008170</span></span><br><span class="line">  Fix-it applied, fixed expression was: </span><br><span class="line">    $<span class="number">20</span>-&gt;baseProperties</span><br><span class="line">(lldb) p *$<span class="number">22</span></span><br><span class="line">(<span class="keyword">property_list_t</span>) $<span class="number">23</span> = &#123;</span><br><span class="line">  entsize_list_tt&lt;<span class="keyword">property_t</span>, <span class="keyword">property_list_t</span>, <span class="number">0</span>, PointerModifierNop&gt; = (entsizeAndFlags = <span class="number">16</span>, count = <span class="number">1</span>)</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">23.</span><span class="built_in">get</span>(<span class="number">0</span>)</span><br><span class="line">(<span class="keyword">property_t</span>) $<span class="number">28</span> = (name = <span class="string">"nickName"</span>, attributes = <span class="string">"T@\"NSString\",C,N,V_nickName"</span>)</span><br></pre></td></tr></table></figure>
+
+<p>可以看到了nickName属性，这里的count是1，说明只有这一个属性。我们接下来看一下<code>ivars</code>属性,继续使用LLDB</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">(lldb) p $<span class="number">20.</span>ivars</span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">ivar_list_t</span> *<span class="keyword">const</span>) $<span class="number">24</span> = <span class="number">0x0000000100008128</span></span><br><span class="line">  Fix-it applied, fixed expression was: </span><br><span class="line">    $<span class="number">20</span>-&gt;ivars</span><br><span class="line">(lldb) p *$<span class="number">24</span></span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">ivar_list_t</span>) $<span class="number">25</span> = &#123;</span><br><span class="line">  entsize_list_tt&lt;<span class="keyword">ivar_t</span>, <span class="keyword">ivar_list_t</span>, <span class="number">0</span>, PointerModifierNop&gt; = (entsizeAndFlags = <span class="number">32</span>, count = <span class="number">2</span>)</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">25.</span><span class="built_in">get</span>(<span class="number">1</span>)</span><br><span class="line">(<span class="keyword">ivar_t</span>) $<span class="number">26</span> = &#123;</span><br><span class="line">  offset = <span class="number">0x00000001000081a0</span></span><br><span class="line">  name = <span class="number">0x0000000100003f5b</span> <span class="string">"_nickName"</span></span><br><span class="line">  type = <span class="number">0x0000000100003f89</span> <span class="string">"@\"NSString\""</span></span><br><span class="line">  alignment_raw = <span class="number">3</span></span><br><span class="line">  <span class="built_in">size</span> = <span class="number">8</span></span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">25.</span><span class="built_in">get</span>(<span class="number">0</span>)</span><br><span class="line">(<span class="keyword">ivar_t</span>) $<span class="number">27</span> = &#123;</span><br><span class="line">  offset = <span class="number">0x0000000100008198</span></span><br><span class="line">  name = <span class="number">0x0000000100003f55</span> <span class="string">"hobby"</span></span><br><span class="line">  type = <span class="number">0x0000000100003f89</span> <span class="string">"@\"NSString\""</span></span><br><span class="line">  alignment_raw = <span class="number">3</span></span><br><span class="line">  <span class="built_in">size</span> = <span class="number">8</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到<strong>ivars</strong>属性里一共有两个值，_nickName和hobby。这一结果证实了编译器会帮助我们给属性 <code>nickName</code> 生成一个带下划线前缀的实例变量 <code>_nickName</code>。</p>
+<p>至此，我们可以得出以下结论:</p>
+<blockquote>
+<p><code>class_ro_t</code> 是在编译时就已经确定了的，存储的是类的成员变量、属性、方法和协议等内容。<br><code>class_rw_t</code> 是可以在运行时来拓展类的一些属性、方法和协议等内容。</p>
+</blockquote>
+<h4 id="类的方法存储在哪"><a href="#类的方法存储在哪" class="headerlink" title="类的方法存储在哪"></a>类的方法存储在哪</h4><p>我们用相同的方法验证一下，先在Person类中增加一个<code>sayHello</code> 的实例方法和一个 <code>sayHappy</code> 的类方法。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">NS_ASSUME_NONNULL_BEGIN</span><br><span class="line"></span><br><span class="line">@interface Person : NSObject</span><br><span class="line">&#123;</span><br><span class="line">    NSString *hobby;</span><br><span class="line">&#125;</span><br><span class="line">@property (nonatomic, copy) NSString *nickName;</span><br><span class="line">- (void)sayHello;</span><br><span class="line">+ (void)sayHappy;</span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">NS_ASSUME_NONNULL_END</span><br><span class="line"></span><br><span class="line">@implementation Person</span><br><span class="line"></span><br><span class="line">- (void)sayHello</span><br><span class="line">&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;, __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (void)sayHappy</span><br><span class="line">&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;, __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>按照上面的思路，我们直接读取 <code>class_ro_t</code> 中的 <code>baseMethods()</code> 的内容:</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">(lldb) p $<span class="number">3.b</span>aseMethods()</span><br><span class="line">(<span class="keyword">method_list_t</span> *) $<span class="number">7</span> = <span class="number">0x00000001000080f0</span></span><br><span class="line">(lldb) p *$<span class="number">7</span></span><br><span class="line">(<span class="keyword">method_list_t</span>) $<span class="number">8</span> = &#123;</span><br><span class="line">  entsize_list_tt&lt;<span class="keyword">method_t</span>, <span class="keyword">method_list_t</span>, <span class="number">4294901763</span>, <span class="keyword">method_t</span>::pointer_modifier&gt; = (entsizeAndFlags = <span class="number">27</span>, count = <span class="number">4</span>)</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">8.</span><span class="built_in">get</span>(<span class="number">0</span>)</span><br><span class="line">(<span class="keyword">method_t</span>) $<span class="number">9</span> = &#123;&#125;</span><br><span class="line">(lldb) p $<span class="number">8.</span><span class="built_in">get</span>(<span class="number">1</span>)</span><br><span class="line">(<span class="keyword">method_t</span>) $<span class="number">10</span> = &#123;&#125;</span><br><span class="line">(lldb) p $<span class="number">8.</span><span class="built_in">get</span>(<span class="number">2</span>)</span><br><span class="line">(<span class="keyword">method_t</span>) $<span class="number">11</span> = &#123;&#125;</span><br><span class="line">(lldb) p $<span class="number">8.</span><span class="built_in">get</span>(<span class="number">3</span>)</span><br><span class="line">(<span class="keyword">method_t</span>) $<span class="number">12</span> = &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到baseMethods有四个方法。</p>
+<h3 id="类的类方法存储在哪"><a href="#类的类方法存储在哪" class="headerlink" title="类的类方法存储在哪"></a>类的类方法存储在哪</h3><p>我们用Runtime的API来实际测试一下</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.m</span></span><br><span class="line"><span class="keyword">void</span> testInstanceMethod_classToMetaclass(Class pClass)&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">char</span> *className = class_getName(pClass);</span><br><span class="line">    Class metaClass = objc_getMetaClass(className);</span><br><span class="line">    </span><br><span class="line">    Method method1 = class_getInstanceMethod(pClass, <span class="keyword">@selector</span>(sayHello));</span><br><span class="line">    Method method2 = class_getInstanceMethod(metaClass, <span class="keyword">@selector</span>(sayHello));</span><br><span class="line"></span><br><span class="line">    Method method3 = class_getInstanceMethod(pClass, <span class="keyword">@selector</span>(sayHappy));</span><br><span class="line">    Method method4 = class_getInstanceMethod(metaClass, <span class="keyword">@selector</span>(sayHappy));</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">NSLog</span>(<span class="string">@"%p-%p-%p-%p"</span>,method1,method2,method3,method4);</span><br><span class="line">    <span class="built_in">NSLog</span>(<span class="string">@"%s"</span>,__func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> main(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> * argv[]) &#123;</span><br><span class="line">    <span class="keyword">@autoreleasepool</span> &#123;</span><br><span class="line">        <span class="comment">// insert code here...</span></span><br><span class="line">        Person *p = [[Person alloc] init];</span><br><span class="line">        Class pClass = object_getClass(p);</span><br><span class="line">        </span><br><span class="line">        testInstanceMethod_classToMetaclass(pClass);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行后打印结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">0x100008110-0x0-0x0-0x1000080a8</span><br><span class="line">testInstanceMethod_classToMetaclass</span><br></pre></td></tr></table></figure>
+
+<p>首先 <code>testInstanceMethod_classToMetaclass</code> 方法测试的是分别从类和元类去获取实例方法、类方法的结果。由打印结果我们可以知道：</p>
+<ul>
+<li>对于类对象来说，<code>sayHello</code> 是实例方法，存储于类对象的内存中，不存在于元类对象中。而 <code>sayHappy</code> 是类方法，存储于元类对象的内存中，不存在于类对象中。</li>
+<li>对于元类对象来说，<code>sayHello</code> 是类对象的实例方法，跟元类没关系；<code>sayHappy</code> 是元类对象的实例方法，所以存在元类中。</li>
+</ul>
+<h3 id="类和元类的创建时机"><a href="#类和元类的创建时机" class="headerlink" title="类和元类的创建时机"></a>类和元类的创建时机</h3><p>先看结论：</p>
+<p>类和元类是在编译期创建的，即在进行alloc操作之前，类和元类就已经被编译器床架你出来了。</p>
+<p>我们通过LLDB打印类和元类的指针来验证一下，断点打在main的第一行，这时候Person对象还没有初始化。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">(lldb) p/x Person<span class="class">.<span class="keyword">class</span></span></span><br><span class="line"><span class="class">(<span class="title">Class</span>) $1 = 0<span class="title">x0000000100008220</span> <span class="title">Person</span></span></span><br><span class="line"><span class="class">(<span class="title">lldb</span>) <span class="title">x</span>/4<span class="title">gx</span> 0<span class="title">x0000000100008220</span>//<span class="title">Person</span> 类对象</span></span><br><span class="line"><span class="class">0<span class="title">x100008220</span>:</span> <span class="number">0x00000001000081f8</span> <span class="number">0x0000000100357140</span></span><br><span class="line"><span class="number">0x100008230</span>: <span class="number">0x000000010034f360</span> <span class="number">0x0000802400000000</span></span><br><span class="line">(lldb) p/x <span class="number">0x00000001000081f8</span> &amp; <span class="number">0x00007ffffffffff8</span></span><br><span class="line">(<span class="keyword">long</span>) $<span class="number">2</span> = <span class="number">0x00000001000081f8</span><span class="comment">//Person 元类对象</span></span><br><span class="line">(lldb) po $<span class="number">2</span></span><br><span class="line">Person</span><br><span class="line"></span><br><span class="line">(lldb) x/<span class="number">4</span>gx <span class="number">0x00000001000081f8</span></span><br><span class="line"><span class="number">0x1000081f8</span>: <span class="number">0x00000001003570f0</span> <span class="number">0x00000001003570f0</span></span><br><span class="line"><span class="number">0x100008208</span>: <span class="number">0x0000000100615130</span> <span class="number">0x0001e03500000003</span></span><br><span class="line">(lldb) p/x <span class="number">0x00000001003570f0</span> &amp; <span class="number">0x00007ffffffffff8</span></span><br><span class="line">(<span class="keyword">long</span>) $<span class="number">3</span> = <span class="number">0x00000001003570f0</span><span class="comment">//NSObject 根元类对象</span></span><br><span class="line">(lldb) po $<span class="number">3</span></span><br><span class="line">NSObject</span><br><span class="line"></span><br><span class="line">(lldb) x/<span class="number">4</span>gx <span class="number">0x00000001003570f0</span></span><br><span class="line"><span class="number">0x1003570f0</span>: <span class="number">0x00000001003570f0</span> <span class="number">0x0000000100357140</span></span><br><span class="line"><span class="number">0x100357100</span>: <span class="number">0x0000000101104ac0</span> <span class="number">0x0004e03100000007</span></span><br><span class="line">(lldb) p/x <span class="number">0x00000001003570f0</span> &amp; <span class="number">0x00007ffffffffff8</span></span><br><span class="line">(<span class="keyword">long</span>) $<span class="number">4</span> = <span class="number">0x00000001003570f0</span><span class="comment">//NSObject 根元类对象</span></span><br><span class="line">(lldb) po $<span class="number">4</span></span><br><span class="line">NSObject</span><br></pre></td></tr></table></figure>
+
+<p>还有一种方式是通过<code>MachoView</code>应用打开编译的二进制mach-o文件,<code>MachoView</code>的使用就不介绍了。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ul>
+<li>类和元类创建于编译时，可以通过 <code>LLDB</code> 来打印类和元类的指针，或者 <code>MachOView</code> 查看二进制可执行文件</li>
+<li>万物皆对象：类的本质就是对象</li>
+<li>类在 <code>class_ro_t</code> 结构中存储了编译时确定的属性、成员变量、方法和协议等内容。</li>
+<li>实例方法存放在类中</li>
+<li>类方法存放在元类中</li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/05/09/iOS%E5%BA%95%E5%B1%82%EF%BC%9Acalloc%E5%92%8Cisa/" rel="next" title="iOS底层：calloc和isa">
+                <i class="fa fa-chevron-left"></i> iOS底层：calloc和isa
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Jason</p>
+              <p class="site-description motion-element" itemprop="description">个人技术博客</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/%20%7C%7C%20archive">
+              
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#class的本质"><span class="nav-number">1.</span> <span class="nav-text">class的本质</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#类的结构"><span class="nav-number">2.</span> <span class="nav-text">类的结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#isa指针"><span class="nav-number">2.1.</span> <span class="nav-text">isa指针</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#superclass指针"><span class="nav-number">2.2.</span> <span class="nav-text">superclass指针</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#cache"><span class="nav-number">2.3.</span> <span class="nav-text">cache</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#bits属性"><span class="nav-number">2.4.</span> <span class="nav-text">bits属性</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#探索-bits-属性"><span class="nav-number">3.</span> <span class="nav-text">探索 bits 属性</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#类的方法存储在哪"><span class="nav-number">3.1.</span> <span class="nav-text">类的方法存储在哪</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#类的类方法存储在哪"><span class="nav-number">4.</span> <span class="nav-text">类的类方法存储在哪</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#类和元类的创建时机"><span class="nav-number">5.</span> <span class="nav-text">类和元类的创建时机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
