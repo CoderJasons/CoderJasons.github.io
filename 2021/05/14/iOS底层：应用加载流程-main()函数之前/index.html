@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT" />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="App从点击图标就开启了生命周期，本文从App启动开始探索。 前导知识Mach-O文件Mach-O is a bunch of file types for different run time executables.Mach-O 是 iOS 系统不同运行时期可执行的文件的文件类型统称。 维基百科上关于 Mach-O 的描述：  Mach-O 是 Mach object 文件格式的缩写，它是一种">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS底层：应用加载流程 main()函数之前">
+<meta property="og:url" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="App从点击图标就开启了生命周期，本文从App启动开始探索。 前导知识Mach-O文件Mach-O is a bunch of file types for different run time executables.Mach-O 是 iOS 系统不同运行时期可执行的文件的文件类型统称。 维基百科上关于 Mach-O 的描述：  Mach-O 是 Mach object 文件格式的缩写，它是一种">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/compile_process.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/static_link.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/dyld_link.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/Mach-O.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/vitual_memory.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/Mach-O_section.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/section_show.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/_TEXT_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/_DATA_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/_LINKEDIT_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/Mach-o_UniversalFiles.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/virtualMemory_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/Mach-O_image_loading.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/exec_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/dyld_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/dyld_process_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/dyld3_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/demoMain_image.png">
+<meta property="og:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/launch_stack_image.png">
+<meta property="article:published_time" content="2021-05-14T01:57:56.525Z">
+<meta property="article:modified_time" content="2021-05-14T08:46:13.587Z">
+<meta property="article:author" content="Jason">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/images/compile_process.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yujiusheng.com/2021/05/14/iOS底层：应用加载流程-main()函数之前/"/>
+
+
+
+
+
+  <title>iOS底层：应用加载流程 main()函数之前 | Jason的博客</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Jason的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/14/iOS%E5%BA%95%E5%B1%82%EF%BC%9A%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B-main()%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">iOS底层：应用加载流程 main()函数之前</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2021-05-14T09:57:56+08:00">
+                2021-05-14
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>App从点击图标就开启了生命周期，本文从App启动开始探索。</p>
+<h3 id="前导知识"><a href="#前导知识" class="headerlink" title="前导知识"></a>前导知识</h3><h4 id="Mach-O文件"><a href="#Mach-O文件" class="headerlink" title="Mach-O文件"></a>Mach-O文件</h4><p>Mach-O is a bunch of file types for different run time executables.<br><code>Mach-O</code> 是 <code>iOS</code> 系统不同运行时期<strong>可执行的文件</strong>的文件类型统称。</p>
+<p>维基百科上关于 <code>Mach-O</code> 的描述：</p>
+<blockquote>
+<p>Mach-O 是 Mach object 文件格式的缩写，它是一种用于记录可执行文件、对象代码、共享库、动态加载代码和内存转储的文件格式。作为 a.out 格式的替代品，Mach-O 提供了更好的扩展性，并提升了符号表中信息的访问速度。<br>大多数基于 Mach 内核的操作系统都使用 Mach-O。NeXTSTEP、OS X 和 iOS 是使用这种格式作为本地可执行文件、库和对象代码的例子。</p>
+</blockquote>
+<p><code>Mach-O</code>有三种文件类型：Executable<code>、</code>Dylib<code>、</code>Bundle</p>
+<ul>
+<li><p>ExecutableL类型</p>
+<p>So the first executable, that’s the main binary in an app, it’s also the main binary in an app extension.<br><code>Executable</code> 是 <code>app</code> 的二进制主文件，同时也是 <code>app extension</code> 的二进制主文件</p>
+<p>我们一般可以在 <code>Xcode</code> 项目中的 <code>Products</code> 文件夹中找到它.</p>
+</li>
+<li><p><code>Dylib</code>类型</p>
+<p>A dylib is a dynamic library, on other platforms meet, you may know those as DSOs or DLLs.<br><code>dylib</code> 是动态库，在其他平台也叫 <code>DSO</code> 或者 <code>DLL</code>。</p>
+<p>对于接触 <code>iOS</code> 开发比较早的同学，可能知道我们在 <code>Xcode 7</code> 之前添加一些比如 <code>sqlite</code> 的库的时候，其后缀名为 <code>dylib</code>，而 <code>Xcode 7</code> 之后后缀名都改成了 <code>tbd</code>。</p>
+<p>这里引用 <a href="https://stackoverflow.com/questions/31450690/why-xcode-7-shows-tbd-instead-of-dylib" target="_blank" rel="noopener">StackoverFlow</a> 上的一篇回答。</p>
+<blockquote>
+<p>So it appears that the .dylib file is the actual library of binary code that your project is using and is located in the /usr/lib/ directory on the user’s device. The .tbd file, on the other hand, is just a text file that is included in your project and serves as a link to the required .dylib binary. Since this text file is much smaller than the binary library, it makes the SDK’s download size smaller.</p>
+</blockquote>
+<p>刚刚我们简单介绍了动态库，还有一种库是静态库，他们的区别是什么呢。</p>
+<p>我们先看一下编译的过程：</p>
+<p><img src="images/compile_process.png" alt="compile_process"></p>
+<p>当然，这个过程中间其实还设计到编译器前端的 <code>词法分析</code>、<code>语法分析</code>、<code>语义分析</code>、<code>优化</code> 等流程，我们在后面探索 <code>LLVM</code> 和 <code>Clang</code> 的时候会详细介绍。</p>
+<p>回到刚才的话题，静态库和动态库的区别：</p>
+<blockquote>
+<p>Static frameworks are linked at <strong>compile time</strong>. Dynamic frameworks are linked <strong>at runtime</strong>.</p>
+</blockquote>
+<p>静态库和动态库都是编译好的二进制文件，只是用法不同。那为什么要分动态和静态库呢？</p>
+<p><img src="images/static_link.png" alt="static_link"></p>
+<p><img src="images/dyld_link.png" alt="dyld_link"></p>
+<p>通过上面两幅图我们可以知道：</p>
+<ul>
+<li>静态库表现为：在链接阶段会将汇编生成的目标文件和引用的库一起链接打包到可执行文件中。</li>
+<li>动态库的表现为：程序编译并不会链接到目标代码中，在程序可执行文件里面会保留对动态库的引用，其中动态库分为动态链接库和动态加载库。<ul>
+<li>动态链接库：在没有被加载到内存的前提下，当可执行文件被加载，动态库也随着被加载到内存中。在<code>Linked Framework and Libraries</code>设置的一些<code>share libraries</code>。【随着程序启动而启动】</li>
+<li>动态加载库：当需要的时候再使用<code>dlopen</code>等通过代码或者命令的方式来加载。【在程序启动之后】</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><code>Bundle</code>类型</p>
+<p>Now a bundle’s a special kind of dylib that you cannot link against, all you can do is load it at run time by an dlopen and that’s used on a Mac OS for plug-ins.<br>现阶段 Bundle 是一种特殊类型的 dylib，你是无法对其进行链接的。你所能做的是在 Runtime 运行时去通过 dlopen 来加载它，它可以在 macOS 上用于插件。</p>
+</li>
+<li><p><code>Image</code>和<code>Framework</code></p>
+<p>Image refers to any of these three types.<br>镜像文件包含了上述的三种文件类型</p>
+<p>a framework is a dylib with a special directory structure around it to holds files needed by that dylib.<br>有很多东西都叫做 Framework，但在本文中，Framework 指的是一个 dylib，它周围有一个特殊的目录结构来保存该 dylib 所需的文件。</p>
+</li>
+</ul>
+<h4 id="Mach-O结构分析"><a href="#Mach-O结构分析" class="headerlink" title="Mach-O结构分析"></a>Mach-O结构分析</h4><h5 id="segment段"><a href="#segment段" class="headerlink" title="segment段"></a><code>segment</code>段</h5><p><img src="images/Mach-O.png" alt="Mach-O"></p>
+<p><code>Mach-O</code>镜像文件是由<code>segments</code>段组成的。</p>
+<ul>
+<li><p>段的名称为大写格式</p>
+<p>所有的段都是 <code>page size</code> 的倍数。</p>
+</li>
+<li><p>arm64 上段大小为 <code>16</code> 字节</p>
+</li>
+<li><p>其它架构为 <code>4</code> 字节</p>
+</li>
+</ul>
+<p>这里再提及一下虚拟内存和内存页的知识：</p>
+<p><code>具有 VM 机制的操作系统，会对每个运行的进程创建一个逻辑地址空间 logical address space 或者叫虚拟地址空间 virtual address space；该空间的大小由操作系统位数决定：32 位的操作系统，其逻辑地址空间的大小为 4GB，64位的操作系统为 2^34 GB（其计算方式是 2^32 || 2^64(理论上是64位，x86 Intel 是48位)）。</code><br><img src="images/vitual_memory.png" alt="vitual_memory"></p>
+<p><code>虚拟地址空间(或者逻辑地址空间)会被分为相同大小的块，这些块被称为内存页（page）。计算机处理器和它的内存管理单元（MMU - memory management uinit）维护着一张将程序的逻辑地址空间映射到物理地址上的分页表</code>page table<code>。</code></p>
+<p><code>在</code>masOS<code>和早版本的</code>iOS<code>中，分页的大小为</code>4kB<code>。在之后的基于</code>A7<code>和</code>A8<code>的系统中，虚拟内存（</code>64<code>位的地址空间）地址空间的分页大小变为了</code>16KB<code>，而物理RAM上的内存分页大小仍然维持在</code>4KB<code>；基于A9及之后的系统，虚拟内存和物理内存的分页都是</code>16KB<code>。</code></p>
+<h5 id="section"><a href="#section" class="headerlink" title="section"></a>section</h5><p><img src="images/Mach-O_section.png" alt="Mach-O_section"></p>
+<p>在 segment 段内部还有许多的 section 区。section 名称为小写格式。</p>
+<p>But sections are really just a subrange of a segment, they don’t have any of the constraints of being page size, but they are non-overlapping.<br>但是 sections 节实际上只是一个 segment 段的子范围，它们没有页面大小的任何限制，但是它们是不重叠的。</p>
+<p>通过<code>MachOView</code>工具查看App的二进制可执行文件可以看到：</p>
+<p><img src="images/section_show.png" alt="section_show"></p>
+<h4 id="常见的segments"><a href="#常见的segments" class="headerlink" title="常见的segments"></a>常见的<code>segments</code></h4><ul>
+<li><p><code>_TEXT</code>:代码段，包括头文件、代码和常量。只读不可修改</p>
+<p><img src="images/_TEXT_image.png" alt="_TEXT_image"></p>
+</li>
+<li><p><code>_DATA</code>：数据段，包括全局变量，静态变量等。可读可写。</p>
+<p><img src="images/_DATA_image.png" alt="_DATA_image"></p>
+</li>
+<li><p><code>_LINKEDIT</code>：如何加载程序的元数据, 包含了方法和变量的元数据（位置，偏移量），以及代码签名等信息。只读不可修改。</p>
+<p><img src="images/_LINKEDIT_image.png" alt="_LINKEDIT_image"></p>
+</li>
+</ul>
+<h5 id="Mach-O-Universal-Files"><a href="#Mach-O-Universal-Files" class="headerlink" title="Mach-O Universal Files"></a>Mach-O Universal Files</h5><p><img src="images/Mach-o_UniversalFiles.png" alt="Mach-o_UniversalFiles"></p>
+<p><code>Mach-O</code> 通用文件，将多种架构的 <code>Mach-O</code> 文件合并而成。它通过 <code>header</code> 来记录不同架构在文件中的偏移量，<code>segement</code> 占多个分页，<code>header</code>占一页的空间。可能有人会觉得 <code>header</code> 单独占一页会浪费空间，但这有利于虚拟内存的实现。</p>
+<h4 id="虚拟内存"><a href="#虚拟内存" class="headerlink" title="虚拟内存"></a>虚拟内存</h4><p><img src="images/virtualMemory_image.png" alt="virtualMemory_image"></p>
+<p>虚拟内存是一层<strong>间接寻址</strong>。</p>
+<p>虚拟内存解决的是管理所有进程使用<strong>物理 RAM</strong> 的问题。通过添加间接层来让每个进程使用<strong>逻辑地址空间</strong>，它可以映射到 RAM 上的某个物理页上。这种映射不是一对一的，逻辑地址可能映射不到 RAM 上，也可能有多个逻辑地址映射到同一个物理 RAM 上。</p>
+<ul>
+<li>针对第一种情况，当进程要存储逻辑地址内容时会触发 page fault。</li>
+<li>而第二种情况就是多进程共享内存。</li>
+<li>对于文件可以不用一次性读入整个文件，可以使用分页映射 mmap() 的方式读取。也就是把文件某个片段映射到进程逻辑内存的某个页上。当某个想要读取的页没有在内存中，就会触发 page fault，内核只会读入那一页，实现文件的懒加载。也就是说 Mach-O 文件中的 __TEXT 段可以映射到多个进程，并可以懒加载，且进程之间共享内存。</li>
+<li>__DATA 段是可读写的。这里使用到了 Copy-On-Write 技术，简称 COW。也就是多个进程共享一页内存空间时，一旦有进程要做写操作，它会先将这页内存内容复制一份出来，然后重新映射逻辑地址到新的 RAM 页上。也就是这个进程自己拥有了那页内存的拷贝。这就涉及到了 clean/dirty page 的概念。dirty page 含有进程自己的信息，而 clean page 可以被内核重新生成（重新读磁盘）。所以 dirty page 的代价大于 clean page。</li>
+</ul>
+<h4 id="多进程加载Mach-O镜像"><a href="#多进程加载Mach-O镜像" class="headerlink" title="多进程加载Mach-O镜像"></a>多进程加载<code>Mach-O</code>镜像</h4><p><img src="images/Mach-O_image_loading.png" alt="Mach-O_image_loading"></p>
+<ul>
+<li>所以在多个进程加载 Mach-O 镜像时 __TEXT 和 __LINKEDIT 因为只读，都是可以共享内存的，读取速度就会很快。</li>
+<li>而 __DATA 因为可读写，就有可能会产生 dirty page，如果检测到有 clean page 就可以直接使用，反之就需要重新读取 DATA page。一旦产生了 dirty page，当 dyld 执行结束后，__LINKEDIT 需要通知内核当前页面不再需要了，当别人需要的使用时候就可以重新 clean 这些页面。</li>
+</ul>
+<h4 id="ASLR"><a href="#ASLR" class="headerlink" title="ASLR"></a>ASLR</h4><p><code>ASLR</code> (Address Space Layout Randomization) 地址空间布局随机化，镜像会在随机的地址上加载。</p>
+<h4 id="Code-Signing"><a href="#Code-Signing" class="headerlink" title="Code Signing"></a>Code Signing</h4><p>可能我们认为 <code>Xcode</code> 会把整个文件都做加密 <code>hash</code> 并用做数字签名。其实为了在运行时验证 <code>Mach-O</code> 文件的签名，并不是每次重复读入整个文件，而是把每页内容都生成一个单独的加密散列值，并存储在 <code>__LINKEDIT</code> 中。这使得文件每页的内容都能及时被校验确并保不被篡改。</p>
+<h4 id="exec"><a href="#exec" class="headerlink" title="exec()"></a><code>exec()</code></h4><p><img src="images/exec_image.png" alt="exec_image"></p>
+<p>Exec is a system call. When you trap into the kernel, you basically say I want to replace this process with this new program.</p>
+<p>exec() 是一个系统调用。系统内核把应用映射到新的地址空间，且每次起始位置都是随机的（因为使用 ASLR）。并将起始位置到 0x000000 这段范围的进程权限都标记为不可读写不可执行。如果是 32 位进程，这个范围至少是 4KB；对于 64 位进程则至少是 4GB 。NULL 指针引用和指针截断误差都是会被它捕获。这个范围也叫做 PAGEZERO。</p>
+<h4 id="dyld"><a href="#dyld" class="headerlink" title="dyld"></a><code>dyld</code></h4><p><img src="images/dyld_image.png" alt="dyld_image"></p>
+<p><code>Unix 的前二十年很安逸，因为那时还没有发明动态链接库。有了动态链接库后，一个用于加载链接库的帮助程序被创建。在苹果的平台里是 dyld，其他 Unix 系统也有 ld.so。 当内核完成映射进程的工作后会将名字为 dyld 的 Mach-O 文件映射到进程中的随机地址，它将 PC 寄存器设为 dyld 的地址并运行。dyld 在应用进程中运行的工作是加载应用依赖的所有动态链接库，准备好运行所需的一切，它拥有的权限跟应用一样。</code></p>
+<h4 id="dyld流程"><a href="#dyld流程" class="headerlink" title="dyld流程"></a><code>dyld</code>流程</h4><p><img src="images/dyld_process_image.png" alt="dyld_process_image"></p>
+<ul>
+<li><p>Load dylibs<br><code>从主执行文件的 header 获取到需要加载的所依赖动态库列表，而 header 早就被内核映射过。然后它需要找到每个 dylib，然后打开文件读取文件起始位置，确保它是 Mach-O 文件。接着会找到代码签名并将其注册到内核。然后在 dylib 文件的每个 segment 上调用 mmap()。应用所依赖的 dylib 文件可能会再依赖其他 dylib，所以 dyld 所需要加载的是动态库列表一个递归依赖的集合。一般应用会加载 100 到 400 个 dylib 文件，但大部分都是系统 dylib，它们会被预先计算和缓存起来，加载速度很快。</code></p>
+</li>
+<li><p>Fix-ups<br><code>在加载所有的动态链接库之后，它们只是处在相互独立的状态，需要将它们绑定起来，这就是 Fix-ups。代码签名使得我们不能修改指令，那样就不能让一个 dylib 的调用另一个 dylib。这时需要加很多间接层。
+现代 code-gen 被叫做动态 PIC（Position Independent Code），意味着代码可以被加载到间接的地址上。当调用发生时，code-gen 实际上会在 __DATA 段中创建一个指向被调用者的指针，然后加载指针并跳转过去。所以 dyld 做的事情就是修正（fix-up）指针和数据。Fix-up 有两种类型，rebasing 和 binding。</code></p>
+</li>
+<li><p>Rebasing 和 Binding</p>
+<p><code>Rebasing：在镜像内部调整指针的指向
+Binding：将指针指向镜像外部的内容</code></p>
+</li>
+</ul>
+<p><code>dyld</code> 的时间线由上图可知为：</p>
+<p>Load dylibs -&gt; Rebase -&gt; Bind -&gt; ObjC -&gt; Initializers</p>
+<h4 id="dyld2-amp-amp-dyld3"><a href="#dyld2-amp-amp-dyld3" class="headerlink" title="dyld2 &amp;&amp; dyld3"></a>dyld2 &amp;&amp; dyld3</h4><p><img src="images/dyld3_image.png" alt="dyld3_image"></p>
+<p>在 <code>iOS 13</code> 之前，所有的第三方 <code>App</code> 都是通过 <code>dyld 2</code> 来启动 <code>App</code> 的，主要过程如下：</p>
+<ul>
+<li>解析 <code>Mach-O</code> 的 <code>Header</code> 和 <code>Load Commands</code>，找到其依赖的库，并递归找到所有依赖的库</li>
+<li>加载 <code>Mach-O</code> 文件</li>
+<li>进行符号查找</li>
+<li>绑定和变基</li>
+<li>运行初始化程序</li>
+</ul>
+<p>dyld3 被分为了三个组件：</p>
+<ul>
+<li>一个进程外的 MachO 解析器<ul>
+<li>预先处理了所有可能影响启动速度的 search path、@rpaths 和环境变量</li>
+<li>然后分析 Mach-O 的 Header 和依赖，并完成了所有符号查找的工作</li>
+<li>最后将这些结果创建成了一个启动闭包</li>
+<li>这是一个普通的 daemon 进程，可以使用通常的测试架构</li>
+</ul>
+</li>
+<li>一个进程内的引擎，用来运行启动闭包<ul>
+<li>这部分在进程中处理</li>
+<li>验证启动闭包的安全性，然后映射到 dylib 之中，再跳转到 main 函数</li>
+<li>不需要解析 Mach-O 的 Header 和依赖，也不需要符号查找。</li>
+</ul>
+</li>
+<li>一个启动闭包缓存服务<ul>
+<li>系统 App 的启动闭包被构建在一个 Shared Cache 中， 我们甚至不需要打开一个单独的文件</li>
+<li>对于第三方的 App，我们会在 App 安装或者升级的时候构建这个启动闭包。</li>
+<li>在 iOS、tvOS、watchOS中，这这一切都是 App 启动之前完成的。在 macOS 上，由于有 Side Load App，进程内引擎会在首次启动的时候启动一个 daemon 进程，之后就可以使用启动闭包启动了。</li>
+</ul>
+</li>
+</ul>
+<p>dyld 3 把很多耗时的查找、计算和 I/O 的事前都预先处理好了，这使得启动速度有了很大的提升。</p>
+<p>好了，先导知识就总结到这里，接下来让我们调整呼吸进入下一章~</p>
+<h3 id="App加载分析"><a href="#App加载分析" class="headerlink" title="App加载分析"></a>App加载分析</h3><p>我们在探索 <code>iOS</code> 底层的时候，对于对象、类、方法有了一定的认知哦，接下来我们就一起来探索一下应用是怎么加载的。</p>
+<p>我们直接新建一个 <code>Single View App</code> 的项目，然后在 <code>main.m</code> 中打一个断点:</p>
+<p><img src="images/demoMain_image.png" alt="demoMain_image"></p>
+<p>可以看到堆栈信息为：</p>
+<p><img src="images/launch_stack_image.png" alt="launch_stack_image"></p>
+<p>可以看到堆栈栈底是<code>_dyld_start</code>，说明App加载是从<code>_dyld_start</code>开始的</p>
+<h4 id="dyld-start"><a href="#dyld-start" class="headerlink" title="_dyld_start"></a>_dyld_start</h4><p>我们在源码里全局搜索_dyld_start。<a href="https://opensource.apple.com/tarballs/dyld/" target="_blank" rel="noopener">源码下载地址</a>,我这里下载的版本是832.7.3，我们可以来到 <code>dyldStartup.s</code> 这个汇编文件，然后我们聚焦于 <code>arm64</code> 架构下的汇编代码:</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __arm64__ &amp;&amp; !TARGET_OS_SIMULATOR</span></span><br><span class="line">	.<span class="built_in">text</span></span><br><span class="line">	.align <span class="number">2</span></span><br><span class="line">	.globl __dyld_start</span><br><span class="line">__dyld_start:</span><br><span class="line">	mov 	x28, sp</span><br><span class="line">	<span class="keyword">and</span>     sp, x28, #~<span class="number">15</span>		<span class="comment">// force 16-byte alignment of stack</span></span><br><span class="line">	mov	x0, #<span class="number">0</span></span><br><span class="line">	mov	x1, #<span class="number">0</span></span><br><span class="line">	stp	x1, x0, [sp, #<span class="number">-16</span>]!	<span class="comment">// make aligned terminating frame</span></span><br><span class="line">	mov	fp, sp			<span class="comment">// set up fp to point to terminating frame</span></span><br><span class="line">	sub	sp, sp, #<span class="number">16</span>             <span class="comment">// make room for local variables</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __LP64__</span></span><br><span class="line">	ldr     x0, [x28]               <span class="comment">// get app's mh into x0</span></span><br><span class="line">	ldr     x1, [x28, #<span class="number">8</span>]           <span class="comment">// get argc into x1 (kernel passes 32-bit int argc as 64-bits on stack to keep alignment)</span></span><br><span class="line">	add     x2, x28, #<span class="number">16</span>            <span class="comment">// get argv into x2</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">	ldr     w0, [x28]               <span class="comment">// get app's mh into x0</span></span><br><span class="line">	ldr     w1, [x28, #<span class="number">4</span>]           <span class="comment">// get argc into x1 (kernel passes 32-bit int argc as 64-bits on stack to keep alignment)</span></span><br><span class="line">	add     w2, w28, #<span class="number">8</span>             <span class="comment">// get argv into x2</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">	adrp	x3,___dso_handle@page</span><br><span class="line">	add 	x3,x3,___dso_handle@pageoff <span class="comment">// get dyld's mh in to x4</span></span><br><span class="line">	mov	x4,sp                   <span class="comment">// x5 has &amp;startGlue</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// call dyldbootstrap::start(app_mh, argc, argv, dyld_mh, &amp;startGlue)</span></span><br><span class="line">	bl	__ZN13dyldbootstrap5startEPKN5dyld311MachOLoadedEiPPKcS3_Pm</span><br><span class="line">	mov	x16,x0                  <span class="comment">// save entry point address in x16</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __LP64__</span></span><br><span class="line">	ldr     x1, [sp]</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">	ldr     w1, [sp]</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">	cmp	x1, #<span class="number">0</span></span><br><span class="line">	b.ne	Lnew</span><br></pre></td></tr></table></figure>
+
+<p>对于这里的汇编代码，我们肯定也没必要逐行分析，我们直接定位到 <code>bl</code> 语句后面(<code>bl</code> 在汇编层面是跳转的意思)：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// call dyldbootstrap::start(app_mh, argc, argv, dyld_mh, &amp;startGlue)</span></span><br><span class="line">	bl	__ZN13dyldbootstrap5startEPKN5dyld311MachOLoadedEiPPKcS3_Pm</span><br></pre></td></tr></table></figure>
+
+<p>看注释可以知道，调用位于 dyldbootstrap 命名空间下的 start 方法，我们继续搜索一下这个 start 方法，结果位于 dyldInitialization.cpp 文件(从文件名我们可以看出该文件主要是用来初始化 dyld)，这里查找 start 的时候可能会有很多结果，我们其实可以先搜索命名空间，再搜索 start 方法。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//  This is code to bootstrap dyld.  This work in normally done for a program by dyld and crt.</span></span><br><span class="line"><span class="comment">//  In dyld we have to do this manually.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="function"><span class="keyword">uintptr_t</span> <span class="title">start</span><span class="params">(<span class="keyword">const</span> dyld3::MachOLoaded* appsMachHeader, <span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span>* argv[],</span></span></span><br><span class="line"><span class="function"><span class="params">				<span class="keyword">const</span> dyld3::MachOLoaded* dyldsMachHeader, <span class="keyword">uintptr_t</span>* startGlue)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Emit kdebug tracepoint to indicate dyld bootstrap has started &lt;rdar://46878536&gt;</span></span><br><span class="line">    dyld3::kdebug_trace_dyld_marker(DBG_DYLD_TIMING_BOOTSTRAP_START, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// if kernel had to slide dyld, we need to fix up load sensitive locations</span></span><br><span class="line">	<span class="comment">// we have to do this before using any global variables</span></span><br><span class="line">  <span class="comment">// dyld 重定向</span></span><br><span class="line">    rebaseDyld(dyldsMachHeader);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// kernel sets up env pointer to be just past end of agv array</span></span><br><span class="line">	<span class="keyword">const</span> <span class="keyword">char</span>** envp = &amp;argv[argc+<span class="number">1</span>];</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// kernel sets up apple pointer to be just past end of envp array</span></span><br><span class="line">	<span class="keyword">const</span> <span class="keyword">char</span>** apple = envp;</span><br><span class="line">	<span class="keyword">while</span>(*apple != <span class="literal">NULL</span>) &#123; ++apple; &#125;</span><br><span class="line">	++apple;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// set up random value for stack canary</span></span><br><span class="line">  <span class="comment">// 栈溢出保护</span></span><br><span class="line">	__guard_setup(apple);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DYLD_INITIALIZER_SUPPORT</span></span><br><span class="line">	<span class="comment">// run all C++ initializers inside dyld</span></span><br><span class="line">  <span class="comment">// 初始化dyld</span></span><br><span class="line">	runDyldInitializers(argc, argv, envp, apple);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">	_subsystem_init(apple);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// now that we are done bootstrapping dyld, call dyld's main</span></span><br><span class="line">	<span class="keyword">uintptr_t</span> appsSlide = appsMachHeader-&gt;getSlide();</span><br><span class="line">	<span class="keyword">return</span> dyld::_main((macho_header*)appsMachHeader, appsSlide, argc, argv, envp, apple, startGlue);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>start</code>方法主要做了很多<code>dyld</code>的<code>初始化</code>工作：</p>
+<ul>
+<li><code>rebaseDyld</code>   <code>dyld重定位</code></li>
+<li><code>__guard_setup</code>   <code>栈溢出保护</code></li>
+</ul>
+<p>在结束<code>dyld初始化</code>工作后，函数调用 <code>dyld::_main()</code> 函数，再将返回值传递给<code>__dyld_start</code>去调用真正的<code>main</code>函数。</p>
+<h4 id="dyld-main"><a href="#dyld-main" class="headerlink" title="dyld::_main"></a>dyld::_main</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// Entry point for dyld.  The kernel loads dyld and jumps to __dyld_start which</span></span><br><span class="line"><span class="comment">// sets up some registers and call this function.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// Returns address of main() in target program which __dyld_start jumps to</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="keyword">uintptr_t</span></span><br><span class="line">_main(<span class="keyword">const</span> macho_header* mainExecutableMH, <span class="keyword">uintptr_t</span> mainExecutableSlide, </span><br><span class="line">		<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span>* argv[], <span class="keyword">const</span> <span class="keyword">char</span>* envp[], <span class="keyword">const</span> <span class="keyword">char</span>* apple[], </span><br><span class="line">		<span class="keyword">uintptr_t</span>* startGlue)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">///省略代码</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>_main方法</code> 官方的注释如下：</p>
+<blockquote>
+<p><code>dyld</code> 的入口。内核加载了 <code>dyld</code> 然后跳转到 <code>__dyld_start</code> 来设置一些寄存器的值然后调用到了这个方法。<br>返回 <code>__dyld_start</code> 所跳转到的目标程序的 <code>main</code> 函数地址。</p>
+</blockquote>
+<p><code>dyld</code>流程可总结为九个步骤：</p>
+<ul>
+<li>第一步：<code>设置运行环境</code></li>
+<li>第二步：<code>加载共享缓存</code></li>
+<li>第三步：<code>实例化主程序</code></li>
+<li>第四步：<code>加载插入的动态库</code></li>
+<li>第五步：<code>链接主程序</code></li>
+<li>第六步：<code>链接插入的动态库</code></li>
+<li>第七步：<code>执行弱引用绑定</code></li>
+<li>第八步：<code>执行初始化方法</code></li>
+<li>第九步：<code>查找程序入口main然后返回</code></li>
+</ul>
+<h5 id="第一步：设置运行环境"><a href="#第一步：设置运行环境" class="headerlink" title="第一步：设置运行环境"></a>第一步：设置运行环境</h5><p>这一步主要是设置程序的<code>运行环境</code>，<code>运行条件</code>等准备工作，包括<code>环境</code>，<code>平台</code>，<code>版本</code>，<code>路径</code>，<code>主机</code>信息，设置<code>程序上下文信息</code>等</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 获取主程序的hash</span></span><br><span class="line">    mainExecutableCDHash = mainExecutableCDHashBuffer;</span><br><span class="line"><span class="comment">// 获取主程序的macho_header结构</span></span><br><span class="line">    sMainExecutableMachHeader = mainExecutableMH;</span><br><span class="line"><span class="comment">// 获取主程序的slide值</span></span><br><span class="line">    sMainExecutableSlide = mainExecutableSlide;</span><br><span class="line"><span class="comment">// 设置上下文信息</span></span><br><span class="line">    setContext(mainExecutableMH, argc, argv, envp, apple);</span><br><span class="line"><span class="comment">// 获取主程序路径</span></span><br><span class="line">    sExecPath = _simple_getenv(apple, <span class="string">"executable_path"</span>);</span><br><span class="line"><span class="comment">// 进程的头环境配置</span></span><br><span class="line">    configureProcessRestrictions(mainExecutableMH, envp);</span><br><span class="line"><span class="comment">// 检测环境变量</span></span><br><span class="line">    checkEnvironmentVariables(envp);</span><br><span class="line">    defaultUninitializedFallbackPaths(envp);</span><br><span class="line"><span class="comment">// 获取主机信息 可理解为 程序结构</span></span><br><span class="line">    getHostInfo(mainExecutableMH, mainExecutableSlide);</span><br></pre></td></tr></table></figure>
+
+<h5 id="第二步：加载共享缓存"><a href="#第二步：加载共享缓存" class="headerlink" title="第二步：加载共享缓存"></a><strong>第二步：加载共享缓存</strong></h5><p>首先检查<code>dyld</code>共享缓存区是否<code>禁用</code>，<code>iOS</code>必须<code>开启</code>，在<code>checkSharedRegionDisable</code>里面<code>iOS</code>环境下注释：</p>
+<p><code>// iOS cannot run without shared region</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 检查缓存共享区域是否开启</span></span><br><span class="line">    checkSharedRegionDisable((dyld3::MachOLoaded*)mainExecutableMH, mainExecutableSlide);</span><br><span class="line"><span class="comment">// 共享缓存加载</span></span><br><span class="line">    mapSharedCache();</span><br><span class="line"><span class="comment">// mapSharedCache 函数</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">mapSharedCache</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    dyld3::SharedCacheOptions opts;</span><br><span class="line">    opts.cacheDirOverride   = sSharedCacheOverrideDir;</span><br><span class="line">    opts.forcePrivate       = (gLinkContext.sharedRegionMode == ImageLoader::kUsePrivateSharedRegion);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __x86_64__ &amp;&amp; !TARGET_OS_SIMULATOR</span></span><br><span class="line">    opts.useHaswell         = sHaswell;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    opts.useHaswell         = <span class="literal">false</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    opts.verbose            = gLinkContext.verboseMapping;</span><br><span class="line"><span class="comment">//--- 加载dyld缓存主函数</span></span><br><span class="line">    loadDyldCache(opts, &amp;sSharedCacheLoadInfo);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// update global state</span></span><br><span class="line">    <span class="keyword">if</span> ( sSharedCacheLoadInfo.loadAddress != <span class="literal">nullptr</span> ) &#123;</span><br><span class="line">        gLinkContext.dyldCache                              = sSharedCacheLoadInfo.loadAddress;</span><br><span class="line">        dyld::gProcessInfo-&gt;processDetachedFromSharedRegion = opts.forcePrivate;</span><br><span class="line">        dyld::gProcessInfo-&gt;sharedCacheSlide                = sSharedCacheLoadInfo.slide;</span><br><span class="line">        dyld::gProcessInfo-&gt;sharedCacheBaseAddress          = (<span class="keyword">unsigned</span> <span class="keyword">long</span>)sSharedCacheLoadInfo.loadAddress;</span><br><span class="line">        sSharedCacheLoadInfo.loadAddress-&gt;getUUID(dyld::gProcessInfo-&gt;sharedCacheUUID);</span><br><span class="line">        dyld3::kdebug_trace_dyld_image(DBG_DYLD_UUID_SHARED_CACHE_A, sSharedCacheLoadInfo.path, (<span class="keyword">const</span> <span class="keyword">uuid_t</span> *)&amp;dyld::gProcessInfo-&gt;sharedCacheUUID[<span class="number">0</span>], &#123;<span class="number">0</span>,<span class="number">0</span>&#125;, &#123;&#123; <span class="number">0</span>, <span class="number">0</span> &#125;&#125;, (<span class="keyword">const</span> mach_header *)sSharedCacheLoadInfo.loadAddress);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// loadDyldCache函数</span></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">loadDyldCache</span><span class="params">(<span class="keyword">const</span> SharedCacheOptions&amp; options, SharedCacheLoadInfo* results)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    results-&gt;loadAddress        = <span class="number">0</span>;</span><br><span class="line">    results-&gt;slide              = <span class="number">0</span>;</span><br><span class="line">    results-&gt;errorMessage       = <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> TARGET_OS_SIMULATOR</span></span><br><span class="line">    <span class="comment">// simulator only supports mmap()ing cache privately into process</span></span><br><span class="line">    <span class="keyword">return</span> mapCachePrivate(options, results);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    <span class="keyword">if</span> ( options.forcePrivate ) &#123;</span><br><span class="line">        <span class="comment">// mmap cache into this process only</span></span><br><span class="line">        <span class="keyword">return</span> mapCachePrivate(options, results);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// fast path: when cache is already mapped into shared region</span></span><br><span class="line">        <span class="keyword">bool</span> hasError = <span class="literal">false</span>;</span><br><span class="line">        <span class="keyword">if</span> ( reuseExistingCache(options, results) ) &#123;</span><br><span class="line">            hasError = (results-&gt;errorMessage != <span class="literal">nullptr</span>);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// slow path: this is first process to load cache</span></span><br><span class="line">            hasError = mapCacheSystemWide(options, results);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> hasError;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>mapSharedCache</code>函数主要调用<code>loadDyldCache</code> 函数，<code>loadDyldCache</code>函数主要有三种方式加载共享缓存：</p>
+<ul>
+<li><code>mapCachePrivate()</code> 仅加载到当前进程</li>
+<li>共享缓存已经加载过，不做任何处理</li>
+<li><code>mapCacheSystemWide()</code> 未加载过，首次加载</li>
+</ul>
+<h5 id="第三步：实例化主程序"><a href="#第三步：实例化主程序" class="headerlink" title="第三步：实例化主程序"></a><strong>第三步：实例化主程序</strong></h5><p>这一步主要是将主程序的<code>Mach-O</code>加载进内存，并实例化一个<code>ImageLoader</code>。<code>instantiateFromLoadedImage()</code> 首先调用<code>isCompatibleMachO()</code> 函数检测当前进程的<code>magic</code>、<code>cputype</code>、<code>cpusubtype</code> 等相关属性，判断<code>Mach-O</code>文件的<code>兼容性</code>，如果兼容性满足，就调用<code>ImageLoaderMachO::instantiateMainExecutable()</code>实例化主程序的<code>ImageLoader</code>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 第三步：实例化主程序</span></span><br><span class="line">        sMainExecutable = instantiateFromLoadedImage(mainExecutableMH, mainExecutableSlide, sExecPath);</span><br><span class="line">        gLinkContext.mainExecutable = sMainExecutable;</span><br><span class="line">        gLinkContext.mainExecutableCodeSigned = hasCodeSignatureLoadCommand(mainExecutableMH);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// The kernel maps in main executable before dyld gets control.  We need to </span></span><br><span class="line"><span class="comment">// make an ImageLoader* for the already mapped in main executable.</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> ImageLoaderMachO* <span class="title">instantiateFromLoadedImage</span><span class="params">(<span class="keyword">const</span> macho_header* mh, <span class="keyword">uintptr_t</span> slide, <span class="keyword">const</span> <span class="keyword">char</span>* path)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// try mach-o loader</span></span><br><span class="line">    <span class="keyword">if</span> ( isCompatibleMachO((<span class="keyword">const</span> <span class="keyword">uint8_t</span>*)mh, path) ) &#123;</span><br><span class="line">        ImageLoader* <span class="built_in">image</span> = ImageLoaderMachO::instantiateMainExecutable(mh, slide, path, gLinkContext);</span><br><span class="line">        addImage(<span class="built_in">image</span>);</span><br><span class="line">        <span class="keyword">return</span> (ImageLoaderMachO*)<span class="built_in">image</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">throw</span> <span class="string">"main executable not a known format"</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// create image for main executable</span></span><br><span class="line"><span class="function">ImageLoader* <span class="title">ImageLoaderMachO::instantiateMainExecutable</span><span class="params">(<span class="keyword">const</span> macho_header* mh, <span class="keyword">uintptr_t</span> slide, <span class="keyword">const</span> <span class="keyword">char</span>* path, <span class="keyword">const</span> LinkContext&amp; context)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//dyld::log("ImageLoader=%ld, ImageLoaderMachO=%ld, ImageLoaderMachOClassic=%ld, ImageLoaderMachOCompressed=%ld\n",</span></span><br><span class="line">    <span class="comment">//  sizeof(ImageLoader), sizeof(ImageLoaderMachO), sizeof(ImageLoaderMachOClassic), sizeof(ImageLoaderMachOCompressed));</span></span><br><span class="line">    <span class="keyword">bool</span> compressed;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> segCount;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> libCount;</span><br><span class="line">    <span class="keyword">const</span> linkedit_data_command* codeSigCmd;</span><br><span class="line">    <span class="keyword">const</span> encryption_info_command* encryptCmd;</span><br><span class="line">    sniffLoadCommands(mh, path, <span class="literal">false</span>, &amp;compressed, &amp;segCount, &amp;libCount, context, &amp;codeSigCmd, &amp;encryptCmd);</span><br><span class="line">    <span class="comment">// instantiate concrete class based on content of load commands</span></span><br><span class="line">    <span class="keyword">if</span> ( compressed ) </span><br><span class="line">        <span class="keyword">return</span> ImageLoaderMachOCompressed::instantiateMainExecutable(mh, slide, path, segCount, libCount, context);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">#<span class="keyword">if</span> SUPPORT_CLASSIC_MACHO</span><br><span class="line">        <span class="keyword">return</span> ImageLoaderMachOClassic::instantiateMainExecutable(mh, slide, path, segCount, libCount, context);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">        <span class="keyword">throw</span> <span class="string">"missing LC_DYLD_INFO load command"</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>instantiateMainExecutable()</code>  函数中通过<code>sniffLoadCommands()</code> 判断这个<code>mach-o</code>文件是<code>普通的</code>还是<code>压缩</code>的LINKEDIT，以及它有多少段。<br> 最后根据<code>compressed</code> 是否压缩来实例化最后返回的<code>ImageLoader</code>。</p>
+<h5 id="第四步：加载插入的动态库"><a href="#第四步：加载插入的动态库" class="headerlink" title="第四步：加载插入的动态库"></a><strong>第四步：加载插入的动态库</strong></h5><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 第四步：加载插入的动态库</span></span><br><span class="line">        <span class="keyword">if</span>  ( sEnv.DYLD_INSERT_LIBRARIES != <span class="literal">NULL</span> ) &#123;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">const</span> <span class="keyword">char</span>* <span class="keyword">const</span>* lib = sEnv.DYLD_INSERT_LIBRARIES; *lib != <span class="literal">NULL</span>; ++lib) </span><br><span class="line">                loadInsertedDylib(*lib);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>loadInsertedDylib()</code> 函数中设置了一个<code>LoadContext</code>，并为它配置一些参数后，调用<code>load()</code> 方法：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">ImageLoader* <span class="title">load</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* path, <span class="keyword">const</span> LoadContext&amp; context, <span class="keyword">unsigned</span>&amp; cacheIndex)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    ......</span><br><span class="line"><span class="comment">// try all path permutations and check against existing loaded images</span></span><br><span class="line"></span><br><span class="line">    ImageLoader* <span class="built_in">image</span> = loadPhase0(path, orgPath, context, cacheIndex, <span class="literal">NULL</span>);</span><br><span class="line">    <span class="keyword">if</span> ( <span class="built_in">image</span> != <span class="literal">NULL</span> ) &#123;</span><br><span class="line">        CRSetCrashLogMessage2(<span class="literal">NULL</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">image</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// try all path permutations and try open() until first success</span></span><br><span class="line">    <span class="built_in">std</span>::<span class="built_in">vector</span>&lt;<span class="keyword">const</span> <span class="keyword">char</span>*&gt; exceptions;</span><br><span class="line">    <span class="built_in">image</span> = loadPhase0(path, orgPath, context, cacheIndex, &amp;exceptions);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> !TARGET_OS_SIMULATOR</span></span><br><span class="line">    <span class="comment">// &lt;rdar://problem/16704628&gt; support symlinks on disk to a path in dyld shared cache</span></span><br><span class="line">    <span class="keyword">if</span> ( <span class="built_in">image</span> == <span class="literal">NULL</span>)</span><br><span class="line">        <span class="built_in">image</span> = loadPhase2cache(path, orgPath, context, cacheIndex, &amp;exceptions);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    CRSetCrashLogMessage2(<span class="literal">NULL</span>);</span><br><span class="line">    <span class="keyword">if</span> ( <span class="built_in">image</span> != <span class="literal">NULL</span> ) &#123;</span><br><span class="line">        <span class="comment">// &lt;rdar://problem/6916014&gt; leak in dyld during dlopen when using DYLD_ variables</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="built_in">std</span>::<span class="built_in">vector</span>&lt;<span class="keyword">const</span> <span class="keyword">char</span>*&gt;::iterator it = exceptions.<span class="built_in">begin</span>(); it != exceptions.<span class="built_in">end</span>(); ++it) &#123;</span><br><span class="line">            <span class="built_in">free</span>((<span class="keyword">void</span>*)(*it));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// if loaded image is not from cache, but original path is in cache</span></span><br><span class="line">        <span class="comment">// set gSharedCacheOverridden flag to disable some ObjC optimizations</span></span><br><span class="line">        <span class="keyword">if</span> ( !gSharedCacheOverridden &amp;&amp; !<span class="built_in">image</span>-&gt;inSharedCache() &amp;&amp; <span class="built_in">image</span>-&gt;isDylib() &amp;&amp; dyld3::MachOFile::isSharedCacheEligiblePath(path) &amp;&amp; inSharedCache(path) ) &#123;</span><br><span class="line">            gSharedCacheOverridden = <span class="literal">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">image</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="第五步：链接主程序"><a href="#第五步：链接主程序" class="headerlink" title="第五步：链接主程序"></a><strong>第五步：链接主程序</strong></h5><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 第五步：链接主程序        Executable：可执行的意思</span></span><br><span class="line">        link(sMainExecutable, sEnv.DYLD_BIND_AT_LAUNCH, </span><br><span class="line">        <span class="literal">true</span>, ImageLoader::RPathChain(<span class="literal">NULL</span>, <span class="literal">NULL</span>), <span class="number">-1</span>);</span><br></pre></td></tr></table></figure>
+
+<p>调用<code>link()</code>函数将实例化后的主程序进行<code>动态修正</code>，让二进制变为可正常执行的状态。<code>link()</code>函数内部调用了<code>ImgaeLoader::link()</code> 函数，主要做了下面几件事：</p>
+<ul>
+<li>this-&gt;<code>recursiveLoadLibraries()</code>  递归加载依赖库进内存</li>
+<li>this-&gt;<code>recursiveUpdateDepth()</code>   递归更新依赖库的路径</li>
+<li>this-&gt;<code>recursiveRebaseWithAccounting()</code>   递归重定位主程序和依赖库</li>
+<li>this-&gt;<code>recursiveBindWithAccounting()</code>   递归将主程序和依赖库执行符号表绑定（链接动态库使用）</li>
+<li>this-&gt;<code>weakBind()</code>   如果不是正在链接主程序二进制，那就主程序弱符号绑定（链接动态库使用）</li>
+<li>this-&gt;<code>recursiveApplyInterposing()</code>   递归申请可插入依赖库权限</li>
+<li>this-&gt;<code>recursiveMakeDataReadOnly()</code>   递归设置所有信息只读（链接动态库使用）</li>
+<li>this-&gt;<code>recursiveGetDOFSections()</code>  注册DOF节</li>
+</ul>
+<p>代码如下所示：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ImageLoader::link</span><span class="params">(<span class="keyword">const</span> LinkContext&amp; context, <span class="keyword">bool</span> forceLazysBound, <span class="keyword">bool</span> preflightOnly, <span class="keyword">bool</span> neverUnload, <span class="keyword">const</span> RPathChain&amp; loaderRPaths, <span class="keyword">const</span> <span class="keyword">char</span>* imagePath)</span></span></span><br><span class="line"><span class="function"></span>&#123;   </span><br><span class="line">    <span class="comment">// clear error strings</span></span><br><span class="line">    (*context.setErrorStrings)(<span class="number">0</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line">    <span class="keyword">uint64_t</span> t0 = mach_absolute_time();</span><br><span class="line">       <span class="comment">// 递归加载依赖库进内存</span></span><br><span class="line">    <span class="keyword">this</span>-&gt;recursiveLoadLibraries(context, preflightOnly, loaderRPaths, imagePath);</span><br><span class="line">    context.notifyBatch(dyld_image_state_dependents_mapped, preflightOnly);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// we only do the loading step for preflights</span></span><br><span class="line">    <span class="keyword">if</span> ( preflightOnly )</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">uint64_t</span> t1 = mach_absolute_time();</span><br><span class="line">       <span class="comment">// 递归更新依赖库的路径</span></span><br><span class="line">    context.clearAllDepths();</span><br><span class="line">    <span class="keyword">this</span>-&gt;recursiveUpdateDepth(context.imageCount());</span><br><span class="line"></span><br><span class="line">    __block <span class="keyword">uint64_t</span> t2, t3, t4, t5;</span><br><span class="line">    &#123;</span><br><span class="line">        dyld3::ScopedTimer(DBG_DYLD_TIMING_APPLY_FIXUPS, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">        t2 = mach_absolute_time();</span><br><span class="line">        <span class="comment">// 递归重定位主程序和依赖库</span></span><br><span class="line">        <span class="keyword">this</span>-&gt;recursiveRebaseWithAccounting(context);</span><br><span class="line">        context.notifyBatch(dyld_image_state_rebased, <span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line">        t3 = mach_absolute_time();</span><br><span class="line">        <span class="keyword">if</span> ( !context.linkingMainExecutable )</span><br><span class="line">            <span class="comment">// 递归将主程序和依赖库执行符号表绑定</span></span><br><span class="line">            <span class="keyword">this</span>-&gt;recursiveBindWithAccounting(context, forceLazysBound, neverUnload);</span><br><span class="line"></span><br><span class="line">        t4 = mach_absolute_time();</span><br><span class="line">        <span class="keyword">if</span> ( !context.linkingMainExecutable )</span><br><span class="line">        <span class="comment">// 如果不是正在链接主程序二进制，那就主程序弱符号绑定</span></span><br><span class="line">            <span class="keyword">this</span>-&gt;weakBind(context);</span><br><span class="line">        t5 = mach_absolute_time();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// interpose any dynamically loaded images</span></span><br><span class="line">    <span class="keyword">if</span> ( !context.linkingMainExecutable &amp;&amp; (fgInterposingTuples.<span class="built_in">size</span>() != <span class="number">0</span>) ) &#123;</span><br><span class="line">        <span class="function">dyld3::ScopedTimer <span class="title">timer</span><span class="params">(DBG_DYLD_TIMING_APPLY_INTERPOSING, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>)</span></span>;</span><br><span class="line">        <span class="comment">// 递归申请可插入依赖库权限</span></span><br><span class="line">        <span class="keyword">this</span>-&gt;recursiveApplyInterposing(context);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// now that all fixups are done, make __DATA_CONST segments read-only</span></span><br><span class="line">    <span class="keyword">if</span> ( !context.linkingMainExecutable )</span><br><span class="line">      <span class="comment">// 递归设置所有信息只读</span></span><br><span class="line">        <span class="keyword">this</span>-&gt;recursiveMakeDataReadOnly(context);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> ( !context.linkingMainExecutable )</span><br><span class="line">        context.notifyBatch(dyld_image_state_bound, <span class="literal">false</span>);</span><br><span class="line">    <span class="keyword">uint64_t</span> t6 = mach_absolute_time();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> ( context.registerDOFs != <span class="literal">NULL</span> ) &#123;</span><br><span class="line">        <span class="built_in">std</span>::<span class="built_in">vector</span>&lt;DOFInfo&gt; dofs;</span><br><span class="line">       <span class="comment">//  注册DOF节</span></span><br><span class="line">        <span class="keyword">this</span>-&gt;recursiveGetDOFSections(context, dofs);</span><br><span class="line">        context.registerDOFs(dofs);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">uint64_t</span> t7 = mach_absolute_time();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// clear error strings</span></span><br><span class="line">    (*context.setErrorStrings)(<span class="number">0</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">    fgTotalLoadLibrariesTime += t1 - t0;</span><br><span class="line">    fgTotalRebaseTime += t3 - t2;</span><br><span class="line">    fgTotalBindTime += t4 - t3;</span><br><span class="line">    fgTotalWeakBindTime += t5 - t4;</span><br><span class="line">    fgTotalDOF += t7 - t6;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// done with initial dylib loads</span></span><br><span class="line">    fgNextPIEDylibAddress = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="第六步：链接插入的动态库"><a href="#第六步：链接插入的动态库" class="headerlink" title="第六步：链接插入的动态库"></a><strong>第六步：链接插入的动态库</strong></h5><p>这一步跟链接主程序一样，将<code>sAllImages</code>中的<code>ImageLoader</code>遍历出来，然后调用<code>link()</code>进行链接，需要注意的是，<code>sAllImages</code>中保存的第一个是<code>主程序</code>的镜像，所以要获取所有的动态库的<code>ImageLoader</code>，就必须从<code>i + 1</code> 开始遍历：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span>(<span class="keyword">unsigned</span> <span class="keyword">int</span> i=<span class="number">0</span>; i &lt; sInsertedDylibCount; ++i) &#123;</span><br><span class="line">    ImageLoader* <span class="built_in">image</span> = sAllImages[i+<span class="number">1</span>];</span><br><span class="line">    link(<span class="built_in">image</span>, sEnv.DYLD_BIND_AT_LAUNCH, <span class="literal">true</span>, ImageLoader::RPathChain(<span class="literal">NULL</span>, <span class="literal">NULL</span>), <span class="number">-1</span>);</span><br><span class="line">    <span class="built_in">image</span>-&gt;setNeverUnloadRecursive();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="第七步：执行主程序弱符号绑定"><a href="#第七步：执行主程序弱符号绑定" class="headerlink" title="第七步：执行主程序弱符号绑定"></a><strong>第七步：执行主程序弱符号绑定</strong></h5><p><code>weakBind()</code>首先通过<code>getCoalescedImages()</code>合并所有动态库的<code>弱符号</code>到一个列表里，然后调用<code>initializeCoalIterator()</code>对需要绑定的弱符号进行排序，接着调用<code>incrementCoalIterator()</code>读取<code>dyld_info_command</code>结构的<code>weak_bind_off</code>和<code>weak_bind_size</code>字段，确定弱符号的<code>数据偏移</code>与大小，最终进行弱符号绑定</p>
+<h5 id="第八步：执行初始化方法"><a href="#第八步：执行初始化方法" class="headerlink" title="第八步：执行初始化方法"></a><strong>第八步：执行初始化方法</strong></h5><p>这一步就开始进行初始化工作了，<code>initializeMainExecutable()</code> 函数中调用 <code>runInitializers()</code> 函数，接着依次调用 <code>processInitializers()</code> 函数进行一些初始化准备工作，接着<code>recursiveInitialization()</code> 函数调用进行初始化工作，接着全局搜索<code>recursiveInitialization(</code>，找到<code>ImageLoader.cpp</code>中的此方法定义，看重点，函数里面我们看到<code>noffitySingle()单个通知注入</code>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ImageLoader::recursiveInitialization</span><span class="params">(<span class="keyword">const</span> LinkContext&amp; context, <span class="keyword">mach_port_t</span> this_thread, <span class="keyword">const</span> <span class="keyword">char</span>* pathToInitialize,</span></span></span><br><span class="line"><span class="function"><span class="params">                                          InitializerTimingList&amp; timingInfo, UninitedUpwards&amp; uninitUps)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="function">recursive_lock <span class="title">lock_info</span><span class="params">(this_thread)</span></span>;</span><br><span class="line">    recursiveSpinLock(lock_info);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> ( fState &lt; dyld_image_state_dependents_initialized<span class="number">-1</span> ) &#123;</span><br><span class="line">        <span class="keyword">uint8_t</span> oldState = fState;</span><br><span class="line">        <span class="comment">// break cycles</span></span><br><span class="line">        fState = dyld_image_state_dependents_initialized<span class="number">-1</span>;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// initialize lower level libraries first</span></span><br><span class="line">            <span class="comment">// 先初始化底层依赖库</span></span><br><span class="line">            <span class="keyword">for</span>(<span class="keyword">unsigned</span> <span class="keyword">int</span> i=<span class="number">0</span>; i &lt; libraryCount(); ++i) &#123;</span><br><span class="line">                ImageLoader* dependentImage = libImage(i);</span><br><span class="line">                <span class="keyword">if</span> ( dependentImage != <span class="literal">NULL</span> ) &#123;</span><br><span class="line">                    <span class="comment">// don't try to initialize stuff "above" me yet</span></span><br><span class="line">                    <span class="keyword">if</span> ( libIsUpward(i) ) &#123;</span><br><span class="line">                        uninitUps.imagesAndPaths[uninitUps.count] = &#123; dependentImage, libPath(i) &#125;;</span><br><span class="line">                        uninitUps.count++;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">else</span> <span class="keyword">if</span> ( dependentImage-&gt;fDepth &gt;= fDepth ) &#123;</span><br><span class="line">                        dependentImage-&gt;recursiveInitialization(context, this_thread, libPath(i), timingInfo, uninitUps);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            <span class="comment">// record termination order</span></span><br><span class="line">            <span class="comment">// 记录终端序号</span></span><br><span class="line">            <span class="keyword">if</span> ( <span class="keyword">this</span>-&gt;needsTermination() )</span><br><span class="line">                context.terminationRecorder(<span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// let objc know we are about to initialize this image</span></span><br><span class="line">            <span class="comment">// 单个通知注入 通知告知大家我要开始初始化啦，你们赶紧去做初始化的工作</span></span><br><span class="line">            <span class="keyword">uint64_t</span> t1 = mach_absolute_time();</span><br><span class="line">            fState = dyld_image_state_dependents_initialized;</span><br><span class="line">            oldState = fState;</span><br><span class="line">            context.notifySingle(dyld_image_state_dependents_initialized, <span class="keyword">this</span>, &amp;timingInfo);</span><br><span class="line">            </span><br><span class="line">            <span class="comment">// initialize this image</span></span><br><span class="line">            <span class="keyword">bool</span> hasInitializers = <span class="keyword">this</span>-&gt;doInitialization(context);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// let anyone know we finished initializing this image</span></span><br><span class="line">            fState = dyld_image_state_initialized;</span><br><span class="line">            oldState = fState;</span><br><span class="line">            context.notifySingle(dyld_image_state_initialized, <span class="keyword">this</span>, <span class="literal">NULL</span>);</span><br><span class="line">            </span><br><span class="line">            <span class="keyword">if</span> ( hasInitializers ) &#123;</span><br><span class="line">                <span class="keyword">uint64_t</span> t2 = mach_absolute_time();</span><br><span class="line">                timingInfo.addTime(<span class="keyword">this</span>-&gt;getShortName(), t2-t1);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span> (<span class="keyword">const</span> <span class="keyword">char</span>* msg) &#123;</span><br><span class="line">            <span class="comment">// this image is not initialized</span></span><br><span class="line">            fState = oldState;</span><br><span class="line">            recursiveSpinUnLock();</span><br><span class="line">            <span class="keyword">throw</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    recursiveSpinUnLock();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="探索-objc-init"><a href="#探索-objc-init" class="headerlink" title="探索 _objc_init"></a>探索 _objc_init</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> _objc_init(<span class="keyword">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">bool</span> initialized = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">if</span> (initialized) <span class="keyword">return</span>;</span><br><span class="line">    initialized = <span class="literal">true</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// fixme defer initialization until an objc-using image is found?</span></span><br><span class="line">    environ_init();</span><br><span class="line">    tls_init();</span><br><span class="line">    static_init();</span><br><span class="line">    runtime_init();</span><br><span class="line">    exception_init();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __OBJC2__</span></span><br><span class="line">    <span class="keyword">cache_t</span>::init();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    _imp_implementationWithBlock_init();</span><br><span class="line"></span><br><span class="line">    _dyld_objc_notify_register(&amp;map_images, load_images, unmap_image);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __OBJC2__</span></span><br><span class="line">    didCallDyldNotifyRegister = <span class="literal">true</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过LLDB来断掉调试<code>_objc_init</code>,然后通过<code>bt</code>命令打印出当前的调用堆栈，根据上一节我们探索<code>dyld</code>源码，感觉很清晰：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">(lldb) bt</span><br><span class="line">* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1</span><br><span class="line">  * frame #<span class="number">0</span>: <span class="number">0x00000001002d29c4</span> libobjc.A.dylib`_objc_init at objc-os.mm:<span class="number">925</span>:<span class="number">9</span></span><br><span class="line">    frame #<span class="number">1</span>: <span class="number">0x000000010044f0bc</span> libdispatch.dylib`_os_object_init + <span class="number">13</span></span><br><span class="line">    frame #<span class="number">2</span>: <span class="number">0x000000010045fafc</span> libdispatch.dylib`libdispatch_init + <span class="number">282</span></span><br><span class="line">    frame #<span class="number">3</span>: <span class="number">0x00007fff6a99c791</span> libSystem.B.dylib`libSystem_initializer + <span class="number">220</span></span><br><span class="line">    frame #<span class="number">4</span>: <span class="number">0x000000010002f1d3</span> dyld`ImageLoaderMachO::doModInitFunctions(ImageLoader::LinkContext <span class="keyword">const</span>&amp;) + <span class="number">535</span></span><br><span class="line">    frame #<span class="number">5</span>: <span class="number">0x000000010002f5de</span> dyld`ImageLoaderMachO::doInitialization(ImageLoader::LinkContext <span class="keyword">const</span>&amp;) + <span class="number">40</span></span><br><span class="line">    frame #<span class="number">6</span>: <span class="number">0x0000000100029ffb</span> dyld`ImageLoader::recursiveInitialization(ImageLoader::LinkContext <span class="keyword">const</span>&amp;, <span class="keyword">unsigned</span> <span class="keyword">int</span>, <span class="keyword">char</span> <span class="keyword">const</span>*, ImageLoader::InitializerTimingList&amp;, ImageLoader::UninitedUpwards&amp;) + <span class="number">493</span></span><br><span class="line">    frame #<span class="number">7</span>: <span class="number">0x0000000100029f66</span> dyld`ImageLoader::recursiveInitialization(ImageLoader::LinkContext <span class="keyword">const</span>&amp;, <span class="keyword">unsigned</span> <span class="keyword">int</span>, <span class="keyword">char</span> <span class="keyword">const</span>*, ImageLoader::InitializerTimingList&amp;, ImageLoader::UninitedUpwards&amp;) + <span class="number">344</span></span><br><span class="line">    frame #<span class="number">8</span>: <span class="number">0x00000001000280b4</span> dyld`ImageLoader::processInitializers(ImageLoader::LinkContext <span class="keyword">const</span>&amp;, <span class="keyword">unsigned</span> <span class="keyword">int</span>, ImageLoader::InitializerTimingList&amp;, ImageLoader::UninitedUpwards&amp;) + <span class="number">188</span></span><br><span class="line">    frame #<span class="number">9</span>: <span class="number">0x0000000100028154</span> dyld`ImageLoader::runInitializers(ImageLoader::LinkContext <span class="keyword">const</span>&amp;, ImageLoader::InitializerTimingList&amp;) + <span class="number">82</span></span><br><span class="line">    frame #<span class="number">10</span>: <span class="number">0x0000000100016662</span> dyld`dyld::initializeMainExecutable() + <span class="number">129</span></span><br><span class="line">    frame #<span class="number">11</span>: <span class="number">0x000000010001bbba</span> dyld`dyld::_main(macho_header <span class="keyword">const</span>*, <span class="keyword">unsigned</span> <span class="keyword">long</span>, <span class="keyword">int</span>, <span class="keyword">char</span> <span class="keyword">const</span>**, <span class="keyword">char</span> <span class="keyword">const</span>**, <span class="keyword">char</span> <span class="keyword">const</span>**, <span class="keyword">unsigned</span> <span class="keyword">long</span>*) + <span class="number">6667</span></span><br><span class="line">    frame #<span class="number">12</span>: <span class="number">0x0000000100015227</span> dyld`dyldbootstrap::start(dyld3::MachOLoaded <span class="keyword">const</span>*, <span class="keyword">int</span>, <span class="keyword">char</span> <span class="keyword">const</span>**, dyld3::MachOLoaded <span class="keyword">const</span>*, <span class="keyword">unsigned</span> <span class="keyword">long</span>*) + <span class="number">453</span></span><br><span class="line">    frame #<span class="number">13</span>: <span class="number">0x0000000100015025</span> dyld`_dyld_start + <span class="number">37</span></span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到 <code>dyld</code> 的最后一个流程是 <code>doModInitFunctions</code> 方法的执行。</p>
+<p>我们打开 <code>libSystem</code> 的源码，全局搜索 <code>libSystem_initializer</code> 可以看到：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">	_dyld_initializer();</span><br><span class="line">	_libSystem_ktrace_init_func(DYLD);</span><br><span class="line"></span><br><span class="line">	libdispatch_init();</span><br><span class="line">	_libSystem_ktrace_init_func(LIBDISPATCH);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> !TARGET_OS_DRIVERKIT</span></span><br><span class="line">	_libxpc_initializer();</span><br><span class="line">	_libSystem_ktrace_init_func(LIBXPC);</span><br></pre></td></tr></table></figure>
+
+<p>然后我们打开 <code>libDispatch</code> 的源码，全局搜索 <code>libdispatch_init</code> 可以看到：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">	<span class="keyword">void</span></span><br><span class="line">libdispatch_init(<span class="keyword">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">//省略代码</span></span><br><span class="line">	_dispatch_hw_config_init();</span><br><span class="line">	_dispatch_time_init();</span><br><span class="line">	_dispatch_vtable_init();</span><br><span class="line">  <span class="comment">//调用</span></span><br><span class="line">	_os_object_init();</span><br><span class="line">	_voucher_init();</span><br><span class="line">	_dispatch_introspection_init();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们再搜索<code>_os_object_init</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span></span><br><span class="line">_os_object_init(<span class="keyword">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">	_objc_init();</span><br><span class="line">	Block_callbacks_RR callbacks = &#123;</span><br><span class="line">		<span class="keyword">sizeof</span>(Block_callbacks_RR),</span><br><span class="line">		(<span class="keyword">void</span> (*)(<span class="keyword">const</span> <span class="keyword">void</span> *))&amp;objc_retain,</span><br><span class="line">		(<span class="keyword">void</span> (*)(<span class="keyword">const</span> <span class="keyword">void</span> *))&amp;objc_release,</span><br><span class="line">		(<span class="keyword">void</span> (*)(<span class="keyword">const</span> <span class="keyword">void</span> *))&amp;_os_objc_destructInstance</span><br><span class="line">	&#125;;</span><br><span class="line">	_Block_use_RR2(&amp;callbacks);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DISPATCH_COCOA_COMPAT</span></span><br><span class="line">	<span class="keyword">const</span> <span class="keyword">char</span> *v = getenv(<span class="string">"OBJC_DEBUG_MISSING_POOLS"</span>);</span><br><span class="line">	<span class="keyword">if</span> (v) _os_object_debug_missing_pools = _dispatch_parse_bool(v);</span><br><span class="line">	v = getenv(<span class="string">"DISPATCH_DEBUG_MISSING_POOLS"</span>);</span><br><span class="line">	<span class="keyword">if</span> (v) _os_object_debug_missing_pools = _dispatch_parse_bool(v);</span><br><span class="line">	v = getenv(<span class="string">"LIBDISPATCH_DEBUG_MISSING_POOLS"</span>);</span><br><span class="line">	<span class="keyword">if</span> (v) _os_object_debug_missing_pools = _dispatch_parse_bool(v);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>完美~，<code>_objc_init</code> 在这里就被调用了。所以 <code>_objc_init</code> 的流程是</p>
+<p>dyld -&gt; libSystem -&gt; libDispatch -&gt; libObjc -&gt; <code>_objc_init</code></p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本文主要探索了 app 启动之后 dyld 的流程，整个分析过程确实比较复杂，但在探索的过程中，我们不仅对底层源码有了新的认知，同时对于优化我们 app 启动也是有很多好处的。下一章，我们会对 objc_init 内部的 map_images 和 load_images 进行更深入的分析。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/05/13/iOS%E5%BA%95%E5%B1%82%EF%BC%9Astatic_init%E3%80%81gdb_objc_realized_classes&remapped_clasass_map&future_named_class_map/" rel="next" title="iOS底层：static_init、gdb_objc_realized_classes&remapped_clasass_map&future_named_class_map">
+                <i class="fa fa-chevron-left"></i> iOS底层：static_init、gdb_objc_realized_classes&remapped_clasass_map&future_named_class_map
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Jason</p>
+              <p class="site-description motion-element" itemprop="description">个人技术博客</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/%20%7C%7C%20archive">
+              
+                  <span class="site-state-item-count">14</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#前导知识"><span class="nav-number">1.</span> <span class="nav-text">前导知识</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Mach-O文件"><span class="nav-number">1.1.</span> <span class="nav-text">Mach-O文件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Mach-O结构分析"><span class="nav-number">1.2.</span> <span class="nav-text">Mach-O结构分析</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#segment段"><span class="nav-number">1.2.1.</span> <span class="nav-text">segment段</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#section"><span class="nav-number">1.2.2.</span> <span class="nav-text">section</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常见的segments"><span class="nav-number">1.3.</span> <span class="nav-text">常见的segments</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Mach-O-Universal-Files"><span class="nav-number">1.3.1.</span> <span class="nav-text">Mach-O Universal Files</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#虚拟内存"><span class="nav-number">1.4.</span> <span class="nav-text">虚拟内存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#多进程加载Mach-O镜像"><span class="nav-number">1.5.</span> <span class="nav-text">多进程加载Mach-O镜像</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ASLR"><span class="nav-number">1.6.</span> <span class="nav-text">ASLR</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Code-Signing"><span class="nav-number">1.7.</span> <span class="nav-text">Code Signing</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#exec"><span class="nav-number">1.8.</span> <span class="nav-text">exec()</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#dyld"><span class="nav-number">1.9.</span> <span class="nav-text">dyld</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#dyld流程"><span class="nav-number">1.10.</span> <span class="nav-text">dyld流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#dyld2-amp-amp-dyld3"><span class="nav-number">1.11.</span> <span class="nav-text">dyld2 &amp;&amp; dyld3</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#App加载分析"><span class="nav-number">2.</span> <span class="nav-text">App加载分析</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#dyld-start"><span class="nav-number">2.1.</span> <span class="nav-text">_dyld_start</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#dyld-main"><span class="nav-number">2.2.</span> <span class="nav-text">dyld::_main</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#第一步：设置运行环境"><span class="nav-number">2.2.1.</span> <span class="nav-text">第一步：设置运行环境</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#第二步：加载共享缓存"><span class="nav-number">2.2.2.</span> <span class="nav-text">第二步：加载共享缓存</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#第三步：实例化主程序"><span class="nav-number">2.2.3.</span> <span class="nav-text">第三步：实例化主程序</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#第四步：加载插入的动态库"><span class="nav-number">2.2.4.</span> <span class="nav-text">第四步：加载插入的动态库</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#第五步：链接主程序"><span class="nav-number">2.2.5.</span> <span class="nav-text">第五步：链接主程序</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#第六步：链接插入的动态库"><span class="nav-number">2.2.6.</span> <span class="nav-text">第六步：链接插入的动态库</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#第七步：执行主程序弱符号绑定"><span class="nav-number">2.2.7.</span> <span class="nav-text">第七步：执行主程序弱符号绑定</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#第八步：执行初始化方法"><span class="nav-number">2.2.8.</span> <span class="nav-text">第八步：执行初始化方法</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#探索-objc-init"><span class="nav-number">3.</span> <span class="nav-text">探索 _objc_init</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
