@@ -323,15 +323,15 @@
 </blockquote>
 <p>刚刚我们简单介绍了动态库，还有一种库是静态库，他们的区别是什么呢。</p>
 <p>我们先看一下编译的过程：</p>
-<p><img src="images/compile_process.png" alt="compile_process"></p>
+<p><img src="/images/compile_process.png" alt="compile_process"></p>
 <p>当然，这个过程中间其实还设计到编译器前端的 <code>词法分析</code>、<code>语法分析</code>、<code>语义分析</code>、<code>优化</code> 等流程，我们在后面探索 <code>LLVM</code> 和 <code>Clang</code> 的时候会详细介绍。</p>
 <p>回到刚才的话题，静态库和动态库的区别：</p>
 <blockquote>
 <p>Static frameworks are linked at <strong>compile time</strong>. Dynamic frameworks are linked <strong>at runtime</strong>.</p>
 </blockquote>
 <p>静态库和动态库都是编译好的二进制文件，只是用法不同。那为什么要分动态和静态库呢？</p>
-<p><img src="images/static_link.png" alt="static_link"></p>
-<p><img src="images/dyld_link.png" alt="dyld_link"></p>
+<p><img src="/images/static_link.png" alt="static_link"></p>
+<p><img src="/images/dyld_link.png" alt="dyld_link"></p>
 <p>通过上面两幅图我们可以知道：</p>
 <ul>
 <li>静态库表现为：在链接阶段会将汇编生成的目标文件和引用的库一起链接打包到可执行文件中。</li>
@@ -350,7 +350,7 @@
 <p>a framework is a dylib with a special directory structure around it to holds files needed by that dylib.<br>有很多东西都叫做 Framework，但在本文中，Framework 指的是一个 dylib，它周围有一个特殊的目录结构来保存该 dylib 所需的文件。</p>
 </li>
 </ul>
-<h4 id="Mach-O结构分析"><a href="#Mach-O结构分析" class="headerlink" title="Mach-O结构分析"></a>Mach-O结构分析</h4><h5 id="segment段"><a href="#segment段" class="headerlink" title="segment段"></a><code>segment</code>段</h5><p><img src="images/Mach-O.png" alt="Mach-O"></p>
+<h4 id="Mach-O结构分析"><a href="#Mach-O结构分析" class="headerlink" title="Mach-O结构分析"></a>Mach-O结构分析</h4><h5 id="segment段"><a href="#segment段" class="headerlink" title="segment段"></a><code>segment</code>段</h5><p><img src="/images/Mach-O.png" alt="Mach-O"></p>
 <p><code>Mach-O</code>镜像文件是由<code>segments</code>段组成的。</p>
 <ul>
 <li><p>段的名称为大写格式</p>
@@ -362,28 +362,28 @@
 </li>
 </ul>
 <p>这里再提及一下虚拟内存和内存页的知识：</p>
-<p><code>具有 VM 机制的操作系统，会对每个运行的进程创建一个逻辑地址空间 logical address space 或者叫虚拟地址空间 virtual address space；该空间的大小由操作系统位数决定：32 位的操作系统，其逻辑地址空间的大小为 4GB，64位的操作系统为 2^34 GB（其计算方式是 2^32 || 2^64(理论上是64位，x86 Intel 是48位)）。</code><br><img src="images/vitual_memory.png" alt="vitual_memory"></p>
+<p><code>具有 VM 机制的操作系统，会对每个运行的进程创建一个逻辑地址空间 logical address space 或者叫虚拟地址空间 virtual address space；该空间的大小由操作系统位数决定：32 位的操作系统，其逻辑地址空间的大小为 4GB，64位的操作系统为 2^34 GB（其计算方式是 2^32 || 2^64(理论上是64位，x86 Intel 是48位)）。</code><br><img src="/images/vitual_memory.png" alt="vitual_memory"></p>
 <p><code>虚拟地址空间(或者逻辑地址空间)会被分为相同大小的块，这些块被称为内存页（page）。计算机处理器和它的内存管理单元（MMU - memory management uinit）维护着一张将程序的逻辑地址空间映射到物理地址上的分页表</code>page table<code>。</code></p>
 <p><code>在</code>masOS<code>和早版本的</code>iOS<code>中，分页的大小为</code>4kB<code>。在之后的基于</code>A7<code>和</code>A8<code>的系统中，虚拟内存（</code>64<code>位的地址空间）地址空间的分页大小变为了</code>16KB<code>，而物理RAM上的内存分页大小仍然维持在</code>4KB<code>；基于A9及之后的系统，虚拟内存和物理内存的分页都是</code>16KB<code>。</code></p>
-<h5 id="section"><a href="#section" class="headerlink" title="section"></a>section</h5><p><img src="images/Mach-O_section.png" alt="Mach-O_section"></p>
+<h5 id="section"><a href="#section" class="headerlink" title="section"></a>section</h5><p><img src="/images/Mach-O_section.png" alt="Mach-O_section"></p>
 <p>在 segment 段内部还有许多的 section 区。section 名称为小写格式。</p>
 <p>But sections are really just a subrange of a segment, they don’t have any of the constraints of being page size, but they are non-overlapping.<br>但是 sections 节实际上只是一个 segment 段的子范围，它们没有页面大小的任何限制，但是它们是不重叠的。</p>
 <p>通过<code>MachOView</code>工具查看App的二进制可执行文件可以看到：</p>
-<p><img src="images/section_show.png" alt="section_show"></p>
+<p><img src="/images/section_show.png" alt="section_show"></p>
 <h4 id="常见的segments"><a href="#常见的segments" class="headerlink" title="常见的segments"></a>常见的<code>segments</code></h4><ul>
 <li><p><code>_TEXT</code>:代码段，包括头文件、代码和常量。只读不可修改</p>
-<p><img src="images/_TEXT_image.png" alt="_TEXT_image"></p>
+<p><img src="/images/_TEXT_image.png" alt="_TEXT_image"></p>
 </li>
 <li><p><code>_DATA</code>：数据段，包括全局变量，静态变量等。可读可写。</p>
-<p><img src="images/_DATA_image.png" alt="_DATA_image"></p>
+<p><img src="/images/_DATA_image.png" alt="_DATA_image"></p>
 </li>
 <li><p><code>_LINKEDIT</code>：如何加载程序的元数据, 包含了方法和变量的元数据（位置，偏移量），以及代码签名等信息。只读不可修改。</p>
-<p><img src="images/_LINKEDIT_image.png" alt="_LINKEDIT_image"></p>
+<p><img src="/images/_LINKEDIT_image.png" alt="_LINKEDIT_image"></p>
 </li>
 </ul>
-<h5 id="Mach-O-Universal-Files"><a href="#Mach-O-Universal-Files" class="headerlink" title="Mach-O Universal Files"></a>Mach-O Universal Files</h5><p><img src="images/Mach-o_UniversalFiles.png" alt="Mach-o_UniversalFiles"></p>
+<h5 id="Mach-O-Universal-Files"><a href="#Mach-O-Universal-Files" class="headerlink" title="Mach-O Universal Files"></a>Mach-O Universal Files</h5><p><img src="/images/Mach-o_UniversalFiles.png" alt="Mach-o_UniversalFiles"></p>
 <p><code>Mach-O</code> 通用文件，将多种架构的 <code>Mach-O</code> 文件合并而成。它通过 <code>header</code> 来记录不同架构在文件中的偏移量，<code>segement</code> 占多个分页，<code>header</code>占一页的空间。可能有人会觉得 <code>header</code> 单独占一页会浪费空间，但这有利于虚拟内存的实现。</p>
-<h4 id="虚拟内存"><a href="#虚拟内存" class="headerlink" title="虚拟内存"></a>虚拟内存</h4><p><img src="images/virtualMemory_image.png" alt="virtualMemory_image"></p>
+<h4 id="虚拟内存"><a href="#虚拟内存" class="headerlink" title="虚拟内存"></a>虚拟内存</h4><p><img src="/images/virtualMemory_image.png" alt="virtualMemory_image"></p>
 <p>虚拟内存是一层<strong>间接寻址</strong>。</p>
 <p>虚拟内存解决的是管理所有进程使用<strong>物理 RAM</strong> 的问题。通过添加间接层来让每个进程使用<strong>逻辑地址空间</strong>，它可以映射到 RAM 上的某个物理页上。这种映射不是一对一的，逻辑地址可能映射不到 RAM 上，也可能有多个逻辑地址映射到同一个物理 RAM 上。</p>
 <ul>
@@ -392,19 +392,19 @@
 <li>对于文件可以不用一次性读入整个文件，可以使用分页映射 mmap() 的方式读取。也就是把文件某个片段映射到进程逻辑内存的某个页上。当某个想要读取的页没有在内存中，就会触发 page fault，内核只会读入那一页，实现文件的懒加载。也就是说 Mach-O 文件中的 __TEXT 段可以映射到多个进程，并可以懒加载，且进程之间共享内存。</li>
 <li>__DATA 段是可读写的。这里使用到了 Copy-On-Write 技术，简称 COW。也就是多个进程共享一页内存空间时，一旦有进程要做写操作，它会先将这页内存内容复制一份出来，然后重新映射逻辑地址到新的 RAM 页上。也就是这个进程自己拥有了那页内存的拷贝。这就涉及到了 clean/dirty page 的概念。dirty page 含有进程自己的信息，而 clean page 可以被内核重新生成（重新读磁盘）。所以 dirty page 的代价大于 clean page。</li>
 </ul>
-<h4 id="多进程加载Mach-O镜像"><a href="#多进程加载Mach-O镜像" class="headerlink" title="多进程加载Mach-O镜像"></a>多进程加载<code>Mach-O</code>镜像</h4><p><img src="images/Mach-O_image_loading.png" alt="Mach-O_image_loading"></p>
+<h4 id="多进程加载Mach-O镜像"><a href="#多进程加载Mach-O镜像" class="headerlink" title="多进程加载Mach-O镜像"></a>多进程加载<code>Mach-O</code>镜像</h4><p><img src="/images/Mach-O_image_loading.png" alt="Mach-O_image_loading"></p>
 <ul>
 <li>所以在多个进程加载 Mach-O 镜像时 __TEXT 和 __LINKEDIT 因为只读，都是可以共享内存的，读取速度就会很快。</li>
 <li>而 __DATA 因为可读写，就有可能会产生 dirty page，如果检测到有 clean page 就可以直接使用，反之就需要重新读取 DATA page。一旦产生了 dirty page，当 dyld 执行结束后，__LINKEDIT 需要通知内核当前页面不再需要了，当别人需要的使用时候就可以重新 clean 这些页面。</li>
 </ul>
 <h4 id="ASLR"><a href="#ASLR" class="headerlink" title="ASLR"></a>ASLR</h4><p><code>ASLR</code> (Address Space Layout Randomization) 地址空间布局随机化，镜像会在随机的地址上加载。</p>
 <h4 id="Code-Signing"><a href="#Code-Signing" class="headerlink" title="Code Signing"></a>Code Signing</h4><p>可能我们认为 <code>Xcode</code> 会把整个文件都做加密 <code>hash</code> 并用做数字签名。其实为了在运行时验证 <code>Mach-O</code> 文件的签名，并不是每次重复读入整个文件，而是把每页内容都生成一个单独的加密散列值，并存储在 <code>__LINKEDIT</code> 中。这使得文件每页的内容都能及时被校验确并保不被篡改。</p>
-<h4 id="exec"><a href="#exec" class="headerlink" title="exec()"></a><code>exec()</code></h4><p><img src="images/exec_image.png" alt="exec_image"></p>
+<h4 id="exec"><a href="#exec" class="headerlink" title="exec()"></a><code>exec()</code></h4><p><img src="/images/exec_image.png" alt="exec_image"></p>
 <p>Exec is a system call. When you trap into the kernel, you basically say I want to replace this process with this new program.</p>
 <p>exec() 是一个系统调用。系统内核把应用映射到新的地址空间，且每次起始位置都是随机的（因为使用 ASLR）。并将起始位置到 0x000000 这段范围的进程权限都标记为不可读写不可执行。如果是 32 位进程，这个范围至少是 4KB；对于 64 位进程则至少是 4GB 。NULL 指针引用和指针截断误差都是会被它捕获。这个范围也叫做 PAGEZERO。</p>
-<h4 id="dyld"><a href="#dyld" class="headerlink" title="dyld"></a><code>dyld</code></h4><p><img src="images/dyld_image.png" alt="dyld_image"></p>
+<h4 id="dyld"><a href="#dyld" class="headerlink" title="dyld"></a><code>dyld</code></h4><p><img src="/images/dyld_image.png" alt="dyld_image"></p>
 <p><code>Unix 的前二十年很安逸，因为那时还没有发明动态链接库。有了动态链接库后，一个用于加载链接库的帮助程序被创建。在苹果的平台里是 dyld，其他 Unix 系统也有 ld.so。 当内核完成映射进程的工作后会将名字为 dyld 的 Mach-O 文件映射到进程中的随机地址，它将 PC 寄存器设为 dyld 的地址并运行。dyld 在应用进程中运行的工作是加载应用依赖的所有动态链接库，准备好运行所需的一切，它拥有的权限跟应用一样。</code></p>
-<h4 id="dyld流程"><a href="#dyld流程" class="headerlink" title="dyld流程"></a><code>dyld</code>流程</h4><p><img src="images/dyld_process_image.png" alt="dyld_process_image"></p>
+<h4 id="dyld流程"><a href="#dyld流程" class="headerlink" title="dyld流程"></a><code>dyld</code>流程</h4><p><img src="/images/dyld_process_image.png" alt="dyld_process_image"></p>
 <ul>
 <li><p>Load dylibs<br><code>从主执行文件的 header 获取到需要加载的所依赖动态库列表，而 header 早就被内核映射过。然后它需要找到每个 dylib，然后打开文件读取文件起始位置，确保它是 Mach-O 文件。接着会找到代码签名并将其注册到内核。然后在 dylib 文件的每个 segment 上调用 mmap()。应用所依赖的 dylib 文件可能会再依赖其他 dylib，所以 dyld 所需要加载的是动态库列表一个递归依赖的集合。一般应用会加载 100 到 400 个 dylib 文件，但大部分都是系统 dylib，它们会被预先计算和缓存起来，加载速度很快。</code></p>
 </li>
@@ -418,7 +418,7 @@ Binding：将指针指向镜像外部的内容</code></p>
 </ul>
 <p><code>dyld</code> 的时间线由上图可知为：</p>
 <p>Load dylibs -&gt; Rebase -&gt; Bind -&gt; ObjC -&gt; Initializers</p>
-<h4 id="dyld2-amp-amp-dyld3"><a href="#dyld2-amp-amp-dyld3" class="headerlink" title="dyld2 &amp;&amp; dyld3"></a>dyld2 &amp;&amp; dyld3</h4><p><img src="images/dyld3_image.png" alt="dyld3_image"></p>
+<h4 id="dyld2-amp-amp-dyld3"><a href="#dyld2-amp-amp-dyld3" class="headerlink" title="dyld2 &amp;&amp; dyld3"></a>dyld2 &amp;&amp; dyld3</h4><p><img src="/images/dyld3_image.png" alt="dyld3_image"></p>
 <p>在 <code>iOS 13</code> 之前，所有的第三方 <code>App</code> 都是通过 <code>dyld 2</code> 来启动 <code>App</code> 的，主要过程如下：</p>
 <ul>
 <li>解析 <code>Mach-O</code> 的 <code>Header</code> 和 <code>Load Commands</code>，找到其依赖的库，并递归找到所有依赖的库</li>
@@ -453,9 +453,9 @@ Binding：将指针指向镜像外部的内容</code></p>
 <p>好了，先导知识就总结到这里，接下来让我们调整呼吸进入下一章~</p>
 <h3 id="App加载分析"><a href="#App加载分析" class="headerlink" title="App加载分析"></a>App加载分析</h3><p>我们在探索 <code>iOS</code> 底层的时候，对于对象、类、方法有了一定的认知哦，接下来我们就一起来探索一下应用是怎么加载的。</p>
 <p>我们直接新建一个 <code>Single View App</code> 的项目，然后在 <code>main.m</code> 中打一个断点:</p>
-<p><img src="images/demoMain_image.png" alt="demoMain_image"></p>
+<p><img src="/images/demoMain_image.png" alt="demoMain_image"></p>
 <p>可以看到堆栈信息为：</p>
-<p><img src="images/launch_stack_image.png" alt="launch_stack_image"></p>
+<p><img src="/images/launch_stack_image.png" alt="launch_stack_image"></p>
 <p>可以看到堆栈栈底是<code>_dyld_start</code>，说明App加载是从<code>_dyld_start</code>开始的</p>
 <h4 id="dyld-start"><a href="#dyld-start" class="headerlink" title="_dyld_start"></a>_dyld_start</h4><p>我们在源码里全局搜索_dyld_start。<a href="https://opensource.apple.com/tarballs/dyld/" target="_blank" rel="noopener">源码下载地址</a>,我这里下载的版本是832.7.3，我们可以来到 <code>dyldStartup.s</code> 这个汇编文件，然后我们聚焦于 <code>arm64</code> 架构下的汇编代码:</p>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __arm64__ &amp;&amp; !TARGET_OS_SIMULATOR</span></span><br><span class="line">	.<span class="built_in">text</span></span><br><span class="line">	.align <span class="number">2</span></span><br><span class="line">	.globl __dyld_start</span><br><span class="line">__dyld_start:</span><br><span class="line">	mov 	x28, sp</span><br><span class="line">	<span class="keyword">and</span>     sp, x28, #~<span class="number">15</span>		<span class="comment">// force 16-byte alignment of stack</span></span><br><span class="line">	mov	x0, #<span class="number">0</span></span><br><span class="line">	mov	x1, #<span class="number">0</span></span><br><span class="line">	stp	x1, x0, [sp, #<span class="number">-16</span>]!	<span class="comment">// make aligned terminating frame</span></span><br><span class="line">	mov	fp, sp			<span class="comment">// set up fp to point to terminating frame</span></span><br><span class="line">	sub	sp, sp, #<span class="number">16</span>             <span class="comment">// make room for local variables</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __LP64__</span></span><br><span class="line">	ldr     x0, [x28]               <span class="comment">// get app's mh into x0</span></span><br><span class="line">	ldr     x1, [x28, #<span class="number">8</span>]           <span class="comment">// get argc into x1 (kernel passes 32-bit int argc as 64-bits on stack to keep alignment)</span></span><br><span class="line">	add     x2, x28, #<span class="number">16</span>            <span class="comment">// get argv into x2</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">	ldr     w0, [x28]               <span class="comment">// get app's mh into x0</span></span><br><span class="line">	ldr     w1, [x28, #<span class="number">4</span>]           <span class="comment">// get argc into x1 (kernel passes 32-bit int argc as 64-bits on stack to keep alignment)</span></span><br><span class="line">	add     w2, w28, #<span class="number">8</span>             <span class="comment">// get argv into x2</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">	adrp	x3,___dso_handle@page</span><br><span class="line">	add 	x3,x3,___dso_handle@pageoff <span class="comment">// get dyld's mh in to x4</span></span><br><span class="line">	mov	x4,sp                   <span class="comment">// x5 has &amp;startGlue</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// call dyldbootstrap::start(app_mh, argc, argv, dyld_mh, &amp;startGlue)</span></span><br><span class="line">	bl	__ZN13dyldbootstrap5startEPKN5dyld311MachOLoadedEiPPKcS3_Pm</span><br><span class="line">	mov	x16,x0                  <span class="comment">// save entry point address in x16</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __LP64__</span></span><br><span class="line">	ldr     x1, [sp]</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">	ldr     w1, [sp]</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">	cmp	x1, #<span class="number">0</span></span><br><span class="line">	b.ne	Lnew</span><br></pre></td></tr></table></figure>
