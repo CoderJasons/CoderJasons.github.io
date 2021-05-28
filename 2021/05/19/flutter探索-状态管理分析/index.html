@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="provider," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="状态管理是什么我们知道最基本的程序是什么  程序 &#x3D; 算法 + 数据结构 数据是程序的中心。数据结构和算法两个概念间的逻辑关系贯穿整个程序世界，首先两者表现为不可分割的关系。flutter也是一个程序。由此得出  Flutter &#x3D; 算法 + 数据结构 那状态管理是什么？我们也用公式表示一下：  Flutter状态管理 &#x3D; 算法 + 数据结构 + UI绑定 来看一段代码例子：   12345678">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flutter探索  - 状态管理分析">
+<meta property="og:url" content="http://yujiusheng.com/2021/05/19/flutter%E6%8E%A2%E7%B4%A2-%E7%8A%B6%E6%80%81%E7%AE%A1%E7%90%86%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="状态管理是什么我们知道最基本的程序是什么  程序 &#x3D; 算法 + 数据结构 数据是程序的中心。数据结构和算法两个概念间的逻辑关系贯穿整个程序世界，首先两者表现为不可分割的关系。flutter也是一个程序。由此得出  Flutter &#x3D; 算法 + 数据结构 那状态管理是什么？我们也用公式表示一下：  Flutter状态管理 &#x3D; 算法 + 数据结构 + UI绑定 来看一段代码例子：   12345678">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2021-05-19T08:05:48.000Z">
+<meta property="article:modified_time" content="2021-05-20T01:57:51.962Z">
+<meta property="article:author" content="Jason">
+<meta property="article:tag" content="provider">
+<meta name="twitter:card" content="summary">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yujiusheng.com/2021/05/19/flutter探索-状态管理分析/"/>
+
+
+
+
+
+  <title>Flutter探索  - 状态管理分析 | Jason的博客</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Jason的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/19/flutter%E6%8E%A2%E7%B4%A2-%E7%8A%B6%E6%80%81%E7%AE%A1%E7%90%86%E5%88%86%E6%9E%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Flutter探索  - 状态管理分析</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2021-05-19T16:05:48+08:00">
+                2021-05-19
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="状态管理是什么"><a href="#状态管理是什么" class="headerlink" title="状态管理是什么"></a>状态管理是什么</h3><p>我们知道最基本的程序是什么</p>
+<ul>
+<li><p>程序 = 算法 + 数据结构</p>
+<p>数据是程序的中心。数据结构和算法两个概念间的逻辑关系贯穿整个程序世界，首先两者表现为不可分割的关系。flutter也是一个程序。由此得出</p>
+</li>
+<li><p>Flutter = 算法 + 数据结构</p>
+<p>那状态管理是什么？我们也用公式表示一下：</p>
+</li>
+<li><p>Flutter状态管理 = 算法 + 数据结构 + UI绑定</p>
+<p>来看一段代码例子：</p>
+</li>
+</ul>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ThemeBloc</span> </span>&#123;</span><br><span class="line">  <span class="keyword">final</span> _themeStreamController = StreamController&lt;AppTheme&gt;();</span><br><span class="line">  <span class="keyword">get</span> changeTheTheme =&gt; _themeStreamController.sink.add;</span><br><span class="line">  <span class="keyword">get</span> darkThemIsEnABLE =&gt; _themeStreamController.stream;</span><br><span class="line">  dispose()&#123;</span><br><span class="line">    _themStreamController.close();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">final</span> bloc = ThemeBloc();</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AppTheme</span> </span>&#123;</span><br><span class="line">  ThemeData themeData;</span><br><span class="line">  AppTheme(<span class="keyword">this</span>.themeData);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//绑定到UI</span></span><br><span class="line">StreamBulder&lt;AppTheme&gt;(</span><br><span class="line">	initialData:AppTheme.LIGHT_THEME,</span><br><span class="line">  stream:bloc.dartThemeIsEnabled,</span><br><span class="line">  builder:(contenxt,AsyncSnapshot&lt;AppTheme&gt; snapshot)&#123;</span><br><span class="line">    <span class="keyword">return</span> MaterialApp(</span><br><span class="line">      title:<span class="string">"Jason"</span>,</span><br><span class="line">      theme:snapshot.data.themeData,</span><br><span class="line">      home:PageHome(),</span><br><span class="line">      routes:&lt;<span class="built_in">String</span>,WidgetBuilder&gt;&#123;</span><br><span class="line">        <span class="string">"/pageChatGroup"</span>:(context) =&gt; PageChatGroup(),</span><br><span class="line">        <span class="string">"/laoYu"</span>:(context) =&gt; LaoYu(),</span><br><span class="line">      &#125;</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>AppTheme 是数据结构</li>
+<li>changeTheTheme 是算法</li>
+<li>StreamBuilder 是绑定UI</li>
+</ul>
+<p>这样一整套代码的逻辑就是我们所说的Flutter状态管理。算法就是我们如何管理，数据结构是数据状态，状态管理的本质还是如何通过合理的算法管理数据，如何取，如何接收等，最终展示在UI上，通过UI的变更来提现状态的管理逻辑。</p>
+<h3 id="为什么需要状态管理"><a href="#为什么需要状态管理" class="headerlink" title="为什么需要状态管理"></a>为什么需要状态管理</h3><p>状态管理可以实现组件通信、跨组件数据储存。原生的状态变更是通过具体的组件直接复制，如果页面全部变更，是不是需要每一个都设置一遍，而Flutter的变更就简单粗暴 ，setState搞定，它背后的逻辑是重新build整个页面，发现有变更，再将新的数据复制。其实原生开发与Flutter的本质的区别就是数据与视图完全分离，目前原生也出现了UI绑定框架。说明flutter的设计的先进性。这样设计的弊端是什么？</p>
+<p>答案就是<code>页面如何刷新才是Flutter的关键</code>，原生也面临这个问题，页面的重绘导致丢帧问题，为了效果更好，我们很多时候都选择局部刷新，原生已经很明确的告诉UI要刷新什么更新什么，而对于Flutter来说，这一点恨不清晰，虽然Flutter也做了类似虚拟Dom优化重绘逻辑，但这远远不够，如何合理的更新UI才是最主要的，这个时候一大堆的状态管理就出来了，当然状态管理也不是仅仅为了解决更新问题。我们再思考一个问题，如果我有一个widget A，我想在另外一个widget B中改变widget A的一个状态，或者从网络、数据库取到数据，然后刷新它。</p>
+<p>一个糟糕的写法是，A widget的 state为全局的，当B widget 需要刷新的时候 直接调用 AState对象的 <code>setState</code> 方法.</p>
+<p>这样写有几个问题：</p>
+<p>1、违背了封装的概念，其他所有类都可以拿到A的state对象。</p>
+<p>2、A和B强耦合了。</p>
+<p>3、每次都是重绘整个widget A 性能变差。</p>
+<p>4、不利于测试。</p>
+<p>如何变好了，这就需要我们选择一种合适的状态管理方式。</p>
+<h4 id="状态管理的目标"><a href="#状态管理的目标" class="headerlink" title="状态管理的目标"></a>状态管理的目标</h4><p>其实我们做状态管理，不仅仅是因为它的特点，也是更好地架构。</p>
+<ul>
+<li>代码层次分明，易维护，易阅读。</li>
+<li>可扩展，可以动态替换UI而不影响算法逻辑。</li>
+<li>安全可靠，保持数据的稳定伸缩</li>
+<li>性能佳，局部刷新。</li>
+</ul>
+<p>这不仅仅是状态管理的目的，也是我们做一款优秀应用的基础架构。</p>
+<h3 id="状态管理的基本分类"><a href="#状态管理的基本分类" class="headerlink" title="状态管理的基本分类"></a>状态管理的基本分类</h3><ul>
+<li>局部管理 官方也称Ephemeral State，意思是短暂的状态，这种状态根本不需要做全局处理，StatefulWidget处理即可完成。</li>
+<li>全局管理 官方称App state ，即应用状态，非短暂状态，你要在应用程序的许多部分之间共享，以及希望在用户会话之间保持的状态，就是我们所说的应用程序状态（也称共享状态）。例如：<ul>
+<li>用户偏好</li>
+<li>登录信息</li>
+<li>购物车</li>
+<li>新闻阅读状态</li>
+</ul>
+</li>
+</ul>
+<p>总之，任何Flutter应用程序中都有两种概念性的状态类型。临时状态可以使用State和setState来事项，并且通常是单个窗口小部件的本地状态。剩下的就是应用的状态。两种类型在任何Flutter应用程序中都有自己的位置，两者之间的划分取决于你自己的喜好和应用程序的复杂性。没有最好的管理方式，只有最合适的管理方式。</p>
+<h3 id="底层逻辑"><a href="#底层逻辑" class="headerlink" title="底层逻辑"></a>底层逻辑</h3><p>底层逻辑主要讲，Flutter中目前有哪些可以做到状态管理，有什么缺点，适合做什么不适合做什么，完全明白底层逻辑才不会畏惧复杂的逻辑，即使逻辑复杂也能选择合理的方式去管理状态。</p>
+<ul>
+<li><p>State</p>
+<p>StatefulWidget、SteamBuilder状态管理方式。</p>
+</li>
+<li><p>InheritedWidget</p>
+<p>专门负责Widget树种数据共享的功能型Widget，如Provider、scoped_model就是基于它开发</p>
+</li>
+<li><p>Notification</p>
+<p>与InheritedWidget正好相反，InheritedWidget是从上往下传递数据，Notification是从下往上，但两者都是在自己的Widget树种传递，无法跨越树传递。</p>
+</li>
+<li><p>Stream</p>
+<p>数据流 如Bloc、flutter_redux、fish_redux等也都基于它来做实现。</p>
+</li>
+</ul>
+<p>下面一一分析</p>
+<h3 id="State"><a href="#State" class="headerlink" title="State"></a>State</h3><p>State是我们常用而且使用最频繁的一个状态管理类，它必须结合StatefulWidget一起使用，StreamBuilder继承自StatefulWidget，同样使用setState来管理状态。</p>
+<p>为什么用State管理状态，而不是Widget本身。Flutter设计时让Widget本身是不变的，类似固定的配置信息，那么就需要一个角色来控制它，State就出现了，但State的任何更改都会强制整个Widget重新构建，当然也可以覆盖必要的方法自己控制逻辑。</p>
+<p>注意：setState是整个Widget重新构建（子Widget也会销毁重建），这个点也是为什么不推荐大量使用StatefulWidget的原因。如果页面足够复杂，就会导致严重的性能损耗。建议使用StreamBuilder，它原理上是State，但它做到了子Widget的局部刷新，不会导致整个页面的重建。</p>
+<h4 id="State的缺点"><a href="#State的缺点" class="headerlink" title="State的缺点"></a>State的缺点</h4><ul>
+<li>无法做到夸组件共享数据（这个夸是无关联的，如果是直接的父子关系，不算是跨组件）。一般我们将State的子类设置为私有，所以无法做到让别的组件调用State的setState函数来刷新。</li>
+<li>setState会成为维护的难点，因为到处都有。随着页面状态的增多，可能调用的setState的地方会越来越多，不能统一管理。</li>
+<li>处理数据逻辑和视图混合在一起，违反代码设计原则。比如网络的数据取出来setState的UI上，这样编写代码，导致状态和UI耦合在一起，不利于测试和复用。</li>
+</ul>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>反过来讲，State简单高效，当复杂到需要更好地管理的时候再重构，一个基本原则就是，状态是否需要跨组件使用，如果需要那就用别的方法管理状态而不是State管理。</p>
+<h3 id="InheritedWidget"><a href="#InheritedWidget" class="headerlink" title="InheritedWidget"></a>InheritedWidget</h3><p>InheritedWidget是一个无私的Widget，它可以把自己的状态数据，无私交给所有的子Widget，所有的子Widget可以无条件的继承它的状态。它的数据是只读的，子widget不能修改。</p>
+<h4 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h4><p>缺点：</p>
+<ul>
+<li>容易造成不必要的刷新。</li>
+<li>不支持跨页面（router）的状态，不是同一个树的状态无法获取。</li>
+<li>数据不可变，必须结合StatefulWidget、ChangeNotifier或者Steam使用。</li>
+</ul>
+<p>比较适合在一个属性Widget中，抽象出公有状态，每一个子Widget或者孙Widget都可以获取该状态，我们可以通过手段控制rebuild的粒度来优化重绘逻辑，但它更适合从上往下传递，如果从下往上传递，如何做，下面解答。</p>
+<h3 id="Notification"><a href="#Notification" class="headerlink" title="Notification"></a>Notification</h3><p>它是flutter中跨层数据共享的一种机制，它不是widget，它提供了dispatch方法，来让我们沿着context对应的Element节点向上逐层发送通知。</p>
+<h4 id="小结："><a href="#小结：" class="headerlink" title="小结："></a>小结：</h4><p>缺点</p>
+<ul>
+<li>不支持跨页面的状态，准确的说不支持NotificationListener同级或者父级Widget的状态通知</li>
+<li>本身不支持刷新UI,需要结合State使用</li>
+<li>如果结合State，会导致整个UI的重绘，效率低下不科学。</li>
+</ul>
+<p>使用起来简单，如果页面复杂度高不推荐。</p>
+<h3 id="Stream"><a href="#Stream" class="headerlink" title="Stream"></a>Stream</h3><p>Stream其实是一个生产者消费者模型，一端负责生产，一端负责消费，而且是纯Dart的实现，跟Flutter没什么关系，扯上关系的就是StreamBuilder来构建一个Stream通道的Widget，像知名的rxdart、Bloc、flutter_redux全都用到了Stream的api。所以学习它才是我们掌握状态管理的关键。</p>
+<h4 id="小结-2"><a href="#小结-2" class="headerlink" title="小结"></a>小结</h4><p>缺点</p>
+<ul>
+<li>api生涩，不好理解。</li>
+<li>需要定制化，才能满足更复杂的场景。</li>
+<li>没有自动dispose逻辑。</li>
+</ul>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>以上所有的状态更新都离不开State的支持。</p>
+<h3 id="状态管理的使用原则"><a href="#状态管理的使用原则" class="headerlink" title="状态管理的使用原则"></a>状态管理的使用原则</h3><h4 id="局部管理优于全局"><a href="#局部管理优于全局" class="headerlink" title="局部管理优于全局"></a>局部管理优于全局</h4><p>这个原则来源于，Flutter的性能优化，局部刷新肯定比全局刷新要好很多，那么我们在管理状态的同时，也要考虑该状态到底是局部还是全局，从而编写正确的逻辑。</p>
+<h4 id="保持数据安全性"><a href="#保持数据安全性" class="headerlink" title="保持数据安全性"></a>保持数据安全性</h4><p>用<code>_</code>私有化状态，因为当开发人员众多，当别人看到你的变量的时候，第一反应可能不是找你提供的方法，而是直接对变量操作，那就有可能出现想不到的后果，如果他只能调用你提供的方法，那他就要遵循你方法的逻辑，避免数据被处理错误。</p>
+<h4 id="考虑页面重新build带来的影响"><a href="#考虑页面重新build带来的影响" class="headerlink" title="考虑页面重新build带来的影响"></a>考虑页面重新build带来的影响</h4><p>很多时候页面的重建都会调用build函数，也就是说，在一个生命周期内，build函数是多次被调用的，所以你就要考虑数据的初始化或者刷新怎么样才能合理。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/provider/" rel="tag"># provider</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/05/18/iOS-Runloop/" rel="next" title="iOS  - Runloop">
+                <i class="fa fa-chevron-left"></i> iOS  - Runloop
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2021/05/21/flutter%E6%8E%A2%E7%B4%A2-%E5%A4%9A%E7%BA%BF%E7%A8%8B/" rel="prev" title="flutter探索  - 多线程">
+                flutter探索  - 多线程 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Jason</p>
+              <p class="site-description motion-element" itemprop="description">个人技术博客</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/%20%7C%7C%20archive">
+              
+                  <span class="site-state-item-count">21</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">tags</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#状态管理是什么"><span class="nav-number">1.</span> <span class="nav-text">状态管理是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么需要状态管理"><span class="nav-number">2.</span> <span class="nav-text">为什么需要状态管理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#状态管理的目标"><span class="nav-number">2.1.</span> <span class="nav-text">状态管理的目标</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#状态管理的基本分类"><span class="nav-number">3.</span> <span class="nav-text">状态管理的基本分类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#底层逻辑"><span class="nav-number">4.</span> <span class="nav-text">底层逻辑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#State"><span class="nav-number">5.</span> <span class="nav-text">State</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#State的缺点"><span class="nav-number">5.1.</span> <span class="nav-text">State的缺点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#小结"><span class="nav-number">5.2.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#InheritedWidget"><span class="nav-number">6.</span> <span class="nav-text">InheritedWidget</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#小结-1"><span class="nav-number">6.1.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Notification"><span class="nav-number">7.</span> <span class="nav-text">Notification</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#小结："><span class="nav-number">7.1.</span> <span class="nav-text">小结：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Stream"><span class="nav-number">8.</span> <span class="nav-text">Stream</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#小结-2"><span class="nav-number">8.1.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">9.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#状态管理的使用原则"><span class="nav-number">10.</span> <span class="nav-text">状态管理的使用原则</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#局部管理优于全局"><span class="nav-number">10.1.</span> <span class="nav-text">局部管理优于全局</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#保持数据安全性"><span class="nav-number">10.2.</span> <span class="nav-text">保持数据安全性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#考虑页面重新build带来的影响"><span class="nav-number">10.3.</span> <span class="nav-text">考虑页面重新build带来的影响</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
