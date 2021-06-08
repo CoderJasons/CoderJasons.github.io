@@ -230,6 +230,179 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/08/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%AD%97%E8%8A%82%E5%AF%B9%E9%BD%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2021/06/08/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%AD%97%E8%8A%82%E5%AF%B9%E9%BD%90/" itemprop="url">iOS底层探索 - 内存对齐</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-08T19:46:07+08:00">
+                2021-06-08
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>在上一篇<code>alloc</code>方法的探索中，我们提到了<code>内存对齐</code>的概念，这篇文章我们就主要介绍一下<code>内存对齐</code>。</p>
+<h3 id="结构体的字节对齐"><a href="#结构体的字节对齐" class="headerlink" title="结构体的字节对齐"></a>结构体的字节对齐</h3><h4 id="一个例子"><a href="#一个例子" class="headerlink" title="一个例子"></a>一个例子</h4><p>我们首先定义几个结构体，初始化，看一下每个结构体的内存大小。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">struct JSPerson1 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    char b;</span><br><span class="line">    int c;</span><br><span class="line">    short d;</span><br><span class="line">&#125;struct1;</span><br><span class="line">struct JSPerson2 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    int b;</span><br><span class="line">    char c;</span><br><span class="line">    short d;        </span><br><span class="line">&#125;struct2;</span><br><span class="line">struct JSPerson3 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    int b;</span><br><span class="line">    char c;</span><br><span class="line">    short d;</span><br><span class="line">    int e;</span><br><span class="line">    struct JSPerson1 str;</span><br><span class="line">  	int f;</span><br><span class="line">&#125;struct3;</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        NSLog(@&quot;struct1的大小&#x3D;&#x3D;%lu&quot;,sizeof(struct1));</span><br><span class="line">        NSLog(@&quot;struct2的大小&#x3D;&#x3D;%lu&quot;,sizeof(struct2));</span><br><span class="line">        NSLog(@&quot;struct3的大小&#x3D;&#x3D;%lu&quot;,sizeof(struct3));</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到打印结果为：</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">struct1的大小==<span class="number">24</span></span><br><span class="line">struct2的大小==<span class="number">16</span></span><br><span class="line">struct3的大小==<span class="number">56</span></span><br></pre></td></tr></table></figure>
+
+<p><code>JSPerson1</code>和<code>JSPerson2</code>的属性数量相同，为什么打印的大小结果不一样呢，这里就引入了<code>字节对齐</code>的概念，我们先看一下OC中各类型占用的内存大小：</p>
+<p><img src="/Users/jason/Documents/%E7%B1%BB%E5%9E%8B%E5%8D%A0%E7%94%A8%E7%A9%BA%E9%97%B4.png" alt="类型占用空间"></p>
+<h4 id="结构体对齐原则"><a href="#结构体对齐原则" class="headerlink" title="结构体对齐原则"></a>结构体对齐原则</h4><ul>
+<li>1、数据成员对⻬规则:结构(struct)(或联合(union))的数据成员，第一个数据成员放在offset为0的地方，以后每个数据成员存储的起始位置要从该成员大小或者成员的子成员大小(只要该成员有子成员，比如说是数组，结构体等)的整数倍开始(比如int为4字节,则要从4的整数倍地址开始存储。</li>
+<li>2、结构体作为成员:如果一个结构里有某些结构体成员,则结构体成员要从其内部最大元素大小的整数倍地址开始存储.(struct a里存有struct b,b里有char,int ,double等元素,那b应该从8的整数倍开始存储.)</li>
+<li>3、收尾工作:结构体的总大小,也就是sizeof的结果,.必须是其内部最大成员(基本数据类型)的整数倍.不足的要补⻬。</li>
+</ul>
+<p>根据上面的表格和规则我们分析一下例子中三个结构体占用的内存大小(64位系统)</p>
+<ul>
+<li><p>首先看<code>struct1</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct JSPerson1 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    char b;</span><br><span class="line">    int c;</span><br><span class="line">    short d;</span><br><span class="line">&#125;struct1;</span><br></pre></td></tr></table></figure>
+
+<p>根据规则1，<code>a</code>变量存储的空间是<code>[0,7]</code>,<code>b</code>变量存储的位置是<code>[8]</code>,<code>c</code>因为本身是<code>int</code>4个字节大小，所以不能从<code>9</code>的位置开始存储，要从<code>4</code>整数倍开始存储所以<code>c</code>存储的空间是[12,15],<code>d</code>是<code>short</code>类型大小为<code>2</code>，<code>16</code>是<code>2</code>的整数倍，所以d的存储位置是[16,17]。根据规则3，结构体的总大小需要是内部最大成员的整数倍，所以<code>struct1</code>的大小为<code>24</code>.</p>
+</li>
+<li><p>再看<code>struct2</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct JSPerson2 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    int b;</span><br><span class="line">    char c;</span><br><span class="line">    short d;        </span><br><span class="line">&#125;struct2;</span><br></pre></td></tr></table></figure>
+
+<p>和上面一样<code>a</code>变量存储的空间是<code>[0,7]</code>，<code>b</code>变量存储的位置是<code>[8,11]</code>，<code>c</code>变量的存储空间是<code>[12]</code>,<code>d</code>变量的存储空间是[14,15]</p>
+<p>根据规则3<code>struct2</code>的大小为<code>16</code></p>
+</li>
+<li><p>最后看<code>struct3</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">struct JSPerson3 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    int b;</span><br><span class="line">    char c;</span><br><span class="line">    short d;</span><br><span class="line">    int e;</span><br><span class="line">    struct JSPerson1 str;</span><br><span class="line">  	int f;</span><br><span class="line">&#125;struct3;</span><br></pre></td></tr></table></figure>
+
+<p>前四个变量和<code>struct2</code>类似，<code>a</code>变量存储的空间是<code>[0,7]</code>，<code>b</code>变量存储的位置是<code>[8,11]</code>，<code>c</code>变量的存储空间是<code>[12]</code>,<code>d</code>变量的存储空间是[14,15]，<code>e</code>变量存储空间是<code>[16,19]</code>，结构体成员比较特殊我们根据规则2，<code>str</code>成员的起始地址要是它内部最大成员的大小的整数倍也就是<code>8</code>，所以str存储的空间是[24,47],<code>f</code>所占的内存空间是[48,51],<strong>注意这个地方有个点：结构体的总大小是其最大基本成员变量的大小的整数倍</strong>，所以<code>struct3</code>的内存大小是<code>56</code>(<code>8</code>的整数倍)。</p>
+</li>
+</ul>
+<h3 id="对象的字节对齐"><a href="#对象的字节对齐" class="headerlink" title="对象的字节对齐"></a>对象的字节对齐</h3><p>看完了结构体的内存对齐，我们看一下对象的，其实我们很容易可以想到，对象其实也是一个结构体，它和结构体的字节对齐规则也是一样的。我们来验证一下。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">@interface Person1 : NSObject&#123;</span><br><span class="line">    int _age;</span><br><span class="line">    int _weight;</span><br><span class="line">    NSString *_name;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">@implementation Person1</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@interface Person2 : NSObject&#123;</span><br><span class="line">    int _age;</span><br><span class="line">    NSString *_name;</span><br><span class="line">    int _weight;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@implementation Person2</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">  </span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        Person1 *obj1 &#x3D; [[Person1 alloc] init];</span><br><span class="line">        NSLog(@&quot;Person1实际占用： class_getInstanceSize &#x3D; %zd&quot;, class_getInstanceSize([Person1 class]));</span><br><span class="line">        NSLog(@&quot;Person1系统分配：malloc_size &#x3D; %zd&quot;, malloc_size((__bridge const void *)(obj1)));</span><br><span class="line">        Person2 *obj2 &#x3D; [[Person2 alloc] init];</span><br><span class="line">        NSLog(@&quot;Person2实际占用： class_getInstanceSize &#x3D; %zd&quot;, class_getInstanceSize([Person2 class]));</span><br><span class="line">        NSLog(@&quot;Person2系统分配：malloc_size &#x3D; %zd&quot;, malloc_size((__bridge const void *)(obj2)));</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们定义两个类<code>Person1</code>和<code>Person2</code>,分别打印他们实际占用内存和系统分配内存大小：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Person1实际占用： class_getInstanceSize = <span class="number">24</span></span><br><span class="line">Person1系统分配：malloc_size = <span class="number">32</span></span><br><span class="line">Person2实际占用： class_getInstanceSize = <span class="number">32</span></span><br><span class="line">Person2系统分配：malloc_size = <span class="number">32</span></span><br></pre></td></tr></table></figure>
+
+<p>这里有个注意的点就是不要漏掉<code>isa</code>指针，对象结构体中第一个成员变量就是<code>isa</code>，所以我们分析的方法和结构体一样，<code>Person1</code>的<code>isa</code>存储地址是<code>[0,7]</code>,<code>_age</code>的存储空间是<code>[8,11]</code>,<code>_weight</code>的存储空间是<code>[12,15]</code>，<code>_name</code>的存储空间是<code>[16，23]</code>，所以<code>Person1</code>实际空间是<code>24</code>,同样的方法可得<code>Person2</code>的实际空间是<code>32</code>。</p>
+<p>这里我们可以看到，成员变量的顺序是会影响到对象实际占用的内存大小，类的属性最后其实也是会生成对应的成员变量，那么属性的定义顺序是不是也会影响对象的实际占用内存大小呢，我们带着这个问题继续探索：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">@interface Person1 : NSObject</span><br><span class="line"></span><br><span class="line">@property (nonatomic,assign)int age;</span><br><span class="line">@property (nonatomic,assign)int weight;</span><br><span class="line">@property (nonatomic,strong)NSString *name;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@implementation Person1</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@interface Person2 : NSObject</span><br><span class="line"></span><br><span class="line">@property (nonatomic,assign)int age;</span><br><span class="line">@property (nonatomic,strong)NSString *name;</span><br><span class="line">@property (nonatomic,assign)int weight;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@implementation Person2</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        Person1 *obj1 &#x3D; [[Person1 alloc] init];</span><br><span class="line">        NSLog(@&quot;Person1实际占用： class_getInstanceSize &#x3D; %zd&quot;, class_getInstanceSize([Person1 class]));</span><br><span class="line">        NSLog(@&quot;Person1系统分配：malloc_size &#x3D; %zd&quot;, malloc_size((__bridge const void *)(obj1)));</span><br><span class="line">        Person2 *obj2 &#x3D; [[Person2 alloc] init];</span><br><span class="line">        NSLog(@&quot;Person2实际占用： class_getInstanceSize &#x3D; %zd&quot;, class_getInstanceSize([Person2 class]));</span><br><span class="line">        NSLog(@&quot;Person2系统分配：malloc_size &#x3D; %zd&quot;, malloc_size((__bridge const void *)(obj2)));</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们把成员变量换成属性继续打印上面的内容：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Person1实际占用： class_getInstanceSize = <span class="number">24</span></span><br><span class="line">Person1系统分配：malloc_size = <span class="number">32</span></span><br><span class="line">Person2实际占用： class_getInstanceSize = <span class="number">24</span></span><br><span class="line">Person2系统分配：malloc_size = <span class="number">32</span></span><br></pre></td></tr></table></figure>
+
+<p>发现这次打印<code>Person1</code>和<code>Person2</code>实际占用的内存大小是相同的，这是为什么呢？我们将<code>main.m</code>文件转换成<code>c++</code>代码看一下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xcrun -sdk iphonesimulator clang -rewrite-objc main.m</span><br></pre></td></tr></table></figure>
+
+<p>我们打开<code>main.cpp</code>文件，搜索<code>Person1</code>和<code>Person2</code>:</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Person1_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span></span><br><span class="line">	<span class="keyword">int</span> _age;</span><br><span class="line">	<span class="keyword">int</span> _weight;</span><br><span class="line">	NSString * _Nonnull _name;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Person2_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span></span><br><span class="line">	<span class="keyword">int</span> _age;</span><br><span class="line">	<span class="keyword">int</span> _weight;</span><br><span class="line">	NSString *_name;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>看到这里我们明白了，原来编译器帮我们做了一层优化，将属性按照最优的顺序转换成成员变量。所以我们定义属性的顺序并不会影响到对象实际占用的内存大小。</p>
+<p>内存对齐的内容就探索到这里，后面会继续探索<code>ios 底层</code>。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/01/Swift-RxSwift%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2370,181 +2543,6 @@ Binding：将指针指向镜像外部的内容</code></p>
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/13/iOS%E5%BA%95%E5%B1%82%EF%BC%9Astatic_init%E3%80%81gdb_objc_realized_classes&remapped_clasass_map&future_named_class_map/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/05/13/iOS%E5%BA%95%E5%B1%82%EF%BC%9Astatic_init%E3%80%81gdb_objc_realized_classes&remapped_clasass_map&future_named_class_map/" itemprop="url">iOS底层：static_init、gdb_objc_realized_classes&remapped_clasass_map&future_named_class_map</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-05-13T13:58:39+08:00">
-                2021-05-13
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h3 id="static-init"><a href="#static-init" class="headerlink" title="static_init"></a>static_init</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/***********************************************************************</span></span><br><span class="line"><span class="comment">* static_init</span></span><br><span class="line"><span class="comment">* Run C++ static constructor functions.</span></span><br><span class="line"><span class="comment">* libc calls _objc_init() before dyld would call our static constructors, </span></span><br><span class="line"><span class="comment">* so we have to do it ourselves.</span></span><br><span class="line"><span class="comment">**********************************************************************/</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">static_init</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">size_t</span> count;</span><br><span class="line">    <span class="keyword">auto</span> inits = getLibobjcInitializers(&amp;_mh_dylib_header, &amp;count);</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">size_t</span> i = <span class="number">0</span>; i &lt; count; i++) &#123;</span><br><span class="line">        inits[i]();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">auto</span> offsets = getLibobjcInitializerOffsets(&amp;_mh_dylib_header, &amp;count);</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">size_t</span> i = <span class="number">0</span>; i &lt; count; i++) &#123;</span><br><span class="line">        <span class="function">UnsignedInitializer <span class="title">init</span><span class="params">(offsets[i])</span></span>;</span><br><span class="line">        init();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这里会运行 <code>C++</code> 的静态构造函数，在 <code>dyld</code> 调用我们的静态构造函数之前，<code>libc</code> 会调用 <code>_objc_init</code>，所以这里我们必须自己来做，并且这里只会初始化系统内置的 <code>C++</code> 静态构造函数，我们自己代码里面写的并不会在这里初始化。</p>
-<p>通过其注释，我们大概知道static_init函数的作用是运行C++的静态构造函数。其原因在于dyld调用我们的静态构造函数晚于libc调用_objc_init函数。</p>
-<p>继续深入讲解<code>static_init</code>方法，可以看出，<code>getLibobjcInitializers</code>方法是它的实现主体，点击进入可以看到如下实现：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GETSECT(getLibobjcInitializers,       UnsignedInitializer, <span class="string">"__objc_init_func"</span>);</span><br></pre></td></tr></table></figure>
-
-<p>这就能理解我们文章开头提出的<code>static_init()</code>方法的含义了。其实就是找出<code>__objc_init_func</code>区的数据，获取了<code>Initializer</code>指针，然后按顺序调用。</p>
-<p>由于全局变量都在 <code>mod_init_func</code> 这个区中，那这就给我们优化 App 启动提供了一个思路：我们可以通过 hook 这个区中所有的函数为自己的函数，并在我们的函数中添加时间节点来计时，从而了解在 main 函数之前的耗时情况，这也可以为我们 APP 提供优化借鉴。</p>
-<p>其想法很简单，就是在 load 方法中 hook <code>__mod_init_func</code> 的方法。部分源代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">+ (void)load&#123;</span><br><span class="line"></span><br><span class="line">    sInitInfos &#x3D; [NSMutableArray new];</span><br><span class="line"></span><br><span class="line">    g_initializer &#x3D; new std::vector&lt;MemoryType&gt;();</span><br><span class="line"></span><br><span class="line">    g_cur_index &#x3D; -1;</span><br><span class="line"></span><br><span class="line">    g_aslr &#x3D; 0;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    hookModInitFunc();</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>以及</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">hookModInitFunc</span><span class="params">()</span></span>&#123;</span><br><span class="line"></span><br><span class="line">    Dl_info info;</span><br><span class="line"></span><br><span class="line">    dladdr((<span class="keyword">const</span> <span class="keyword">void</span> *)hookModInitFunc, &amp;info);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> __LP64__</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//        const struct mach_header *mhp = _dyld_get_image_header(0); // both works as below line</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">mach_header</span> *<span class="title">mhp</span> = (<span class="title">struct</span> <span class="title">mach_header</span>*)<span class="title">info</span>.<span class="title">dli_fbase</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="built_in">size</span> = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    MemoryType *memory = (<span class="keyword">uint32_t</span>*)getsectiondata(mhp, <span class="string">"__DATA"</span>, <span class="string">"__mod_init_func"</span>, &amp; <span class="built_in">size</span>);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span> <span class="comment">/* defined(__LP64__) */</span></span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">mach_header_64</span> *<span class="title">mhp</span> = (<span class="title">struct</span> <span class="title">mach_header_64</span>*)<span class="title">info</span>.<span class="title">dli_fbase</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="built_in">size</span> = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    MemoryType *memory = (<span class="keyword">uint64_t</span>*)getsectiondata(mhp, <span class="string">"__DATA"</span>, <span class="string">"__mod_init_func"</span>, &amp; <span class="built_in">size</span>);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span> <span class="comment">/* defined(__LP64__) */</span></span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> idx = <span class="number">0</span>; idx &lt; <span class="built_in">size</span>/<span class="keyword">sizeof</span>(<span class="keyword">void</span>*); ++idx)&#123;</span><br><span class="line"></span><br><span class="line">        MemoryType original_ptr = memory[idx];</span><br><span class="line"></span><br><span class="line"><span class="comment">//保存原先的方法指针</span></span><br><span class="line"></span><br><span class="line">        g_initializer-&gt;push_back(original_ptr);</span><br><span class="line"></span><br><span class="line"><span class="comment">//将原先的方法替换为我们自己的方法</span></span><br><span class="line"></span><br><span class="line">        memory[idx] = (MemoryType)myInitFunc_Initializer;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    NSLog(@<span class="string">"zero mod init func : size = %@"</span>,@(<span class="built_in">size</span>));</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    [sInitInfos addObject:[NSString stringWithFormat:@<span class="string">"ASLR=%p"</span>,mhp]];</span><br><span class="line"></span><br><span class="line">    g_aslr = (MemoryType)mhp;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>最后是展示方法以及消耗时长：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">myInitFunc_Initializer</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span>* argv[], <span class="keyword">const</span> <span class="keyword">char</span>* envp[], <span class="keyword">const</span> <span class="keyword">char</span>* apple[], <span class="keyword">const</span> struct MyProgramVars* vars)</span></span>&#123;</span><br><span class="line">    ++g_cur_index;</span><br><span class="line">    OriginalInitializer func = (OriginalInitializer)g_initializer-&gt;at(g_cur_index);</span><br><span class="line"></span><br><span class="line">    CFTimeInterval start = CFAbsoluteTimeGetCurrent();</span><br><span class="line"></span><br><span class="line">    func(argc,argv,envp,apple,vars);</span><br><span class="line"></span><br><span class="line">    CFTimeInterval <span class="built_in">end</span> = CFAbsoluteTimeGetCurrent();</span><br><span class="line">    sSumInitTime += <span class="number">1000.0</span> * (<span class="built_in">end</span>-start);</span><br><span class="line">    NSString *cost = [NSString stringWithFormat:@<span class="string">"%p=%@"</span>,func,@(<span class="number">1000.0</span>*(<span class="built_in">end</span> - start))];</span><br><span class="line">    [sInitInfos addObject:cost];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="gdb-objc-realized-classes"><a href="#gdb-objc-realized-classes" class="headerlink" title="gdb_objc_realized_classes"></a>gdb_objc_realized_classes</h3><p>gdb_objc_realized_classes 的作用已经很明显了，即是对所有的类进行缓存：从对应的 section 中读取所有的类，取出来后以 mangledName 作为键，以 class 结构体作为值。</p>
-<h3 id="remapped-class-map"><a href="#remapped-class-map" class="headerlink" title="remapped_class_map"></a>remapped_class_map</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/***********************************************************************</span></span><br><span class="line"><span class="comment">* remappedClasses</span></span><br><span class="line"><span class="comment">* Returns the oldClass =&gt; newClass map for realized future classes.</span></span><br><span class="line"><span class="comment">* Returns the oldClass =&gt; nil map for ignored weak-linked classes.</span></span><br><span class="line"><span class="comment">* Locking: runtimeLock must be read- or write-locked by the caller</span></span><br><span class="line"><span class="comment">**********************************************************************/</span></span><br><span class="line">static objc::DenseMap&lt;Class, Class&gt; *remappedClasses(bool create)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">static</span> objc::LazyInitDenseMap&lt;Class, Class&gt; remapped_class_map;</span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line">    <span class="comment">// start big enough to hold CF's classes and a few others</span></span><br><span class="line">    <span class="keyword">return</span> remapped_class_map.<span class="built_in">get</span>(create, <span class="number">32</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>remap class，字面意思是 重新映射 class，那肯定有一个映射者和映射结果。map 的键是 cls，也就是 section 中拿到的 cls，而 value 就是我们 remap 的结果</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Class <span class="title">readClass</span><span class="params">(Class cls, <span class="keyword">bool</span> headerIsBundle, <span class="keyword">bool</span> headerIsPreoptimized)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">char</span> *mangledName = cls-&gt;nonlazyMangledName();</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (missingWeakSuperclass(cls)) &#123;</span><br><span class="line">        <span class="comment">// No superclass (probably weak-linked). </span></span><br><span class="line">        <span class="comment">// Disavow any knowledge of this subclass.</span></span><br><span class="line">        <span class="keyword">if</span> (PrintConnecting) &#123;</span><br><span class="line">            _objc_inform(<span class="string">"CLASS: IGNORING class '%s' with "</span></span><br><span class="line">                         <span class="string">"missing weak-linked superclass"</span>, </span><br><span class="line">                         cls-&gt;nameForLogging());</span><br><span class="line">        &#125;</span><br><span class="line">        addRemappedClass(cls, nil);</span><br><span class="line">        cls-&gt;setSuperclass(nil);</span><br><span class="line">        <span class="keyword">return</span> nil;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    cls-&gt;fixupBackwardDeployingStableSwift();</span><br><span class="line"></span><br><span class="line">    Class replacing = nil;</span><br><span class="line">    <span class="keyword">if</span> (mangledName != <span class="literal">nullptr</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (Class newCls = popFutureNamedClass(mangledName)) &#123;</span><br><span class="line">            <span class="comment">// This name was previously allocated as a future class.</span></span><br><span class="line">            <span class="comment">// Copy objc_class to future class's struct.</span></span><br><span class="line">            <span class="comment">// Preserve future's rw data block.</span></span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (newCls-&gt;isAnySwift()) &#123;</span><br><span class="line">                _objc_fatal(<span class="string">"Can't complete future class request for '%s' "</span></span><br><span class="line">                            <span class="string">"because the real class is too big."</span>,</span><br><span class="line">                            cls-&gt;nameForLogging());</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">class_rw_t</span> *rw = newCls-&gt;data();</span><br><span class="line">            <span class="keyword">const</span> <span class="keyword">class_ro_t</span> *old_ro = rw-&gt;ro();</span><br><span class="line">            <span class="built_in">memcpy</span>(newCls, cls, <span class="keyword">sizeof</span>(objc_class));</span><br><span class="line"></span><br><span class="line">            <span class="comment">// Manually set address-discriminated ptrauthed fields</span></span><br><span class="line">            <span class="comment">// so that newCls gets the correct signatures.</span></span><br><span class="line">            newCls-&gt;setSuperclass(cls-&gt;getSuperclass());</span><br><span class="line">            newCls-&gt;initIsa(cls-&gt;getIsa());</span><br><span class="line"></span><br><span class="line">            rw-&gt;set_ro((<span class="keyword">class_ro_t</span> *)newCls-&gt;data());</span><br><span class="line">            newCls-&gt;setData(rw);</span><br><span class="line">            freeIfMutable((<span class="keyword">char</span> *)old_ro-&gt;getName());</span><br><span class="line">            <span class="built_in">free</span>((<span class="keyword">void</span> *)old_ro);</span><br><span class="line"></span><br><span class="line">            addRemappedClass(cls, newCls);</span><br><span class="line"></span><br><span class="line">            replacing = cls;</span><br><span class="line">            cls = newCls;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (headerIsPreoptimized  &amp;&amp;  !replacing) &#123;</span><br><span class="line">        <span class="comment">// class list built in shared cache</span></span><br><span class="line">        <span class="comment">// fixme strict assert doesn't work because of duplicates</span></span><br><span class="line">        <span class="comment">// ASSERT(cls == getClass(name));</span></span><br><span class="line">        ASSERT(mangledName == <span class="literal">nullptr</span> || getClassExceptSomeSwift(mangledName));</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (mangledName) &#123; <span class="comment">//some Swift generic classes can lazily generate their names</span></span><br><span class="line">            addNamedClass(cls, mangledName, replacing);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            Class meta = cls-&gt;ISA();</span><br><span class="line">            <span class="keyword">const</span> <span class="keyword">class_ro_t</span> *metaRO = meta-&gt;bits.safe_ro();</span><br><span class="line">            ASSERT(metaRO-&gt;getNonMetaclass() &amp;&amp; <span class="string">"Metaclass with lazy name must have a pointer to the corresponding nonmetaclass."</span>);</span><br><span class="line">            ASSERT(metaRO-&gt;getNonMetaclass() == cls &amp;&amp; <span class="string">"Metaclass nonmetaclass pointer must equal the original class."</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        addClassTableEntry(cls);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// for future reference: shared cache never contains MH_BUNDLEs</span></span><br><span class="line">    <span class="keyword">if</span> (headerIsBundle) &#123;</span><br><span class="line">        cls-&gt;data()-&gt;flags |= RO_FROM_BUNDLE;</span><br><span class="line">        cls-&gt;ISA()-&gt;data()-&gt;flags |= RO_FROM_BUNDLE;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> cls;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>通过这个函数我们发现，有两个分支有机会进入方法 addRemappedClass，一个是 missingWeakSuperclass 方法是否为真，另外一个是 popFutureNamedClass(mangledName) 方法返回是否为真。这里会有两个概念</p>
-<ol>
-<li>WeakSuperclass</li>
-<li>FutureNamedClass</li>
-</ol>
-<p>而这两个条件为true 的情况就是需要 remap 的情况。</p>
-<h3 id="missingWeakSuperclass"><a href="#missingWeakSuperclass" class="headerlink" title="missingWeakSuperclass"></a>missingWeakSuperclass</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/***********************************************************************</span></span><br><span class="line"><span class="comment">* missingWeakSuperclass</span></span><br><span class="line"><span class="comment">* Return YES if some superclass of cls was weak-linked and is missing.</span></span><br><span class="line"><span class="comment">**********************************************************************/</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">bool</span> </span><br><span class="line">missingWeakSuperclass(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(!cls-&gt;isRealized());</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!cls-&gt;getSuperclass()) &#123;</span><br><span class="line">        <span class="comment">// superclass nil. This is normal for root classes only.</span></span><br><span class="line">        <span class="keyword">return</span> (!(cls-&gt;data()-&gt;flags &amp; RO_ROOT));</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// superclass not nil. Check if a higher superclass is missing.</span></span><br><span class="line">        Class supercls = remapClass(cls-&gt;getSuperclass());</span><br><span class="line">        ASSERT(cls != cls-&gt;getSuperclass());</span><br><span class="line">        ASSERT(cls != supercls);</span><br><span class="line">        <span class="keyword">if</span> (!supercls) <span class="keyword">return</span> YES;</span><br><span class="line">        <span class="keyword">if</span> (supercls-&gt;isRealized()) <span class="keyword">return</span> NO;</span><br><span class="line">        <span class="keyword">return</span> missingWeakSuperclass(supercls);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>代码的注释已经一目了然：该函数就是判断某个 class 的父类是否是 weak-linked 并且缺失了。那 什么叫做 weak-linked？比如 NSObject 是否是 weak-linbked ？很显然不是的。那么什么是 weak-linked？</p>
-<p>weak-linked<br>我们开发的时候，都会使用最新的SDK，但是为了让老的设备可以下载并运行我们的应用，就要将Deployment Target设置成之前系统的版本号。例如我们应用使用iOS 8.1的SDK，Deployment Target设置成iOS 5.1.1，虽然我们开发的时候使用的是8.1的SDK，但是程序运行在的设备中却可能是6.0 or 7.0的SDK上，按照苹果的说法，如果我们应用使用了最新SDK引入的特性，比如符号、函数等，那么在版本较旧的设备上就运行不了。下面是苹果官方文档的一段话：<br>Normally, if an application uses a new feature in a framework, it is unable to run on earlier versions of the framework that do not support that feature. Such applications would either fail to launch or crash when an attempt to use the feature was made.<br>那么为什么我们使用最新的SDK开发的应用却可以运行在旧的系统中呢？答案是使用了弱引用。资料里面说过，我们自己创建的framework，如果需要做版本兼容，那么就要对今后加入的符号等使用弱引用，使用了弱引用之后，即使在版本较旧的环境下跑，也可以运行，只是相应的符号是NULL，下面就是教我们怎样定义弱引用。有一点需要说明的是，如果一个framework没有为新加入的符号加入弱引用，那也不必担心，我们只要在链接时弱引用整个framework就好，方法就是链接的时候使用 -weak_framework frameworkName</p>
-<p>一个使用 weak 的实例为：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">extern int MyWeakLinkedFunction() __attribute__((weak_import));</span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    int result &#x3D; 0;</span><br><span class="line">    if (MyWeakLinkedFunction !&#x3D; NULL)</span><br><span class="line">    &#123;</span><br><span class="line">        result &#x3D; MyWeakLinkedFunction();</span><br><span class="line">    &#125;</span><br><span class="line">    return result;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>以上代码片段来自苹果官网。</p>
-<p>这么一来， missingWeakSuperclass 的作用的作用就不言而喻了：查看 cls 类的祖宗类中是否有类是 weak-linked 的，并且已经 missing，祖宗类里有 missing weak-linked 的，则 cls 的所有信息也是不可信的，所以将其添加到重映射表里，映射为nil，即 cls -&gt; nil。</p>
-<h3 id="future-named-class-map"><a href="#future-named-class-map" class="headerlink" title="future_named_class_map"></a>future_named_class_map</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/***********************************************************************</span></span><br><span class="line"><span class="comment">* futureNamedClasses</span></span><br><span class="line"><span class="comment">* Returns the classname =&gt; future class map for unrealized future classes.</span></span><br><span class="line"><span class="comment">* Locking: runtimeLock must be held by the caller</span></span><br><span class="line"><span class="comment">**********************************************************************/</span></span><br><span class="line"><span class="keyword">static</span> NXMapTable *future_named_class_map = nil;</span><br><span class="line"><span class="function"><span class="keyword">static</span> NXMapTable *<span class="title">futureNamedClasses</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line">    <span class="keyword">if</span> (future_named_class_map) <span class="keyword">return</span> future_named_class_map;</span><br><span class="line">    <span class="comment">// future_named_class_map is big enough for CF's classes and a few others</span></span><br><span class="line">    future_named_class_map = </span><br><span class="line">        NXCreateMapTable(NXStrValueMapPrototype, <span class="number">32</span>);</span><br><span class="line">    <span class="keyword">return</span> future_named_class_map;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>上面代码是创建代码，下面我们看一下使用</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/** </span></span><br><span class="line"><span class="comment"> * Used by CoreFoundation's toll-free bridging.</span></span><br><span class="line"><span class="comment"> * Return the id of the named class.</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * @return The id of the named class, or an uninitialized class</span></span><br><span class="line"><span class="comment"> *  structure that will be used for the class when and if it does </span></span><br><span class="line"><span class="comment"> *  get loaded.</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * @warning Do not call this function yourself.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">OBJC_EXPORT Class _Nonnull</span><br><span class="line">objc_getFutureClass(<span class="keyword">const</span> <span class="keyword">char</span> * _Nonnull name) </span><br><span class="line">    OBJC_AVAILABLE(<span class="number">10.5</span>, <span class="number">2.0</span>, <span class="number">9.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>)</span><br><span class="line">    OBJC_ARC_UNAVAILABLE;</span><br></pre></td></tr></table></figure>
-
-<p>看注释有个警告，不要主动调用这个函数。下面是具体的实现：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/***********************************************************************</span></span><br><span class="line"><span class="comment">* objc_getFutureClass.  Return the id of the named class.</span></span><br><span class="line"><span class="comment">* If the class does not exist, return an uninitialized class </span></span><br><span class="line"><span class="comment">* structure that will be used for the class when and if it </span></span><br><span class="line"><span class="comment">* does get loaded.</span></span><br><span class="line"><span class="comment">* Not thread safe. </span></span><br><span class="line"><span class="comment">**********************************************************************/</span></span><br><span class="line"><span class="function">Class <span class="title">objc_getFutureClass</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    Class cls;</span><br><span class="line">    <span class="comment">// YES unconnected, NO class handler</span></span><br><span class="line">    <span class="comment">// (unconnected is OK because it will someday be the real class)</span></span><br><span class="line">    cls = look_up_class(name, YES, NO);</span><br><span class="line">    <span class="keyword">if</span> (cls) &#123;</span><br><span class="line">        <span class="keyword">if</span> (PrintFuture) &#123;</span><br><span class="line">            _objc_inform(<span class="string">"FUTURE: found %p already in use for %s"</span>, </span><br><span class="line">                         (<span class="keyword">void</span>*)cls, name);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> cls;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// No class or future class with that name yet. Make one.</span></span><br><span class="line">    <span class="comment">// fixme not thread-safe with respect to </span></span><br><span class="line">    <span class="comment">// simultaneous library load or getFutureClass.</span></span><br><span class="line">    <span class="keyword">return</span> _objc_allocateFutureClass(name);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>其中函数 look_up_class 这里先不多做介绍了，里面逻辑较多，而且不是这个函数的重点，重点是最后一句：<code>_objc_allocateFutureClass(name)</code> 它才是从 hash map 中获取对应值的函数，其实现如下 ：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/***********************************************************************</span></span><br><span class="line"><span class="comment">* _objc_allocateFutureClass</span></span><br><span class="line"><span class="comment">* Allocate an unresolved future class for the given class name.</span></span><br><span class="line"><span class="comment">* Returns any existing allocation if one was already made.</span></span><br><span class="line"><span class="comment">* Assumes the named class doesn't exist yet.</span></span><br><span class="line"><span class="comment">* Locking: acquires runtimeLock</span></span><br><span class="line"><span class="comment">**********************************************************************/</span></span><br><span class="line">Class _objc_allocateFutureClass(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="function"><span class="keyword">mutex_locker_t</span> <span class="title">lock</span><span class="params">(runtimeLock)</span></span>;</span><br><span class="line">    Class cls;</span><br><span class="line">    NXMapTable *<span class="built_in">map</span> = futureNamedClasses();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> ((cls = (Class)NXMapGet(<span class="built_in">map</span>, name))) &#123;</span><br><span class="line">        <span class="comment">// Already have a future class for this name.</span></span><br><span class="line">        <span class="keyword">return</span> cls;</span><br><span class="line">    &#125;</span><br><span class="line">    cls = _calloc_class(<span class="keyword">sizeof</span>(objc_class));</span><br><span class="line">    addFutureNamedClass(name, cls);</span><br><span class="line">    <span class="keyword">return</span> cls;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>很容易理解：有的话就通过方法 NXMapGet 取出来，没有的话则创建。</p>
-<p>我们再看一下一出代码</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/***********************************************************************</span></span><br><span class="line"><span class="comment">* popFutureNamedClass</span></span><br><span class="line"><span class="comment">* Removes the named class from the unrealized future class list, </span></span><br><span class="line"><span class="comment">* because it has been realized.</span></span><br><span class="line"><span class="comment">* Returns nil if the name is not used by a future class.</span></span><br><span class="line"><span class="comment">* Locking: runtimeLock must be held by the caller</span></span><br><span class="line"><span class="comment">**********************************************************************/</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> Class <span class="title">popFutureNamedClass</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line"></span><br><span class="line">    Class cls = nil;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (future_named_class_map) &#123;</span><br><span class="line">        cls = (Class)NXMapKeyFreeingRemove(future_named_class_map, name);</span><br><span class="line">        <span class="keyword">if</span> (cls &amp;&amp; NXCountMapTable(future_named_class_map) == <span class="number">0</span>) &#123;</span><br><span class="line">            NXFreeMapTable(future_named_class_map);</span><br><span class="line">            future_named_class_map = nil;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> cls;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这个方法有点熟悉了，正是上文介绍的 remap 的条件之一。上一篇文章讲述的是第一个条件，本文讲的是第二个条件。这两个条件无论哪一个符合都会调用方法：addRemappedClass，即向 remapped_class_map 中插入数据</p>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>future named class 的介绍就到这里了，希望大家有所收获。其实笔者看来，不管是上一篇文章的 remapped_class_map 还是本文的 future_named_class_map 里面的数据都是空。remapped_class_map 有数据是需要一定条件，而 future_named_class_map 有数据也是需要先 add 的，所以大家对于这两个 map 只需要有个大概的概念就好，后面如果真的碰到他们有数据，我们在详细分析。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -2595,7 +2593,7 @@ Binding：将指针指向镜像外部的内容</code></p>
               
                 <a href="/archives/%20%7C%7C%20archive">
               
-                  <span class="site-state-item-count">22</span>
+                  <span class="site-state-item-count">23</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
