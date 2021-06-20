@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT" />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="上一篇文章中我们探索了类的结构，留下了一个疑问就是class_ro_t和class_rw_t的区别，我们从这个区别开始。 class_ro_t和class_rw_t的区别class_ro_tclass_ro_t存储了当前类在编译期就已经确定的属性、方法和遵循的协议,里面没有category的方法。运行时添加的方法存储在运行时生成的class_rw_t中。 ro标示的是read only,是无法进行">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS底层探索 - 类的结构(下)">
+<meta property="og:url" content="http://yujiusheng.com/2021/06/20/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8B/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="上一篇文章中我们探索了类的结构，留下了一个疑问就是class_ro_t和class_rw_t的区别，我们从这个区别开始。 class_ro_t和class_rw_t的区别class_ro_tclass_ro_t存储了当前类在编译期就已经确定的属性、方法和遵循的协议,里面没有category的方法。运行时添加的方法存储在运行时生成的class_rw_t中。 ro标示的是read only,是无法进行">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d2b9f2e54f1a4adfa6313324beb4375c~tplv-k3u1fbpfcp-watermark.image">
+<meta property="article:published_time" content="2021-06-20T08:00:05.000Z">
+<meta property="article:modified_time" content="2021-06-20T14:20:49.874Z">
+<meta property="article:author" content="Jason">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d2b9f2e54f1a4adfa6313324beb4375c~tplv-k3u1fbpfcp-watermark.image">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yujiusheng.com/2021/06/20/iOS底层-类的结构-下/"/>
+
+
+
+
+
+  <title>iOS底层探索 - 类的结构(下) | Jason的博客</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Jason的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/20/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">iOS底层探索 - 类的结构(下)</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-20T16:00:05+08:00">
+                2021-06-20
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>上一篇文章中我们探索了类的结构，留下了一个疑问就是<code>class_ro_t</code>和<code>class_rw_t</code>的区别，我们从这个区别开始。</p>
+<h3 id="class-ro-t和class-rw-t的区别"><a href="#class-ro-t和class-rw-t的区别" class="headerlink" title="class_ro_t和class_rw_t的区别"></a><code>class_ro_t</code>和<code>class_rw_t</code>的区别</h3><h4 id="class-ro-t"><a href="#class-ro-t" class="headerlink" title="class_ro_t"></a><code>class_ro_t</code></h4><p><code>class_ro_t</code>存储了当前类在编译期就已经确定的<code>属性</code>、<code>方法</code>和遵循的<code>协议</code>,里面没有<code>category</code>的方法。运行时添加的方法存储在运行时生成的<code>class_rw_t</code>中。</p>
+<p><code>ro</code>标示的是<code>read only</code>,是无法进行修改的，我们看一下它的定义：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">class_ro_t</span> &#123;</span></span><br><span class="line">    <span class="keyword">uint32_t</span> flags;</span><br><span class="line">    <span class="keyword">uint32_t</span> instanceStart;</span><br><span class="line">    <span class="keyword">uint32_t</span> instanceSize;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> __LP64__</span></span><br><span class="line">    <span class="keyword">uint32_t</span> reserved;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="keyword">union</span> &#123;</span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">uint8_t</span> * ivarLayout;</span><br><span class="line">        Class nonMetaclass;</span><br><span class="line">    &#125;;</span><br><span class="line">    explicit_atomic&lt;<span class="keyword">const</span> <span class="keyword">char</span> *&gt; name;</span><br><span class="line">    <span class="comment">// With ptrauth, this is signed if it points to a small list, but</span></span><br><span class="line">    <span class="comment">// may be unsigned if it points to a big list.</span></span><br><span class="line">    <span class="keyword">void</span> *baseMethodList;<span class="comment">//方法列表的获取方法</span></span><br><span class="line">    <span class="keyword">protocol_list_t</span> * baseProtocols;</span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">ivar_list_t</span> * ivars;<span class="comment">//成员变量列表</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">uint8_t</span> * weakIvarLayout;</span><br><span class="line">    <span class="keyword">property_list_t</span> *baseProperties;<span class="comment">//属性列表</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// This field exists only when RO_HAS_SWIFT_INITIALIZER is set.</span></span><br><span class="line">    _objc_swiftMetadataInitializer __ptrauth_objc_method_list_imp _swiftMetadataInitializer_NEVER_USE[<span class="number">0</span>];</span><br><span class="line">    <span class="function">_objc_swiftMetadataInitializer <span class="title">swiftMetadataInitializer</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (flags &amp; RO_HAS_SWIFT_INITIALIZER) &#123;</span><br><span class="line">            <span class="keyword">return</span> _swiftMetadataInitializer_NEVER_USE[<span class="number">0</span>];</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> nil;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">char</span> *<span class="title">getName</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> name.load(<span class="built_in">std</span>::memory_order_acquire);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">uint16_t</span> methodListPointerDiscriminator = <span class="number">0xC310</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> 0 <span class="comment">// <span class="doctag">FIXME:</span> enable this when we get a non-empty definition of __ptrauth_objc_method_list_pointer from ptrauth.h.</span></span></span><br><span class="line">        <span class="keyword">static_assert</span>(<span class="built_in">std</span>::is_same&lt;</span><br><span class="line">                      <span class="keyword">void</span> * __ptrauth_objc_method_list_pointer *,</span><br><span class="line">                      <span class="keyword">void</span> * __ptrauth(ptrauth_key_method_list_pointer, <span class="number">1</span>, methodListPointerDiscriminator) *&gt;::value,</span><br><span class="line">                      <span class="string">"Method list pointer signing discriminator must match ptrauth.h"</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="function"><span class="keyword">method_list_t</span> *<span class="title">baseMethods</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __has_feature(ptrauth_calls)</span></span><br><span class="line">        <span class="keyword">method_list_t</span> *ptr = ptrauth_strip((<span class="keyword">method_list_t</span> *)baseMethodList, ptrauth_key_method_list_pointer);</span><br><span class="line">        <span class="keyword">if</span> (ptr == <span class="literal">nullptr</span>)</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">        <span class="comment">// Don't auth if the class_ro and the method list are both in the shared cache.</span></span><br><span class="line">        <span class="comment">// This is secure since they'll be read-only, and this allows the shared cache</span></span><br><span class="line">        <span class="comment">// to cut down on the number of signed pointers it has.</span></span><br><span class="line">        <span class="keyword">bool</span> roInSharedCache = objc::inSharedCache((<span class="keyword">uintptr_t</span>)<span class="keyword">this</span>);</span><br><span class="line">        <span class="keyword">bool</span> listInSharedCache = objc::inSharedCache((<span class="keyword">uintptr_t</span>)ptr);</span><br><span class="line">        <span class="keyword">if</span> (roInSharedCache &amp;&amp; listInSharedCache)</span><br><span class="line">            <span class="keyword">return</span> ptr;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Auth all other small lists.</span></span><br><span class="line">        <span class="keyword">if</span> (ptr-&gt;isSmallList())</span><br><span class="line">            ptr = ptrauth_auth_data((<span class="keyword">method_list_t</span> *)baseMethodList,</span><br><span class="line">                                    ptrauth_key_method_list_pointer,</span><br><span class="line">                                    ptrauth_blend_discriminator(&amp;baseMethodList,</span><br><span class="line">                                                                methodListPointerDiscriminator));</span><br><span class="line">        <span class="keyword">return</span> ptr;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">        <span class="keyword">return</span> (<span class="keyword">method_list_t</span> *)baseMethodList;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    &#125;</span><br><span class="line">	<span class="comment">///省略代码</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="class-rw-t"><a href="#class-rw-t" class="headerlink" title="class_rw_t"></a><code>class_rw_t</code></h4><p>类中的属性、方法还有遵循的协议等信息都保存在 <code>class_rw_t</code>中,它是可读可写的：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">class_rw_t</span> &#123;</span></span><br><span class="line">    <span class="comment">// Be warned that Symbolication knows the layout of this structure.</span></span><br><span class="line">    <span class="keyword">uint32_t</span> flags;</span><br><span class="line">    <span class="keyword">uint16_t</span> witness;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> SUPPORT_INDEXED_ISA</span></span><br><span class="line">    <span class="keyword">uint16_t</span> index;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    explicit_atomic&lt;<span class="keyword">uintptr_t</span>&gt; ro_or_rw_ext;</span><br><span class="line">    Class firstSubclass;</span><br><span class="line">    Class nextSiblingClass;</span><br><span class="line">		<span class="comment">///省略代码</span></span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">method_array_t</span> <span class="title">methods</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> v = get_ro_or_rwe();</span><br><span class="line">        <span class="keyword">if</span> (v.is&lt;<span class="keyword">class_rw_ext_t</span> *&gt;()) &#123;</span><br><span class="line">            <span class="keyword">return</span> v.<span class="built_in">get</span>&lt;<span class="keyword">class_rw_ext_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;methods;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">method_array_t</span>&#123;v.<span class="built_in">get</span>&lt;<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;baseMethods()&#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">property_array_t</span> <span class="title">properties</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> v = get_ro_or_rwe();</span><br><span class="line">        <span class="keyword">if</span> (v.is&lt;<span class="keyword">class_rw_ext_t</span> *&gt;()) &#123;</span><br><span class="line">            <span class="keyword">return</span> v.<span class="built_in">get</span>&lt;<span class="keyword">class_rw_ext_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;properties;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">property_array_t</span>&#123;v.<span class="built_in">get</span>&lt;<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;baseProperties&#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">protocol_array_t</span> <span class="title">protocols</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> v = get_ro_or_rwe();</span><br><span class="line">        <span class="keyword">if</span> (v.is&lt;<span class="keyword">class_rw_ext_t</span> *&gt;()) &#123;</span><br><span class="line">            <span class="keyword">return</span> v.<span class="built_in">get</span>&lt;<span class="keyword">class_rw_ext_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;protocols;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">protocol_array_t</span>&#123;v.<span class="built_in">get</span>&lt;<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *&gt;(&amp;ro_or_rw_ext)-&gt;baseProtocols&#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>class_rw_t</code>生成在运行时,在编译期间，<code>class_ro_t</code>结构体就已经确定，<code>objc_class</code>中的<code>bits</code>的<code>data</code>部分存放着该结构体的地址。在<code>runtime</code>运行之后，具体说来是在运行<code>runtime</code>的<code>realizeClass</code> 方法时，会生成<code>class_rw_t</code>结构体，该结构体包含了<code>class_ro_t</code>，并且更新data部分，换成<code>class_rw_t</code>结构体的地址。</p>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>class_ro_t存放的是编译期间就确定的；而class_rw_t是在runtime时才确定，它会先将class_ro_t的内容拷贝过去，然后再将当前类的分类的这些属性、方法等拷贝到其中。所以可以说class_rw_t是class_ro_t的超集，当然实际访问类的方法、属性等也都是访问的class_rw_t中的内容。更多内容可以查看<a href="https://developer.apple.com/videos/play/wwdc2020/10163/" target="_blank" rel="noopener">苹果方法视频</a></p>
+<h3 id="Type-Encodings"><a href="#Type-Encodings" class="headerlink" title="Type Encodings"></a>Type Encodings</h3><p>在前面我们执行<code>clang</code>将<code>main.m</code>文件转换成<code>main.cpp</code>文件的时候，我们发现有一些编码,例如</p>
+<p><code>{(struct objc_selector *)&quot;setNickName:&quot;, &quot;v24@0:8@16&quot;, (void *)_I_JSPerson_setNickName_},</code>中的<code>v24@0:8@16</code>,这其实就是运行时中的<code>encode</code>编码，它的编码表如下：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d2b9f2e54f1a4adfa6313324beb4375c~tplv-k3u1fbpfcp-watermark.image" alt="截屏2021-06-20 20.05.54"></p>
+<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100" target="_blank" rel="noopener">苹果官方链接地址</a></p>
+<p><code>v24@0:8@16</code>的含义也就是：</p>
+<ul>
+<li><code>v</code>:<code>void</code></li>
+<li><code>24</code>：占用的内存</li>
+<li><code>@</code>: 对象类型参数<code>self</code></li>
+<li><code>0</code>:上面参数从<code>0</code>位置开始</li>
+<li><code>:</code>: <code>SEL</code></li>
+<li><code>8</code>:<code>SEL</code>从<code>8</code>位置开始</li>
+<li><code>@</code>:对象类型，实际传入的第一个参数</li>
+<li><code>16</code>:从<code>16</code>位置开始</li>
+</ul>
+<h3 id="setter方法底层"><a href="#setter方法底层" class="headerlink" title="setter方法底层"></a><code>setter</code>方法底层</h3><p>我们首先定义一个<code>JSPerson</code>类：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line">&#123;</span><br><span class="line">    NSString *hobby; &#x2F;&#x2F; </span><br><span class="line">    int a;</span><br><span class="line">    NSObject *objc;  &#x2F;&#x2F; </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@property (nonatomic, copy) NSString *nickName;</span><br><span class="line">@property (atomic, copy) NSString *acnickName;</span><br><span class="line">@property (nonatomic) NSString *nnickName;</span><br><span class="line">@property (atomic) NSString *anickName;</span><br><span class="line"></span><br><span class="line">@property (nonatomic, strong) NSString *name;</span><br><span class="line">@property (atomic, strong) NSString *aname;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>通过<code>clang</code>命令将其转换成转换成<code>c++</code>代码：</p>
+<p><code>clang -rewrite-objc main.m -o main.cpp</code></p>
+<p>我们在<code>main.cpp</code>全局搜索<code>JSPerson</code>,定位到类的方法的代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// @implementation JSPerson</span></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_nickName(JSPerson * self, SEL _cmd) &#123; <span class="keyword">return</span> (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_nickName)); &#125;</span><br><span class="line"><span class="keyword">extern</span> <span class="string">"C"</span> __declspec(dllimport) <span class="function"><span class="keyword">void</span> <span class="title">objc_setProperty</span> <span class="params">(id, SEL, <span class="keyword">long</span>, id, <span class="keyword">bool</span>, <span class="keyword">bool</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setNickName_(JSPerson * self, SEL _cmd, NSString *nickName) &#123; objc_setProperty (self, _cmd, __OFFSETOFIVAR__(struct JSPerson, _nickName), (id)nickName, <span class="number">0</span>, <span class="number">1</span>); &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">"C"</span> __declspec(dllimport) <span class="function">id <span class="title">objc_getProperty</span><span class="params">(id, SEL, <span class="keyword">long</span>, <span class="keyword">bool</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_acnickName(JSPerson * self, SEL _cmd) &#123; <span class="keyword">typedef</span> NSString * _TYPE;</span><br><span class="line"><span class="keyword">return</span> (_TYPE)objc_getProperty(self, _cmd, __OFFSETOFIVAR__(struct JSPerson, _acnickName), <span class="number">1</span>); &#125;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setAcnickName_(JSPerson * self, SEL _cmd, NSString *acnickName) &#123; objc_setProperty (self, _cmd, __OFFSETOFIVAR__(struct JSPerson, _acnickName), (id)acnickName, <span class="number">1</span>, <span class="number">1</span>); &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_nnickName(JSPerson * self, SEL _cmd) &#123; <span class="keyword">return</span> (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_nnickName)); &#125;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setNnickName_(JSPerson * self, SEL _cmd, NSString *nnickName) &#123; (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_nnickName)) = nnickName; &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_anickName(JSPerson * self, SEL _cmd) &#123; <span class="keyword">return</span> (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_anickName)); &#125;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setAnickName_(JSPerson * self, SEL _cmd, NSString *anickName) &#123; (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_anickName)) = anickName; &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_name(JSPerson * self, SEL _cmd) &#123; <span class="keyword">return</span> (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_name)); &#125;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setName_(JSPerson * self, SEL _cmd, NSString *name) &#123; (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_name)) = name; &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_aname(JSPerson * self, SEL _cmd) &#123; <span class="keyword">return</span> (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_aname)); &#125;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setAname_(JSPerson * self, SEL _cmd, NSString *aname) &#123; (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_aname)) = aname; &#125;</span><br><span class="line"><span class="comment">// @end</span></span><br></pre></td></tr></table></figure>
+
+<p>可以看到，各个属性的<code>get</code>和<code>set</code>方法如上，可以发现，不同属性的<code>set</code>方法执行的方法不一定相同，比如：</p>
+<ul>
+<li><code>name</code>的<code>set</code>方法：<code>static void _I_JSPerson_setName_(JSPerson * self, SEL _cmd, NSString *name) { (*(NSString **)((char *)self + OBJC_IVAR_$_JSPerson$_name)) = name; }</code></li>
+<li><code>nickName</code>的<code>set</code>方法：<code>static void _I_JSPerson_setNickName_(JSPerson * self, SEL _cmd, NSString *nickName) { objc_setProperty (self, _cmd, __OFFSETOFIVAR__(struct JSPerson, _nickName), (id)nickName, 0, 1); }</code></li>
+</ul>
+<p><code>name</code>的<code>set</code>方法<code>内存平移</code>，<code>nickName</code>的<code>set</code>方法调用的是<code>objc_setProperty</code>,这两种方式的是怎么确定的呢，什么情况下属性的<code>set</code>方法调用<code>objc_setProperty</code>方法呢？探究这个问题我们就需要使用<code>LLVM</code>了，我们从<code>github</code>上下载<code>LLVM</code>的源码，<a href="https://github.com/llvm/llvm-project" target="_blank" rel="noopener">下载地址</a>。</p>
+<p><code>LLVM</code>源码里我们全局搜索<code>objc_setProperty</code>,查找调用这个方法的地方，发现了<code>getSetPropertyFn</code>方法,它的返回值是<code>CGM.CreateRuntimeFunction(FTy, &quot;objc_setProperty&quot;);</code>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">llvm::FunctionCallee <span class="title">getSetPropertyFn</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  CodeGen::CodeGenTypes &amp;Types = CGM.getTypes();</span><br><span class="line">  ASTContext &amp;Ctx = CGM.getContext();</span><br><span class="line">  <span class="comment">// void objc_setProperty (id, SEL, ptrdiff_t, id, bool, bool)</span></span><br><span class="line">  CanQualType IdType = Ctx.getCanonicalParamType(Ctx.getObjCIdType());</span><br><span class="line">  CanQualType SelType = Ctx.getCanonicalParamType(Ctx.getObjCSelType());</span><br><span class="line">  CanQualType Params[] = &#123;</span><br><span class="line">      IdType,</span><br><span class="line">      SelType,</span><br><span class="line">      Ctx.getPointerDiffType()-&gt;getCanonicalTypeUnqualified(),</span><br><span class="line">      IdType,</span><br><span class="line">      Ctx.BoolTy,</span><br><span class="line">      Ctx.BoolTy&#125;;</span><br><span class="line">  llvm::FunctionType *FTy =</span><br><span class="line">      Types.GetFunctionType(</span><br><span class="line">        Types.arrangeBuiltinFunctionDeclaration(Ctx.VoidTy, Params));</span><br><span class="line">  <span class="keyword">return</span> CGM.CreateRuntimeFunction(FTy, <span class="string">"objc_setProperty"</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接下来搜索关键字<code>getSetPropertyFn()</code>，同样是查找调用的地方：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">llvm::FunctionCallee <span class="title">GetPropertySetFunction</span><span class="params">()</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> ObjCTypes.getSetPropertyFn();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里只是一个中间调用的方法，我们继续搜索关键字<code>GetPropertySetFunction()</code>,找调用的地方：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span></span><br><span class="line">CodeGenFunction::generateObjCSetterBody(<span class="keyword">const</span> ObjCImplementationDecl *classImpl,</span><br><span class="line">                                        <span class="keyword">const</span> ObjCPropertyImplDecl *propImpl,</span><br><span class="line">                                        llvm::Constant *AtomicHelperFn) &#123;</span><br><span class="line">  <span class="comment">//省略代码</span></span><br><span class="line">  <span class="keyword">switch</span> (strategy.getKind()) &#123;</span><br><span class="line">  <span class="keyword">case</span> PropertyImplStrategy::Native: &#123;</span><br><span class="line">    <span class="comment">// We don't need to do anything for a zero-size struct.</span></span><br><span class="line">    <span class="keyword">if</span> (strategy.getIvarSize().isZero())</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    Address argAddr = GetAddrOfLocalVar(*setterMethod-&gt;param_begin());</span><br><span class="line"></span><br><span class="line">    LValue ivarLValue =</span><br><span class="line">      EmitLValueForIvar(TypeOfSelfObject(), LoadObjCSelf(), ivar, <span class="comment">/*quals*/</span> <span class="number">0</span>);</span><br><span class="line">    Address ivarAddr = ivarLValue.getAddress(*<span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Currently, all atomic accesses have to be through integer</span></span><br><span class="line">    <span class="comment">// types, so there's no point in trying to pick a prettier type.</span></span><br><span class="line">    llvm::Type *bitcastType =</span><br><span class="line">      llvm::Type::getIntNTy(getLLVMContext(),</span><br><span class="line">                            getContext().toBits(strategy.getIvarSize()));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Cast both arguments to the chosen operation type.</span></span><br><span class="line">    argAddr = Builder.CreateElementBitCast(argAddr, bitcastType);</span><br><span class="line">    ivarAddr = Builder.CreateElementBitCast(ivarAddr, bitcastType);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// This bitcast load is likely to cause some nasty IR.</span></span><br><span class="line">    llvm::Value *load = Builder.CreateLoad(argAddr);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Perform an atomic store.  There are no memory ordering requirements.</span></span><br><span class="line">    llvm::StoreInst *store = Builder.CreateStore(load, ivarAddr);</span><br><span class="line">    store-&gt;setAtomic(llvm::AtomicOrdering::Unordered);</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">case</span> PropertyImplStrategy::GetSetProperty:</span><br><span class="line">  <span class="keyword">case</span> PropertyImplStrategy::SetPropertyAndExpressionGet: &#123;</span><br><span class="line"></span><br><span class="line">    llvm::FunctionCallee setOptimizedPropertyFn = <span class="literal">nullptr</span>;</span><br><span class="line">    llvm::FunctionCallee setPropertyFn = <span class="literal">nullptr</span>;</span><br><span class="line">    <span class="keyword">if</span> (UseOptimizedSetter(CGM)) &#123;</span><br><span class="line">      <span class="comment">// 10.8 and iOS 6.0 code and GC is off</span></span><br><span class="line">      setOptimizedPropertyFn =</span><br><span class="line">          CGM.getObjCRuntime().GetOptimizedPropertySetFunction(</span><br><span class="line">              strategy.isAtomic(), strategy.isCopy());</span><br><span class="line">      <span class="keyword">if</span> (!setOptimizedPropertyFn) &#123;</span><br><span class="line">        CGM.ErrorUnsupported(propImpl, <span class="string">"Obj-C optimized setter - NYI"</span>);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">      setPropertyFn = CGM.getObjCRuntime().GetPropertySetFunction();</span><br><span class="line">      <span class="keyword">if</span> (!setPropertyFn) &#123;</span><br><span class="line">        CGM.ErrorUnsupported(propImpl, <span class="string">"Obj-C setter requiring atomic copy"</span>);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里是个<code>switch</code>语句，调用的条件取决于<code>strategy.getKind()</code>,我们接下来就搜索<code>PropertyImplStrategy</code>找一下类型是什么时候设置的，在<code>PropertyImplStrategy</code>的定义中我们找到了答案：<code>copy</code>修饰的属性会有<code>Kind = GetSetProperty</code>,也就是<code>set</code>方法会调用<code>objc_setProperty</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// If we have a copy property, we always have to use getProperty/setProperty.</span></span><br><span class="line"><span class="comment">// <span class="doctag">TODO:</span> we could actually use setProperty and  an expression for non-atomics.</span></span><br><span class="line"><span class="keyword">if</span> (IsCopy) &#123;</span><br><span class="line">  Kind = GetSetProperty;</span><br><span class="line">  <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们写代码验证一下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@property (nonatomic, copy) NSString *nickName;</span><br><span class="line">@property (atomic, copy) NSString *acnickName;</span><br><span class="line">@property (nonatomic) NSString *nnickName;</span><br><span class="line">@property (atomic) NSString *anickName;</span><br></pre></td></tr></table></figure>
+
+<p>我们定义四个属性，然后用<code>clang</code>将其转换成<code>c++</code>代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_nickName(JSPerson * self, SEL _cmd) &#123; <span class="keyword">return</span> (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_nickName)); &#125;</span><br><span class="line"><span class="keyword">extern</span> <span class="string">"C"</span> __declspec(dllimport) <span class="function"><span class="keyword">void</span> <span class="title">objc_setProperty</span> <span class="params">(id, SEL, <span class="keyword">long</span>, id, <span class="keyword">bool</span>, <span class="keyword">bool</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setNickName_(JSPerson * self, SEL _cmd, NSString *nickName) &#123; objc_setProperty (self, _cmd, __OFFSETOFIVAR__(struct JSPerson, _nickName), (id)nickName, <span class="number">0</span>, <span class="number">1</span>); &#125;<span class="comment">//copy</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">"C"</span> __declspec(dllimport) <span class="function">id <span class="title">objc_getProperty</span><span class="params">(id, SEL, <span class="keyword">long</span>, <span class="keyword">bool</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_acnickName(JSPerson * self, SEL _cmd) &#123; <span class="keyword">typedef</span> NSString * _TYPE;</span><br><span class="line"><span class="keyword">return</span> (_TYPE)objc_getProperty(self, _cmd, __OFFSETOFIVAR__(struct JSPerson, _acnickName), <span class="number">1</span>); &#125;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setAcnickName_(JSPerson * self, SEL _cmd, NSString *acnickName) &#123; objc_setProperty (self, _cmd, __OFFSETOFIVAR__(struct JSPerson, _acnickName), (id)acnickName, <span class="number">1</span>, <span class="number">1</span>); &#125;<span class="comment">//copy</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_nnickName(JSPerson * self, SEL _cmd) &#123; <span class="keyword">return</span> (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_nnickName)); &#125;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setNnickName_(JSPerson * self, SEL _cmd, NSString *nnickName) &#123; (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_nnickName)) = nnickName; &#125;<span class="comment">//strong</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> NSString * _I_JSPerson_anickName(JSPerson * self, SEL _cmd) &#123; <span class="keyword">return</span> (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_anickName)); &#125;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> _I_JSPerson_setAnickName_(JSPerson * self, SEL _cmd, NSString *anickName) &#123; (*(NSString **)((<span class="keyword">char</span> *)self + OBJC_IVAR_$_JSPerson$_anickName)) = anickName; &#125;<span class="comment">//strong</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h4><ul>
+<li><code>set</code>方法在底层并不是定义了很多<code>set</code>方法调用，而是采用<code>内存平移</code>或调用<code>objc_setProperty</code>方法。</li>
+<li>使用<code>copy</code>修饰的属性的<code>set</code>方法调用的是<code>objc_setProperty</code>方法。</li>
+<li>没有<code>copy</code>修饰的属性的<code>set</code>方法是<code>内存平移</code>。</li>
+</ul>
+<h3 id="isKindOfClassvsisMemberOfClass"><a href="#isKindOfClassvsisMemberOfClass" class="headerlink" title="isKindOfClassvsisMemberOfClass"></a><code>isKindOfClass</code>vs<code>isMemberOfClass</code></h3><p>我们平时开发经常会使用<code>isKindOfClass</code>和<code>isMemberOfClass</code>方法来判断对象的类型，从一个例子开始。首先定义两个继承关系的类：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject&#123;</span><br><span class="line">    NSString *hobby;</span><br><span class="line">&#125;</span><br><span class="line">@property (nonatomic, copy) NSString *name;</span><br><span class="line">@property (nonatomic) int age;</span><br><span class="line">@end</span><br><span class="line">@implementation JSPerson</span><br><span class="line">@end</span><br><span class="line">@interface JSTeacher : JSPerson</span><br><span class="line">@property (nonatomic, copy) NSString *hobby;</span><br><span class="line">- (void)teacherSay;</span><br><span class="line">@end</span><br><span class="line">@implementation JSTeacher</span><br><span class="line">- (void)teacherSay&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>我们定义一个方法，用来打印方法的结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">void jsKindofDemo(void)&#123;</span><br><span class="line">    BOOL re1 &#x3D; [(id)[NSObject class] isKindOfClass:[NSObject class]];       &#x2F;&#x2F;</span><br><span class="line">    BOOL re2 &#x3D; [(id)[NSObject class] isMemberOfClass:[NSObject class]];     &#x2F;&#x2F;</span><br><span class="line">    BOOL re3 &#x3D; [(id)[JSPerson class] isKindOfClass:[JSPerson class]];       &#x2F;&#x2F;</span><br><span class="line">    BOOL re4 &#x3D; [(id)[JSPerson class] isMemberOfClass:[JSPerson class]];     &#x2F;&#x2F;</span><br><span class="line">    NSLog(@&quot; re1 :%hhd\n re2 :%hhd\n re3 :%hhd\n re4 :%hhd\n&quot;,re1,re2,re3,re4);</span><br><span class="line"></span><br><span class="line">    BOOL re5 &#x3D; [(id)[NSObject alloc] isKindOfClass:[NSObject class]];       &#x2F;&#x2F;</span><br><span class="line">    BOOL re6 &#x3D; [(id)[NSObject alloc] isMemberOfClass:[NSObject class]];     &#x2F;&#x2F;</span><br><span class="line">    BOOL re7 &#x3D; [(id)[JSPerson alloc] isKindOfClass:[JSPerson class]];       &#x2F;&#x2F;</span><br><span class="line">    BOOL re8 &#x3D; [(id)[JSPerson alloc] isMemberOfClass:[JSPerson class]];     &#x2F;&#x2F;</span><br><span class="line">    NSLog(@&quot; re5 :%hhd\n re6 :%hhd\n re7 :%hhd\n re8 :%hhd\n&quot;,re5,re6,re7,re8);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>打印结果如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">re1 :<span class="number">1</span></span><br><span class="line">re2 :<span class="number">0</span></span><br><span class="line">re3 :<span class="number">0</span></span><br><span class="line">re4 :<span class="number">0</span></span><br><span class="line">re5 :<span class="number">1</span></span><br><span class="line">re6 :<span class="number">1</span></span><br><span class="line">re7 :<span class="number">1</span></span><br><span class="line">re8 :<span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p><code>re5</code>-<code>re8</code>符合我们平时使用的思想，对象判断是否是类，<code>re1</code>-<code>re4</code>是什么情况呢，我们看<code>isKindOfClass</code>底层源码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Calls [obj isKindOfClass]</span></span><br><span class="line">BOOL</span><br><span class="line">objc_opt_isKindOfClass(id obj, Class otherClass)</span><br><span class="line">&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __OBJC2__<span class="comment">//我们只看这里 objc2</span></span></span><br><span class="line">    <span class="keyword">if</span> (slowpath(!obj)) <span class="keyword">return</span> NO;</span><br><span class="line">    Class cls = obj-&gt;getIsa();<span class="comment">//获取对象（类对象）的类（元类）</span></span><br><span class="line">    <span class="keyword">if</span> (fastpath(!cls-&gt;hasCustomCore())) &#123;</span><br><span class="line">        <span class="keyword">for</span> (Class tcls = cls; tcls; tcls = tcls-&gt;getSuperclass()) &#123;<span class="comment">//遍历父类</span></span><br><span class="line">            <span class="keyword">if</span> (tcls == otherClass) <span class="keyword">return</span> YES;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> NO;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="keyword">return</span> ((BOOL(*)(id, SEL, Class))objc_msgSend)(obj, @selector(isKindOfClass:), otherClass);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过源码和上一篇中<code>isa</code>的走位和继承链，我们可以看出</p>
+<ul>
+<li><p>实例对象调用：1、获取对象的类。2、依次查找对象的类和父类，如果和传入的类相等返回<code>YES</code>，遍历结束未找到返回<code>NO</code></p>
+<p>即查找顺序：<code>对象的类-&gt;父类-&gt;根类(NSObject)-&gt;nil</code></p>
+</li>
+<li><p>类对象：1、获取到类的元类。2、依次查找元类及元类的父类，如果和传入的类相等返回<code>YES</code>，遍历结束未找到返回<code>NO</code></p>
+<p>即查找顺序：<code>元类-&gt;元类父类-&gt;根元类-&gt;根类（NSObject）-&gt;nil</code></p>
+</li>
+</ul>
+<p>通过上面的结论，我们看上面的例子：</p>
+<ul>
+<li><code>re1</code>:传入是<code>NSObject</code>的类对象，首先找它的元类即根元类，根元类的父类是<code>NSObject</code>=传入的第二个参数，所以<code>re1</code>=<code>1</code></li>
+<li><code>re3</code>:传入是<code>JSPerson</code>的类对象，首先找它的元类，依次找元类的父类到根元类，最后到根类，没有类=<code>[JSPerson class]</code>,所以<code>re3</code>=<code>0</code></li>
+<li><code>re5</code>:传入是<code>NSObject</code>的实例对象，找它的类就是<code>NSObject</code>=<code>[NSObject class]</code>,所以<code>re5</code>=<code>1</code></li>
+<li><code>re7</code>:传入是<code>JSPerson</code>的实例对象，找它的类就是<code>JSPerson</code>=<code>[JSPerson class]</code>,所以<code>re7</code>=<code>1</code></li>
+</ul>
+<p>我们继续看<code>isMemberOfClass</code>的源码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;类方法</span><br><span class="line">+ (BOOL)isMemberOfClass:(Class)cls &#123;</span><br><span class="line">    return self-&gt;ISA() &#x3D;&#x3D; cls;</span><br><span class="line">&#125;</span><br><span class="line">&#x2F;&#x2F;实例方法</span><br><span class="line">- (BOOL)isMemberOfClass:(Class)cls &#123;</span><br><span class="line">    return [self class] &#x3D;&#x3D; cls;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看出：</p>
+<ul>
+<li>实例对象：判断实例对象的类和传入的类是否相等，即<code>类</code>是否相等</li>
+<li>类对象:判断类的元类是否和传入的类相等，即看<code>元类</code></li>
+</ul>
+<p>通过上面结论我们继续看例子：</p>
+<ul>
+<li><code>re2</code>:传入是<code>NSObject</code>的类对象，首先找它的元类即根元类，根元类不是<code>NSObject</code>类，所以<code>re2</code>=<code>0</code></li>
+<li><code>re4</code>:传入是<code>JSPerson</code>的类对象，首先找它的元类，元类！=<code>[JSPerson class]</code>,所以<code>re4</code>=<code>0</code></li>
+<li><code>re6</code>:传入是<code>NSObject</code>的实例对象，找它的类就是<code>NSObject</code>=<code>[NSObject class]</code>,所以<code>re6</code>=<code>1</code></li>
+<li><code>re8</code>:传入是<code>JSPerson</code>的实例对象，找它的类就是<code>JSPerson</code>=<code>[JSPerson class]</code>,所以<code>re8</code>=<code>1</code></li>
+</ul>
+<p>本文我们主要研究了类的<code>ro</code>和<code>rw</code>的区别，属性的<code>set</code>方法，以及<code>isKindOfClass</code>vs<code>isMemberOfClass</code>的源码，类的探究就到这里了，有遗漏的话后面会补充。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/06/19/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8A/" rel="next" title="iOS底层探索 - 类的结构(上)">
+                <i class="fa fa-chevron-left"></i> iOS底层探索 - 类的结构(上)
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Jason</p>
+              <p class="site-description motion-element" itemprop="description">个人技术博客</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/%20">
+              
+                  <span class="site-state-item-count">27</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">标签</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#class-ro-t和class-rw-t的区别"><span class="nav-number">1.</span> <span class="nav-text">class_ro_t和class_rw_t的区别</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#class-ro-t"><span class="nav-number">1.1.</span> <span class="nav-text">class_ro_t</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#class-rw-t"><span class="nav-number">1.2.</span> <span class="nav-text">class_rw_t</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#小结"><span class="nav-number">1.3.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Type-Encodings"><span class="nav-number">2.</span> <span class="nav-text">Type Encodings</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#setter方法底层"><span class="nav-number">3.</span> <span class="nav-text">setter方法底层</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#小结-1"><span class="nav-number">3.1.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#isKindOfClassvsisMemberOfClass"><span class="nav-number">4.</span> <span class="nav-text">isKindOfClassvsisMemberOfClass</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
