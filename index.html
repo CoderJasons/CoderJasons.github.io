@@ -230,6 +230,178 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-catche-t/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-catche-t/" itemprop="url">iOS底层探索 - catche_t</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-27T09:35:08+08:00">
+                2021-06-27
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>前面我们探索了<code>Class</code>的<code>bits</code>属性，这篇我们主要探究一下类的第三个属性<code>cache</code>，了解一下苹果对缓存的处理。我们首先看一下<code>cache</code>的内存结构。</p>
+<h3 id="cache-t的结构"><a href="#cache-t的结构" class="headerlink" title="cache_t的结构"></a><code>cache_t</code>的结构</h3><p>先看一下<code>cache_t</code>的定义：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cache_t</span> &#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    explicit_atomic&lt;<span class="keyword">uintptr_t</span>&gt; _bucketsAndMaybeMask; <span class="comment">// 8</span></span><br><span class="line">    <span class="keyword">union</span> &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            explicit_atomic&lt;<span class="keyword">mask_t</span>&gt;    _maybeMask; <span class="comment">// 4</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __LP64__</span></span><br><span class="line">            <span class="keyword">uint16_t</span>                   _flags;  <span class="comment">// 2</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">            <span class="keyword">uint16_t</span>                   _occupied; <span class="comment">// 2</span></span><br><span class="line">        &#125;;</span><br><span class="line">        explicit_atomic&lt;<span class="keyword">preopt_cache_t</span> *&gt; _originalPreoptCache; <span class="comment">// 8</span></span><br><span class="line">    &#125;;</span><br><span class="line">  <span class="comment">///省略代码</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">incrementOccupied</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setBucketsAndMask</span><span class="params">(struct <span class="keyword">bucket_t</span> *newBuckets, <span class="keyword">mask_t</span> newMask)</span></span>;</span><br><span class="line">  <span class="comment">///省略代码</span></span><br><span class="line">		<span class="function"><span class="keyword">unsigned</span> <span class="title">capacity</span><span class="params">()</span> <span class="keyword">const</span></span>;</span><br><span class="line">    <span class="function">struct <span class="keyword">bucket_t</span> *<span class="title">buckets</span><span class="params">()</span> <span class="keyword">const</span></span>;</span><br><span class="line">    <span class="function">Class <span class="title">cls</span><span class="params">()</span> <span class="keyword">const</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">reallocate</span><span class="params">(<span class="keyword">mask_t</span> oldCapacity, <span class="keyword">mask_t</span> newCapacity, <span class="keyword">bool</span> freeOld)</span></span>;</span><br><span class="line">  <span class="comment">///省略代码</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">insert</span><span class="params">(SEL sel, IMP imp, id receiver)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">copyCacheNolock</span><span class="params">(objc_imp_cache_entry *<span class="built_in">buffer</span>, <span class="keyword">int</span> len)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">eraseNolock</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *func)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">init</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">collectNolock</span><span class="params">(<span class="keyword">bool</span> collectALot)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">size_t</span> <span class="title">bytesForCapacity</span><span class="params">(<span class="keyword">uint32_t</span> cap)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对定义有一个大题了解之后，我们像探索<code>bits</code>一样的方式，用<code>lldb</code>探索<code>cache</code>,定义一个类<code>JSPerson</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;  JSPerson.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line">@property (nonatomic, copy) NSString *name;</span><br><span class="line">@property (nonatomic) int age;</span><br><span class="line">@property (nonatomic, strong) NSString *hobby;</span><br><span class="line">- (void)saySomething;</span><br><span class="line">- (void)say1;</span><br><span class="line">- (void)say2;</span><br><span class="line">- (void)say3;</span><br><span class="line">- (void)say4;</span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  JSPerson.m</span><br><span class="line">#import &quot;JSPerson.h&quot;</span><br><span class="line">@implementation JSPerson</span><br><span class="line">- (void)saySomething&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line">- (void)say1&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line">- (void)say2&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line">- (void)say3&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line">- (void)say4&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line"></span><br><span class="line">        JSPerson *p  &#x3D; [JSPerson alloc];</span><br><span class="line">        NSLog(@&quot;%@&quot;,p);&#x2F;&#x2F;断点</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="lldb调试查看缓存"><a href="#lldb调试查看缓存" class="headerlink" title="lldb调试查看缓存"></a>lldb调试查看缓存</h4><p>在<code>main（）</code>方法初始化<code>JSPerson</code>对象，使用<code>lldb</code>调试：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br></pre></td><td class="code"><pre><span class="line">(lldb) p/x JSPerson<span class="class">.<span class="keyword">class</span></span></span><br><span class="line"><span class="class">(<span class="title">Class</span>) $1 = 0<span class="title">x0000000100008660</span> <span class="title">JSPerson</span>//类首地址</span></span><br><span class="line"><span class="class">(<span class="title">lldb</span>) <span class="title">p</span>/<span class="title">x</span> 0<span class="title">x0000000100008670</span> //便宜16位找到<span class="title">cache</span></span></span><br><span class="line"><span class="class">(<span class="title">long</span>) $2 = 0<span class="title">x0000000100008670</span></span></span><br><span class="line"><span class="class">(<span class="title">lldb</span>) <span class="title">p</span>/<span class="title">x</span> (<span class="title">cache_t</span> *)$2</span></span><br><span class="line"><span class="class">(<span class="title">cache_t</span> *) $3 = 0<span class="title">x0000000100008670</span></span></span><br><span class="line"><span class="class">(<span class="title">lldb</span>) <span class="title">p</span> *$3</span></span><br><span class="line"><span class="class">(<span class="title">cache_t</span>) $4 = &#123;</span></span><br><span class="line">  _bucketsAndMaybeMask = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">unsigned</span> <span class="keyword">long</span>&gt; = &#123;</span><br><span class="line">      Value = <span class="number">4298437472</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">   = &#123;</span><br><span class="line">     = &#123;</span><br><span class="line">      _maybeMask = &#123;</span><br><span class="line">        <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">unsigned</span> <span class="keyword">int</span>&gt; = &#123;</span><br><span class="line">          Value = <span class="number">0</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      _flags = <span class="number">32808</span></span><br><span class="line">      _occupied = <span class="number">0</span> <span class="comment">//没有调用过方法 所以为0</span></span><br><span class="line">    &#125;</span><br><span class="line">    _originalPreoptCache = &#123;</span><br><span class="line">      <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">preopt_cache_t</span> *&gt; = &#123;</span><br><span class="line">        Value = <span class="number">0x0000802800000000</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">4.b</span>uckets()</span><br><span class="line">(<span class="keyword">bucket_t</span> *) $<span class="number">5</span> = <span class="number">0x000000010034f360</span></span><br><span class="line">(lldb) p *$<span class="number">5</span></span><br><span class="line">(<span class="keyword">bucket_t</span>) $<span class="number">6</span> = &#123;</span><br><span class="line">  _sel = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;objc_selector *&gt; = (null) &#123;</span><br><span class="line">      Value = (null)<span class="comment">//没有调用过方法  为null 即没有缓存</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  _imp = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">unsigned</span> <span class="keyword">long</span>&gt; = &#123;</span><br><span class="line">      Value = <span class="number">0</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p [p say1] <span class="comment">//手动执行一个方法，重复上面的过程</span></span><br><span class="line"><span class="number">2021</span><span class="number">-06</span><span class="number">-27</span> <span class="number">14</span>:<span class="number">03</span>:<span class="number">32.208774</span>+<span class="number">0800</span> KCObjcBuild[<span class="number">2660</span>:<span class="number">112775</span>] -[JSPerson say1]</span><br><span class="line">(lldb) p *$<span class="number">3</span></span><br><span class="line">(<span class="keyword">cache_t</span>) $<span class="number">7</span> = &#123;</span><br><span class="line">  _bucketsAndMaybeMask = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">unsigned</span> <span class="keyword">long</span>&gt; = &#123;</span><br><span class="line">      Value = <span class="number">4321236704</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">   = &#123;</span><br><span class="line">     = &#123;</span><br><span class="line">      _maybeMask = &#123;</span><br><span class="line">        <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">unsigned</span> <span class="keyword">int</span>&gt; = &#123;</span><br><span class="line">          Value = <span class="number">7</span><span class="comment">//这里为什么是7后面再分析</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      _flags = <span class="number">32808</span></span><br><span class="line">      _occupied = <span class="number">1</span><span class="comment">//有一个缓存</span></span><br><span class="line">    &#125;</span><br><span class="line">    _originalPreoptCache = &#123;</span><br><span class="line">      <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">preopt_cache_t</span> *&gt; = &#123;</span><br><span class="line">        Value = <span class="number">0x0001802800000007</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">7.b</span>uckets()</span><br><span class="line">(<span class="keyword">bucket_t</span> *) $<span class="number">8</span> = <span class="number">0x000000010190d6e0</span></span><br><span class="line">(lldb) p *$<span class="number">8</span></span><br><span class="line">(<span class="keyword">bucket_t</span>) $<span class="number">9</span> = &#123;</span><br><span class="line">  _sel = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;objc_selector *&gt; = <span class="string">""</span> &#123;</span><br><span class="line">      Value = <span class="string">""</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  _imp = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">unsigned</span> <span class="keyword">long</span>&gt; = &#123;</span><br><span class="line">      Value = <span class="number">48864</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">9.</span>sel()</span><br><span class="line">(SEL) $<span class="number">11</span> = <span class="string">"say1"</span></span><br><span class="line">(lldb) p $<span class="number">9.</span>imp(nil,JSPerson.class)</span><br><span class="line">(IMP) $<span class="number">12</span> = <span class="number">0x0000000100003880</span> (KCObjcBuild`-[JSPerson say1])</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，我们调用方法之后，<code>cache</code>里会增加一条缓存。调用<code>buckets()</code>方法可以查看缓存的内容，<code>buckets()</code>方法返回值是<code>bucket_t</code>,我们再看一下<code>bucket_t</code>的定义：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">bucket_t</span> &#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="comment">// IMP-first is better for arm64e ptrauth and no worse for arm64.</span></span><br><span class="line">    <span class="comment">// SEL-first is better for armv7* and i386 and x86_64.</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __arm64__</span></span><br><span class="line">    explicit_atomic&lt;<span class="keyword">uintptr_t</span>&gt; _imp;</span><br><span class="line">    explicit_atomic&lt;SEL&gt; _sel;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    explicit_atomic&lt;SEL&gt; _sel;</span><br><span class="line">    explicit_atomic&lt;<span class="keyword">uintptr_t</span>&gt; _imp;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">  <span class="comment">// 省略代码</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">size_t</span> <span class="title">offsetOfSel</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> offsetof(<span class="keyword">bucket_t</span>, _sel); &#125;</span><br><span class="line">    <span class="function"><span class="keyword">inline</span> SEL <span class="title">sel</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123; <span class="keyword">return</span> _sel.load(memory_order_relaxed); &#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> CACHE_IMP_ENCODING == CACHE_IMP_ENCODING_ISA_XOR</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MAYBE_UNUSED_ISA</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MAYBE_UNUSED_ISA __attribute__((unused))</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="function"><span class="keyword">inline</span> IMP <span class="title">rawImp</span><span class="params">(MAYBE_UNUSED_ISA objc_class *cls)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">uintptr_t</span> imp = _imp.load(memory_order_relaxed);</span><br><span class="line">        <span class="keyword">if</span> (!imp) <span class="keyword">return</span> nil;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> CACHE_IMP_ENCODING == CACHE_IMP_ENCODING_PTRAUTH</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> CACHE_IMP_ENCODING == CACHE_IMP_ENCODING_ISA_XOR</span></span><br><span class="line">        imp ^= (<span class="keyword">uintptr_t</span>)cls;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> CACHE_IMP_ENCODING == CACHE_IMP_ENCODING_NONE</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">error</span> Unknown method cache IMP encoding.</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">        <span class="keyword">return</span> (IMP)imp;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">inline</span> IMP <span class="title">imp</span><span class="params">(UNUSED_WITHOUT_PTRAUTH <span class="keyword">bucket_t</span> *base, Class cls)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">uintptr_t</span> imp = _imp.load(memory_order_relaxed);</span><br><span class="line">        <span class="keyword">if</span> (!imp) <span class="keyword">return</span> nil;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> CACHE_IMP_ENCODING == CACHE_IMP_ENCODING_PTRAUTH</span></span><br><span class="line">        SEL sel = _sel.load(memory_order_relaxed);</span><br><span class="line">        <span class="keyword">return</span> (IMP)</span><br><span class="line">            ptrauth_auth_and_resign((<span class="keyword">const</span> <span class="keyword">void</span> *)imp,</span><br><span class="line">                                    ptrauth_key_process_dependent_code,</span><br><span class="line">                                    modifierForSEL(base, sel, cls),</span><br><span class="line">                                    ptrauth_key_function_pointer, <span class="number">0</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> CACHE_IMP_ENCODING == CACHE_IMP_ENCODING_ISA_XOR</span></span><br><span class="line">        <span class="keyword">return</span> (IMP)(imp ^ (<span class="keyword">uintptr_t</span>)cls);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> CACHE_IMP_ENCODING == CACHE_IMP_ENCODING_NONE</span></span><br><span class="line">        <span class="keyword">return</span> (IMP)imp;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">error</span> Unknown method cache IMP encoding.</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">template</span> &lt;Atomicity, IMPEncoding&gt;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">set</span><span class="params">(<span class="keyword">bucket_t</span> *base, SEL newSel, IMP newImp, Class cls)</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>bucket_t</code>通过<code>sel()</code>方法获取方法的<code>SEL</code>，通过<code>imp()</code>方法获取方法的实现<code>IMP</code>。</p>
+<h4 id="脱离源码环境查看缓存"><a href="#脱离源码环境查看缓存" class="headerlink" title="脱离源码环境查看缓存"></a>脱离源码环境查看缓存</h4><p>前面我们用<code>lldb</code>的方法查看了<code>cache</code>的缓存，如果源码环境不可调试的话，<code>lldb</code>这种方式就不可用了，我们如果要查看缓存，可以参考一份源码的数据结构，然后打印查看结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">typedef uint32_t mask_t;  &#x2F;&#x2F; x86_64 &amp; arm64 asm are less efficient with 16-bits</span><br><span class="line">struct js_bucket_t &#123;</span><br><span class="line">    SEL _sel;</span><br><span class="line">    IMP _imp;</span><br><span class="line">&#125;;</span><br><span class="line">struct js_cache_t &#123;</span><br><span class="line">    struct js_bucket_t *_bukets; &#x2F;&#x2F; 8</span><br><span class="line">    mask_t    _maybeMask; &#x2F;&#x2F; 4</span><br><span class="line">    uint16_t  _flags;  &#x2F;&#x2F; 2</span><br><span class="line">    uint16_t  _occupied; &#x2F;&#x2F; 2</span><br><span class="line">&#125;;</span><br><span class="line">struct js_class_data_bits_t &#123;</span><br><span class="line">    uintptr_t bits;</span><br><span class="line">&#125;;</span><br><span class="line">&#x2F;&#x2F; cache class</span><br><span class="line">struct js_objc_class &#123;</span><br><span class="line">    Class isa;</span><br><span class="line">    Class superclass;</span><br><span class="line">    struct js_cache_t cache;             &#x2F;&#x2F; formerly cache pointer and vtable</span><br><span class="line">    struct js_class_data_bits_t bits;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>main()</code>方法中调用方法，打印：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *p  &#x3D; [JSPerson alloc];</span><br><span class="line">        Class pClass &#x3D; p.class;  &#x2F;&#x2F; objc_clas</span><br><span class="line">        [p say1];</span><br><span class="line">        [p say2];</span><br><span class="line">        [pClass sayHappy];</span><br><span class="line">        struct js_objc_class *js_class &#x3D; (__bridge struct js_objc_class *)(pClass);</span><br><span class="line">        NSLog(@&quot;%hu - %u&quot;,js_class-&gt;cache._occupied,js_class-&gt;cache._maybeMask);&#x2F;&#x2F;打印occupied和maybeMask</span><br><span class="line">        for (mask_t i &#x3D; 0; i&lt;js_class-&gt;cache._maybeMask; i++) &#123;&#x2F;&#x2F;打印缓存方法</span><br><span class="line">            struct js_bucket_t bucket &#x3D; js_class-&gt;cache._bukets[i];</span><br><span class="line">            NSLog(@&quot;%@ - %pf&quot;,NSStringFromSelector(bucket._sel),bucket._imp);</span><br><span class="line">        &#125;</span><br><span class="line">        NSLog(@&quot;Hello, World!&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>先执行<code>say1()</code>和<code>say2()</code>方法，打印结果：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">LGPerson say : -[JSPerson say1]</span><br><span class="line">LGPerson say : -[JSPerson say2]</span><br><span class="line">LGPerson say : +[JSPerson sayHappy]</span><br><span class="line"><span class="number">2</span> - <span class="number">3</span> <span class="comment">//occupied = 2, _maybeMask=3</span></span><br><span class="line">say1 - <span class="number">0xb840f</span></span><br><span class="line">say2 - <span class="number">0xb810f</span></span><br><span class="line">(null) - <span class="number">0x0f</span></span><br></pre></td></tr></table></figure>
+
+<p>可以看到现在缓存是<code>2</code>个，<code>_maybeMask</code>=<code>3</code>,下面我们多调用一个方法：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[p say1];</span><br><span class="line">[p say2];</span><br><span class="line">[p say3];</span><br></pre></td></tr></table></figure>
+
+<p>打印结果：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">LGPerson say : -[JSPerson say1]</span><br><span class="line">LGPerson say : -[JSPerson say2]</span><br><span class="line">LGPerson say : -[JSPerson say3]</span><br><span class="line">LGPerson say : +[JSPerson sayHappy]</span><br><span class="line"><span class="number">1</span> - <span class="number">7</span><span class="comment">//occupied = 1, _maybeMask=7</span></span><br><span class="line">(null) - <span class="number">0x0f</span></span><br><span class="line">(null) - <span class="number">0x0f</span></span><br><span class="line">say3 - <span class="number">0xb9e8f</span></span><br><span class="line">(null) - <span class="number">0x0f</span></span><br><span class="line">(null) - <span class="number">0x0f</span></span><br><span class="line">(null) - <span class="number">0x0f</span></span><br><span class="line">(null) - <span class="number">0x0f</span></span><br></pre></td></tr></table></figure>
+
+<p>我们看到现在<code>occupied</code> = <code>1</code>,<code>_maybeMask</code>=<code>7</code>,缓存里只有一个<code>say3</code>方法，这是为什么，我们就需要看一下源码。本小节提供一个思路可以脱离源码分析<code>cache</code>的内容，后面我们也可以用类似的思想分析其他问题。</p>
+<h3 id="cache扩容"><a href="#cache扩容" class="headerlink" title="cache扩容"></a><code>cache</code>扩容</h3><p>上一小节我们探究过程中发现，调用<code>say3</code>方法之后，缓存中只有一个<code>say3</code>方法了，缓存的容量(<code>_maybeMask</code>)也增加了，其实就是扩容的原因，在什么情况下会触发扩容呢，我们看一下源码，在看<code>catch_t</code>数据结构中我们发现一个<code>insert</code>方法，缓存的存储必然会执行这个方法，我们直接看<code>insert</code>方法：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">cache_t::insert</span><span class="params">(SEL sel, IMP imp, id receiver)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//省略代码</span></span><br><span class="line">    <span class="comment">// Use the cache as-is if until we exceed our expected fill ratio.</span></span><br><span class="line">    <span class="keyword">mask_t</span> newOccupied = occupied() + <span class="number">1</span>; <span class="comment">// 1+1</span></span><br><span class="line">    <span class="keyword">unsigned</span> oldCapacity = capacity(), capacity = oldCapacity;</span><br><span class="line">    <span class="keyword">if</span> (slowpath(isConstantEmptyCache())) &#123;</span><br><span class="line">        <span class="comment">// Cache is read-only. Replace it.</span></span><br><span class="line">        <span class="keyword">if</span> (!capacity) capacity = INIT_CACHE_SIZE;<span class="comment">//初始大小为4</span></span><br><span class="line">        reallocate(oldCapacity, capacity, <span class="comment">/* freeOld */</span><span class="literal">false</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (fastpath(newOccupied + CACHE_END_MARKER &lt;= cache_fill_ratio(capacity))) &#123;<span class="comment">//是否需要扩容</span></span><br><span class="line">        <span class="comment">// Cache is less than 3/4 or 7/8 full. Use it as-is.</span></span><br><span class="line">    &#125;</span><br><span class="line">#<span class="keyword">if</span> CACHE_ALLOW_FULL_UTILIZATION</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (capacity &lt;= FULL_UTILIZATION_CACHE_SIZE &amp;&amp; newOccupied + CACHE_END_MARKER &lt;= capacity) &#123;</span><br><span class="line">        <span class="comment">// Allow 100% cache utilization for small buckets. Use it as-is.</span></span><br><span class="line">    &#125;</span><br><span class="line">#endif</span><br><span class="line">    <span class="keyword">else</span> &#123;<span class="comment">// 4*2 = 8</span></span><br><span class="line">        capacity = capacity ? capacity * <span class="number">2</span> : INIT_CACHE_SIZE;</span><br><span class="line">        <span class="keyword">if</span> (capacity &gt; MAX_CACHE_SIZE) &#123;</span><br><span class="line">            capacity = MAX_CACHE_SIZE;</span><br><span class="line">        &#125;</span><br><span class="line">        reallocate(oldCapacity, capacity, <span class="literal">true</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">bucket_t</span> *b = buckets();</span><br><span class="line">    <span class="keyword">mask_t</span> m = capacity - <span class="number">1</span>; <span class="comment">// maybeMask = 4-1=3</span></span><br><span class="line">    <span class="keyword">mask_t</span> <span class="built_in">begin</span> = cache_hash(sel, m);</span><br><span class="line">    <span class="keyword">mask_t</span> i = <span class="built_in">begin</span>;</span><br><span class="line">    <span class="comment">// Scan for the first unused slot and insert there.</span></span><br><span class="line">    <span class="comment">// There is guaranteed to be an empty slot.</span></span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (fastpath(b[i].sel() == <span class="number">0</span>)) &#123;</span><br><span class="line">            incrementOccupied();</span><br><span class="line">            b[i].<span class="built_in">set</span>&lt;Atomic, Encoded&gt;(b, sel, imp, cls());</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (b[i].sel() == sel) &#123;</span><br><span class="line">            <span class="comment">// The entry was added to the cache by some other thread</span></span><br><span class="line">            <span class="comment">// before we grabbed the cacheUpdateLock.</span></span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">while</span> (fastpath((i = cache_next(i, m)) != <span class="built_in">begin</span>));</span><br><span class="line"></span><br><span class="line">    bad_cache(receiver, (SEL)sel);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span> <span class="comment">// !DEBUG_TASK_THREADS</span></span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// Historical fill ratio of 75% (since the new objc runtime was introduced).</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">mask_t</span> <span class="title">cache_fill_ratio</span><span class="params">(<span class="keyword">mask_t</span> capacity)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> capacity * <span class="number">3</span> / <span class="number">4</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看出：</p>
+<ul>
+<li>初始大小<code>INIT_CACHE_SIZE</code>=<code>4</code>,初始<code>maybeMask</code>=<code>3</code></li>
+<li>触发扩容的条件是<code>(fastpath(newOccupied + CACHE_END_MARKER &lt;= cache_fill_ratio(capacity)))</code>也就是插入新元素后的容量是否大于等于当前容量的<code>3/4</code>，如果是就扩容。</li>
+<li>扩容的大小是<code>capacity = capacity ? capacity * 2 : INIT_CACHE_SIZE;</code>也就是之前容量的<code>2</code>倍，就是上述例子里<code>say3</code>执行后的容量=<code>8</code>。</li>
+<li>扩容后不会移动之前缓存的数据，而是直接将新的数据缓存，也就是<code>say3</code>执行扩容后，缓存里只有一个<code>say3</code>方法，之前的方法不会移动到新的缓存区。</li>
+</ul>
+<p>以上是缓存扩容的流程，为什么扩容的时候之前缓存的内容不会拷贝过来，个人理解是拷贝过来性能较差，如果数据量大影响性能。</p>
+<p>总结来看<code>insert</code>方法的流程如下：</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/ed78e1b005c448c3bb99c87fba44a35c~tplv-k3u1fbpfcp-watermark.image" alt="cache_tInsert流程"></p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ul>
+<li><code>cache</code>主要是用来存储类的方法缓存的变量，缓存的初始大小为<code>4</code>。</li>
+<li>如果<code>insert</code>新方法时容量达到缓存大小的<code>3/4</code>就会触发扩容，扩容后的大小为之前的两倍。</li>
+<li>扩容并不会将之前缓存的数据平移到新的空间而是直接释放之前的缓存内存。</li>
+<li>缓存的存储方式是<code>哈希表</code>,哈希的<code>key</code>是通过<code>cache_hash</code>方法生成。</li>
+<li>如果缓存已存在就直接返回。</li>
+<li>如果缓存不存在执行<code>set</code>方法存储缓存后结束方法。</li>
+</ul>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/20/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8B/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1993,125 +2165,6 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/18/iOS-Runloop/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/05/18/iOS-Runloop/" itemprop="url">iOS  - Runloop</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-05-18T15:33:42+08:00">
-                2021-05-18
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -2162,7 +2215,7 @@
               
                 <a href="/archives/%20">
               
-                  <span class="site-state-item-count">27</span>
+                  <span class="site-state-item-count">28</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
