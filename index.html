@@ -230,6 +230,177 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc_msgSend-%E4%B8%8A/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc_msgSend-%E4%B8%8A/" itemprop="url">iOS底层探索 - objc_msgSend(上)</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-27T20:14:59+08:00">
+                2021-06-27
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>上一篇探究了<code>catch_t</code>的结构和<code>insert</code>流程，<code>insert</code>的调用方法还不清楚，我们本篇就从<code>insert</code>的调用开始探索。 在探索之前我们首先看一下<code>runtime</code>的概念。</p>
+<h3 id="runtime"><a href="#runtime" class="headerlink" title="runtime"></a>runtime</h3><p><code>runtime</code>翻译过来就是<code>运行时</code>，与其对应的一个词是<code>编译时</code>，它们的区别是：</p>
+<ul>
+<li><p><strong>编译时</strong> 顾名思义就是正在编译的时候 . 那啥叫编译呢?就是编译器帮你把源代码翻译成机器能识别的代码，(当然只是一般意义上这么说，实际上可能只是翻译成某个中间状态的语言）</p>
+<p>编译时就是简单的作一些翻译工作,词法分析,语法分析之类的过程。如果发现错误编译器就告诉你，这时的错误就叫编译时错误。这个过程中做的类型检查也就叫编译时类型检查或静态类型检查。(所谓静态就是没有真把代码放内存中运行起来，而只是把代码当作文本来扫描)。</p>
+</li>
+<li><p><strong>运行时</strong>：代码跑起来了被装载到内存中了(代码保存在磁盘上没装入内存之前是个死代码，只有跑到内 存中才变成活的)。运行时类型检查与编译时类型检查(静态类型检查)不一样，不是简单的扫描代码而是在内存中做些操作以及判断。比如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">NSObjcet *obj &#x3D; [[NSObjcet alloc] init];</span><br><span class="line">[obj performSelector:@selector(saySomething)];</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h3 id="insert的调用"><a href="#insert的调用" class="headerlink" title="insert的调用"></a><code>insert</code>的调用</h3><p>前面文章我们知道在调用一个方法的时候会添加缓存，所以我们实例化一个<code>JSPerson</code>实例，调用<code>saySomething</code>方法，查看调用栈的信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;  JSPerson.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line">- (void)saySomething;</span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  JSPerson.m</span><br><span class="line">#import &quot;JSPerson.h&quot;</span><br><span class="line">@implementation JSPerson</span><br><span class="line">- (void)saySomething&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person saySomething];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>查看编译器的调用栈：</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/032c3133cdd64837a8759f8db9819a4b~tplv-k3u1fbpfcp-watermark.image" alt="WeChat9862144aabb8df7479fd49bc79b7f67f"></p>
+<p>可以清楚的看到，<code>insert</code>方法之前的调用栈从<code>main</code>执行到<code>_objc_msgSend_uncached</code>最后执行到<code>insert</code>。即前面没有找到缓存会执行到这里。查找缓存的流程是什么样的呢？我们其实都知道OC里调用方法的本质是消息发送，通过<code>clang</code>命令将<code>main.m</code>转换成<code>main.cpp</code>文件也能验证这一点：</p>
+<p><code>clang -rewrite-objc main.m</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> * argv[])</span> </span>&#123;</span><br><span class="line">    <span class="comment">/* @autoreleasepool */</span> &#123; __AtAutoreleasePool __autoreleasepool; </span><br><span class="line"></span><br><span class="line">        JSPerson *person = ((JSPerson *(*)(id, SEL))(<span class="keyword">void</span> *)objc_msgSend)((id)objc_getClass(<span class="string">"JSPerson"</span>), sel_registerName(<span class="string">"alloc"</span>));</span><br><span class="line">        ((<span class="keyword">void</span> (*)(id, SEL))(<span class="keyword">void</span> *)objc_msgSend)((id)person, sel_registerName(<span class="string">"saySomething"</span>));</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到我们的代码其实就是向<code>person</code>对象发送了一个<code>sel_registerName(&quot;saySomething&quot;)</code>的消息，在到达<code>_objc_msgSend_uncached</code>之前做了缓存的查找。所以我们从<code>objc_msgSend</code>开始探索缓存查找的过程。</p>
+<h3 id="快速查找方法-缓存"><a href="#快速查找方法-缓存" class="headerlink" title="快速查找方法(缓存)"></a>快速查找方法(缓存)</h3><p><code>objc</code>源码中搜索<code>objc_msgSend</code>,在<code>objc-msg-arm64.s</code>文件中找到了实现<code>END_ENTRY _objc_msgSend</code></p>
+<h4 id="ENTRY-objc-msgSend"><a href="#ENTRY-objc-msgSend" class="headerlink" title="ENTRY _objc_msgSend"></a>ENTRY _objc_msgSend</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">	ENTRY _objc_msgSend</span><br><span class="line">	UNWIND _objc_msgSend, NoFrame</span><br><span class="line"> &#x2F;&#x2F; 判断 p0是否为空，p0是第一个参数 - 消息接收者receiver</span><br><span class="line">	cmp	p0, #0			&#x2F;&#x2F; nil check and tagged pointer check</span><br><span class="line"> &#x2F;&#x2F; 支持taggedpointer（小对象类型）的流程</span><br><span class="line">#if SUPPORT_TAGGED_POINTERS</span><br><span class="line">	b.le	LNilOrTagged		&#x2F;&#x2F;  (MSB tagged pointer looks negative)</span><br><span class="line">#else</span><br><span class="line">  &#x2F;&#x2F;p0 等于 0 时，直接返回 空</span><br><span class="line">	b.eq	LReturnZero</span><br><span class="line">#endif</span><br><span class="line">  &#x2F;&#x2F;根据对象拿出isa ，即从x0寄存器指向的地址 取出 isa，存入 p13寄存器</span><br><span class="line">  &#x2F;&#x2F;取isa的原因是，不论是对象方法还是类方法，都需要在类或元类的缓存或者方法列表中查找。</span><br><span class="line">	ldr	p13, [x0]		&#x2F;&#x2F; p13 &#x3D; isa </span><br><span class="line">  &#x2F;&#x2F;在64位架构下通过 p16 &#x3D; isa（p13） &amp; ISA_MASK，拿出shiftcls信息，得到class信息</span><br><span class="line">	GetClassFromIsa_p16 p13, 1, x0	&#x2F;&#x2F; p16 &#x3D; class </span><br><span class="line">LGetIsaDone:&#x2F;&#x2F;找到isa之后执行</span><br><span class="line">	&#x2F;&#x2F; calls imp or objc_msgSend_uncached</span><br><span class="line">	&#x2F;&#x2F;如果有isa，走到CacheLookup 即查找方法缓存，也就是所谓的sel imp快速查找流程 否则走__objc_msgSend_uncached</span><br><span class="line">	CacheLookup NORMAL, _objc_msgSend, __objc_msgSend_uncached</span><br><span class="line">#if SUPPORT_TAGGED_POINTERS &#x2F;&#x2F;</span><br><span class="line">LNilOrTagged:</span><br><span class="line">	b.eq	LReturnZero		&#x2F;&#x2F; nil check</span><br><span class="line">	GetTaggedClass</span><br><span class="line">	b	LGetIsaDone</span><br><span class="line">&#x2F;&#x2F; SUPPORT_TAGGED_POINTERS</span><br><span class="line">#endif</span><br><span class="line">LReturnZero:</span><br><span class="line">	&#x2F;&#x2F; x0 is already zero</span><br><span class="line">	mov	x1, #0</span><br><span class="line">	movi	d0, #0</span><br><span class="line">	movi	d1, #0</span><br><span class="line">	movi	d2, #0</span><br><span class="line">	movi	d3, #0</span><br><span class="line">	ret</span><br><span class="line">	END_ENTRY _objc_msgSend</span><br></pre></td></tr></table></figure>
+
+<h4 id="GetClassFromIsa-p16获取isa"><a href="#GetClassFromIsa-p16获取isa" class="headerlink" title="GetClassFromIsa_p16获取isa"></a>GetClassFromIsa_p16获取<code>isa</code></h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">.macro GetClassFromIsa_p16 src, needs_auth, auth_address &#x2F;* note: auth_address is not required if !needs_auth *&#x2F;</span><br><span class="line">&#x2F;&#x2F; __ARM_ARCH_7K__ &gt;&#x3D; 2  ||  (__arm64__ &amp;&amp; !__LP64__) 优化的isa</span><br><span class="line">#if SUPPORT_INDEXED_ISA </span><br><span class="line">	&#x2F;&#x2F; Indexed isa</span><br><span class="line">	&#x2F;&#x2F; 将 isa 存入p16寄存器</span><br><span class="line">	mov	p16, \src			&#x2F;&#x2F; optimistically set dst &#x3D; src</span><br><span class="line">	&#x2F;&#x2F;判断是否是 not nonapointer</span><br><span class="line">	tbz	p16, #ISA_INDEX_IS_NPI_BIT, 1f	&#x2F;&#x2F; done if not non-pointer isa</span><br><span class="line">	&#x2F;&#x2F; 将_objc_indexed_classes所在的页的基址 读入x10寄存器 isa in p16 is indexed</span><br><span class="line">	adrp	x10, _objc_indexed_classes@PAGE</span><br><span class="line">	&#x2F;&#x2F;x10 &#x3D; x10 + _objc_indexed_classes(page中的偏移量) --x10基址 根据 偏移量 进行 内存偏移</span><br><span class="line">	add	x10, x10, _objc_indexed_classes@PAGEOFF</span><br><span class="line">	&#x2F;&#x2F;从p16的第ISA_INDEX_SHIFT位开始，提取 ISA_INDEX_BITS 位 到 p16寄存器，剩余的高位用0补充</span><br><span class="line">	ubfx	p16, p16, #ISA_INDEX_SHIFT, #ISA_INDEX_BITS  &#x2F;&#x2F; extract index</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line">	ldr	p16, [x10, p16, UXTP #PTRSHIFT]	&#x2F;&#x2F; load class from array</span><br><span class="line">1:</span><br><span class="line">&#x2F;&#x2F;64位 </span><br><span class="line">#elif __LP64__</span><br><span class="line">.if \needs_auth &#x3D;&#x3D; 0 &#x2F;&#x2F; _cache_getImp takes an authed class already</span><br><span class="line">	mov	p16, \src</span><br><span class="line">.else</span><br><span class="line">	&#x2F;&#x2F; 64-bit packed isa</span><br><span class="line">	&#x2F;&#x2F;p16 &#x3D; class &#x3D; isa &amp; ISA_MASK(位运算 &amp; 即获取isa中的shiftcls信息)</span><br><span class="line">	ExtractISA p16, \src, \auth_address</span><br><span class="line">.endif</span><br><span class="line">#else</span><br><span class="line">	&#x2F;&#x2F; 32-bit raw isa 32位系统</span><br><span class="line">	mov	p16, \src</span><br><span class="line">#endif</span><br><span class="line">.endmacro</span><br><span class="line">.macro ExtractISA</span><br><span class="line">&#x2F;&#x2F;p16 &#x3D; class &#x3D; isa &amp; ISA_MASK(位运算 &amp; 即获取isa中的shiftcls信息)</span><br><span class="line">	and    $0, $1, #ISA_MASK</span><br><span class="line">.endmacro</span><br></pre></td></tr></table></figure>
+
+<h4 id="CacheLookup-缓存查找汇编源码"><a href="#CacheLookup-缓存查找汇编源码" class="headerlink" title="CacheLookup 缓存查找汇编源码"></a>CacheLookup 缓存查找汇编源码</h4><p>缓存查找执行的是<code>CacheLookup</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br></pre></td><td class="code"><pre><span class="line">.macro CacheLookup Mode, Function, MissLabelDynamic, MissLabelConstant</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line">	&#x2F;&#x2F; Restart protocol:</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line">	&#x2F;&#x2F;   As soon as we&#39;re past the LLookupStart\Function label we may have</span><br><span class="line">	&#x2F;&#x2F;   loaded an invalid cache pointer or mask.</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line">	&#x2F;&#x2F;   When task_restartable_ranges_synchronize() is called,</span><br><span class="line">	&#x2F;&#x2F;   (or when a signal hits us) before we&#39;re past LLookupEnd\Function,</span><br><span class="line">	&#x2F;&#x2F;   then our PC will be reset to LLookupRecover\Function which forcefully</span><br><span class="line">	&#x2F;&#x2F;   jumps to the cache-miss codepath which have the following</span><br><span class="line">	&#x2F;&#x2F;   requirements:</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line">	&#x2F;&#x2F;   GETIMP:</span><br><span class="line">	&#x2F;&#x2F;     The cache-miss is just returning NULL (setting x0 to 0)</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line">	&#x2F;&#x2F;   NORMAL and LOOKUP:</span><br><span class="line">	&#x2F;&#x2F;   - x0 contains the receiver</span><br><span class="line">	&#x2F;&#x2F;   - x1 contains the selector</span><br><span class="line">	&#x2F;&#x2F;   - x16 contains the isa</span><br><span class="line">	&#x2F;&#x2F;   - other registers are set as per calling conventions</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line"></span><br><span class="line">	mov	x15, x16			&#x2F;&#x2F; stash the original isa</span><br><span class="line">LLookupStart\Function:</span><br><span class="line">	&#x2F;&#x2F; p1 &#x3D; SEL, p16 &#x3D; isa</span><br><span class="line">#if CACHE_MASK_STORAGE &#x3D;&#x3D; CACHE_MASK_STORAGE_HIGH_16_BIG_ADDRS</span><br><span class="line">	ldr	p10, [x16, #CACHE]				&#x2F;&#x2F; p10 &#x3D; mask|buckets</span><br><span class="line">	lsr	p11, p10, #48			&#x2F;&#x2F; p11 &#x3D; mask</span><br><span class="line">	and	p10, p10, #0xffffffffffff	&#x2F;&#x2F; p10 &#x3D; buckets</span><br><span class="line">	and	w12, w1, w11			&#x2F;&#x2F; x12 &#x3D; _cmd &amp; mask</span><br><span class="line">&#x2F;&#x2F;64位真机</span><br><span class="line">#elif CACHE_MASK_STORAGE &#x3D;&#x3D; CACHE_MASK_STORAGE_HIGH_16</span><br><span class="line">	&#x2F;&#x2F;将x16 平移 CACHE大小 16位 CACHE &#x3D; (2 * __SIZEOF_POINTER__)2个指针大小</span><br><span class="line">	&#x2F;&#x2F;也就是isa 平移 0x10 找到cache p11 &#x3D; cache</span><br><span class="line">	ldr	p11, [x16, #CACHE]			&#x2F;&#x2F; p11 &#x3D; mask|buckets</span><br><span class="line">&#x2F;&#x2F;64位真机</span><br><span class="line">#if CONFIG_USE_PREOPT_CACHES </span><br><span class="line">&#x2F;&#x2F;arm64e A12(iPhone X)及之后机型</span><br><span class="line">#if __has_feature(ptrauth_calls)</span><br><span class="line">	&#x2F;&#x2F;判断p11(cache)是否存在 不存在跳转LLookupPreopt 存在继续执行</span><br><span class="line">	tbnz	p11, #0, LLookupPreopt\Function</span><br><span class="line">	&#x2F;&#x2F;p10 &#x3D; cahce&amp;mask &#x3D; buckets</span><br><span class="line">	and	p10, p11, #0x0000ffffffffffff	&#x2F;&#x2F; p10 &#x3D; buckets</span><br><span class="line">#else</span><br><span class="line">	and	p10, p11, #0x0000fffffffffffe	&#x2F;&#x2F; p10 &#x3D; buckets</span><br><span class="line">	tbnz	p11, #0, LLookupPreopt\Function</span><br><span class="line">#endif</span><br><span class="line">	&#x2F;&#x2F; p12 &#x3D; p1^(p1&gt;&gt;7) p1 &#x3D; _cmd</span><br><span class="line">	eor	p12, p1, p1, LSR #7</span><br><span class="line">	&#x2F;&#x2F; p12 &#x3D; p12&amp;(p11&gt;&gt;48) 哈希编码index</span><br><span class="line">	and	p12, p12, p11, LSR #48		&#x2F;&#x2F; x12 &#x3D; (_cmd ^ (_cmd &gt;&gt; 7)) &amp; mask</span><br><span class="line">#else</span><br><span class="line">	and	p10, p11, #0x0000ffffffffffff	&#x2F;&#x2F; p10 &#x3D; buckets</span><br><span class="line">	and	p12, p1, p11, LSR #48		&#x2F;&#x2F; x12 &#x3D; _cmd &amp; mask</span><br><span class="line">#endif &#x2F;&#x2F; CONFIG_USE_PREOPT_CACHES</span><br><span class="line">#elif CACHE_MASK_STORAGE &#x3D;&#x3D; CACHE_MASK_STORAGE_LOW_4</span><br><span class="line">	ldr	p11, [x16, #CACHE]				&#x2F;&#x2F; p11 &#x3D; mask|buckets</span><br><span class="line">	and	p10, p11, #~0xf			&#x2F;&#x2F; p10 &#x3D; buckets</span><br><span class="line">	and	p11, p11, #0xf			&#x2F;&#x2F; p11 &#x3D; maskShift</span><br><span class="line">	mov	p12, #0xffff</span><br><span class="line">	lsr	p11, p12, p11			&#x2F;&#x2F; p11 &#x3D; mask &#x3D; 0xffff &gt;&gt; p11</span><br><span class="line">	and	p12, p1, p11			&#x2F;&#x2F; x12 &#x3D; _cmd &amp; mask</span><br><span class="line">#else</span><br><span class="line">#error Unsupported cache mask storage for ARM64.</span><br><span class="line">#endif</span><br><span class="line">  &#x2F;&#x2F; 根据index找到对应的地址 p13 &#x3D; bukects[index] PTRSHIFT&#x3D;3</span><br><span class="line">	add	p13, p10, p12, LSL #(1+PTRSHIFT)</span><br><span class="line">						&#x2F;&#x2F; p13 &#x3D; buckets + ((_cmd &amp; mask) &lt;&lt; (1+PTRSHIFT))</span><br><span class="line"></span><br><span class="line">						&#x2F;&#x2F; do &#123;</span><br><span class="line">&#x2F;&#x2F; 从p13取出imp和sel p17&#x3D;imp p9&#x3D;sel bucket--</span><br><span class="line">1:	ldp	p17, p9, [x13], #-BUCKET_SIZE	&#x2F;&#x2F;     &#123;imp, sel&#125; &#x3D; *bucket--</span><br><span class="line">	&#x2F;&#x2F;判断p9是否等于传入的cmd</span><br><span class="line">	cmp	p9, p1				&#x2F;&#x2F;     if (sel !&#x3D; _cmd) &#123;</span><br><span class="line">	&#x2F;&#x2F;不相等，跳转到 3f</span><br><span class="line">	b.ne	3f				&#x2F;&#x2F;         scan more</span><br><span class="line">						&#x2F;&#x2F;     &#125; else &#123;</span><br><span class="line">&#x2F;&#x2F;缓存命中</span><br><span class="line">2:	CacheHit \Mode				&#x2F;&#x2F; hit:    call or return imp</span><br><span class="line">						&#x2F;&#x2F;     &#125;</span><br><span class="line">&#x2F;&#x2F;p9为空  </span><br><span class="line">3:	cbz	p9, \MissLabelDynamic		&#x2F;&#x2F;     if (sel &#x3D;&#x3D; 0) goto Miss;</span><br><span class="line">	&#x2F;&#x2F;p13&gt;p10(首地址) 循环查找buckets</span><br><span class="line">	cmp	p13, p10			&#x2F;&#x2F; &#125; while (bucket &gt;&#x3D; buckets)</span><br><span class="line">	b.hs	1b</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; wrap-around:</span><br><span class="line">	&#x2F;&#x2F;   p10 &#x3D; first bucket</span><br><span class="line">	&#x2F;&#x2F;   p11 &#x3D; mask (and maybe other bits on LP64)</span><br><span class="line">	&#x2F;&#x2F;   p12 &#x3D; _cmd &amp; mask</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line">	&#x2F;&#x2F; A full cache can happen with CACHE_ALLOW_FULL_UTILIZATION.</span><br><span class="line">	&#x2F;&#x2F; So stop when we circle back to the first probed bucket</span><br><span class="line">	&#x2F;&#x2F; rather than when hitting the first bucket again.</span><br><span class="line">	&#x2F;&#x2F;</span><br><span class="line">	&#x2F;&#x2F; Note that we might probe the initial bucket twice</span><br><span class="line">	&#x2F;&#x2F; when the first probed slot is the last entry.</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">#if CACHE_MASK_STORAGE &#x3D;&#x3D; CACHE_MASK_STORAGE_HIGH_16_BIG_ADDRS</span><br><span class="line">	add	p13, p10, w11, UXTW #(1+PTRSHIFT)</span><br><span class="line">						&#x2F;&#x2F; p13 &#x3D; buckets + (mask &lt;&lt; 1+PTRSHIFT)</span><br><span class="line">&#x2F;&#x2F;64位真机 </span><br><span class="line">#elif CACHE_MASK_STORAGE &#x3D;&#x3D; CACHE_MASK_STORAGE_HIGH_16</span><br><span class="line">&#x2F;&#x2F;</span><br><span class="line">	add	p13, p10, p11, LSR #(48 - (1+PTRSHIFT))</span><br><span class="line">						&#x2F;&#x2F; p13 &#x3D; buckets + (mask &lt;&lt; 1+PTRSHIFT)</span><br><span class="line">						&#x2F;&#x2F; see comment about maskZeroBits</span><br><span class="line">#elif CACHE_MASK_STORAGE &#x3D;&#x3D; CACHE_MASK_STORAGE_LOW_4</span><br><span class="line">	add	p13, p10, p11, LSL #(1+PTRSHIFT)</span><br><span class="line">						&#x2F;&#x2F; p13 &#x3D; buckets + (mask &lt;&lt; 1+PTRSHIFT)</span><br><span class="line">#else</span><br><span class="line">#error Unsupported cache mask storage for ARM64.</span><br><span class="line">#endif</span><br><span class="line">	add	p12, p10, p12, LSL #(1+PTRSHIFT)</span><br><span class="line">						&#x2F;&#x2F; p12 &#x3D; first probed bucket</span><br><span class="line"></span><br><span class="line">						&#x2F;&#x2F; do &#123;</span><br><span class="line">4:	ldp	p17, p9, [x13], #-BUCKET_SIZE	&#x2F;&#x2F;     &#123;imp, sel&#125; &#x3D; *bucket--</span><br><span class="line">	cmp	p9, p1				&#x2F;&#x2F;     if (sel &#x3D;&#x3D; _cmd)</span><br><span class="line">	b.eq	2b				&#x2F;&#x2F;         goto hit</span><br><span class="line">	cmp	p9, #0				&#x2F;&#x2F; &#125; while (sel !&#x3D; 0 &amp;&amp;</span><br><span class="line">	ccmp	p13, p12, #0, ne		&#x2F;&#x2F;     bucket &gt; first_probed)</span><br><span class="line">	b.hi	4b</span><br><span class="line"></span><br><span class="line">LLookupEnd\Function:</span><br><span class="line">LLookupRecover\Function:</span><br><span class="line">	b	\MissLabelDynamic</span><br></pre></td></tr></table></figure>
+
+<p>宏的定义参考定义：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(__arm64__) &amp;&amp; __LP64__</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> TARGET_OS_OSX || TARGET_OS_SIMULATOR</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> CACHE_MASK_STORAGE CACHE_MASK_STORAGE_HIGH_16_BIG_ADDRS</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> CACHE_MASK_STORAGE CACHE_MASK_STORAGE_HIGH_16</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(__arm64__) &amp;&amp; !__LP64__</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> CACHE_MASK_STORAGE CACHE_MASK_STORAGE_LOW_4</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> CACHE_MASK_STORAGE CACHE_MASK_STORAGE_OUTLINED</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<h4 id="CashHit"><a href="#CashHit" class="headerlink" title="CashHit"></a>CashHit</h4><p>找到缓存就是执行<code>Cashit</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; CacheHit: x17 &#x3D; cached IMP, x10 &#x3D; address of buckets, x1 &#x3D; SEL, x16 &#x3D; isa</span><br><span class="line">.macro CacheHit</span><br><span class="line">.if $0 &#x3D;&#x3D; NORMAL</span><br><span class="line">	TailCallCachedImp x17, x10, x1, x16	&#x2F;&#x2F; authenticate and call imp</span><br><span class="line">.elseif $0 &#x3D;&#x3D; GETIMP</span><br><span class="line">	mov	p0, p17</span><br><span class="line">	cbz	p0, 9f			&#x2F;&#x2F; don&#39;t ptrauth a nil imp</span><br><span class="line">	AuthAndResignAsIMP x0, x10, x1, x16	&#x2F;&#x2F; authenticate imp and re-sign as IMP</span><br><span class="line">9:	ret				&#x2F;&#x2F; return IMP</span><br><span class="line">.elseif $0 &#x3D;&#x3D; LOOKUP</span><br><span class="line">	&#x2F;&#x2F; No nil check for ptrauth: the caller would crash anyway when they</span><br><span class="line">	&#x2F;&#x2F; jump to a nil IMP. We don&#39;t care if that jump also fails ptrauth.</span><br><span class="line">	AuthAndResignAsIMP x17, x10, x1, x16	&#x2F;&#x2F; authenticate imp and re-sign as IMP</span><br><span class="line">	cmp	x16, x15</span><br><span class="line">	cinc	x16, x16, ne			&#x2F;&#x2F; x16 +&#x3D; 1 when x15 !&#x3D; x16 (for instrumentation ; fallback to the parent class)</span><br><span class="line">	ret				&#x2F;&#x2F; return imp via x17</span><br><span class="line">.else</span><br><span class="line">.abort oops</span><br><span class="line">.endif</span><br><span class="line">.endmacro</span><br><span class="line"></span><br><span class="line">.macro TailCallCachedImp</span><br><span class="line">	&#x2F;&#x2F; $0 &#x3D; cached imp, $1 &#x3D; address of cached imp, $2 &#x3D; SEL, $3 &#x3D; isa</span><br><span class="line">	&#x2F;&#x2F; $0 &#x3D; imp ^ isa &#x3D; 哈希编码index</span><br><span class="line">	eor	$0, $0, $3</span><br><span class="line">	&#x2F;&#x2F; 执行imp</span><br><span class="line">	br	$0</span><br><span class="line">.endmacro</span><br></pre></td></tr></table></figure>
+
+<p>###总结</p>
+<p>通过代码的注释可以看出<code>_objc_msgSend</code>查找缓存的步骤是</p>
+<ul>
+<li>判断消息接收者(<code>receiver</code>)是否为空</li>
+<li>根据对象首地址找到<code>isa</code></li>
+<li>对象的<code>isa</code>指向<code>类</code>找到类<code>class</code>即<code>p16</code></li>
+<li><code>class</code>内存平移<code>16</code>找到<code>cache</code>。</li>
+<li>cache&amp;mask -&gt; buckets</li>
+<li>(_cmd ^ (_cmd &gt;&gt; 7)) &amp; mask得到<code>index</code></li>
+<li>通过<code>buckets[index]</code>找到<code>index</code>的<code>bucket</code></li>
+<li>根据<code>bucket取到</code>imp<code>和</code>sel</li>
+<li>比较<code>sel</code>是否是传入的<code>_cmd</code></li>
+<li>如果是 执行<code>Cashit</code> 执行<code>imp</code></li>
+<li>如果不是 循环查找</li>
+<li>找不到的话执行<code>_objc_msgSend_uncached</code>流程</li>
+</ul>
+<p>下一篇我们继续探索找不到的情况也就是<code>_objc_msgSend_uncached</code>的流程。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-catche-t/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1946,225 +2117,6 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/19/flutter%E6%8E%A2%E7%B4%A2-%E7%8A%B6%E6%80%81%E7%AE%A1%E7%90%86%E5%88%86%E6%9E%90/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/05/19/flutter%E6%8E%A2%E7%B4%A2-%E7%8A%B6%E6%80%81%E7%AE%A1%E7%90%86%E5%88%86%E6%9E%90/" itemprop="url">Flutter探索  - 状态管理分析</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-05-19T16:05:48+08:00">
-                2021-05-19
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h3 id="状态管理是什么"><a href="#状态管理是什么" class="headerlink" title="状态管理是什么"></a>状态管理是什么</h3><p>我们知道最基本的程序是什么</p>
-<ul>
-<li><p>程序 = 算法 + 数据结构</p>
-<p>数据是程序的中心。数据结构和算法两个概念间的逻辑关系贯穿整个程序世界，首先两者表现为不可分割的关系。flutter也是一个程序。由此得出</p>
-</li>
-<li><p>Flutter = 算法 + 数据结构</p>
-<p>那状态管理是什么？我们也用公式表示一下：</p>
-</li>
-<li><p>Flutter状态管理 = 算法 + 数据结构 + UI绑定</p>
-<p>来看一段代码例子：</p>
-</li>
-</ul>
-<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ThemeBloc</span> </span>&#123;</span><br><span class="line">  <span class="keyword">final</span> _themeStreamController = StreamController&lt;AppTheme&gt;();</span><br><span class="line">  <span class="keyword">get</span> changeTheTheme =&gt; _themeStreamController.sink.add;</span><br><span class="line">  <span class="keyword">get</span> darkThemIsEnABLE =&gt; _themeStreamController.stream;</span><br><span class="line">  dispose()&#123;</span><br><span class="line">    _themStreamController.close();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">final</span> bloc = ThemeBloc();</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AppTheme</span> </span>&#123;</span><br><span class="line">  ThemeData themeData;</span><br><span class="line">  AppTheme(<span class="keyword">this</span>.themeData);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//绑定到UI</span></span><br><span class="line">StreamBulder&lt;AppTheme&gt;(</span><br><span class="line">	initialData:AppTheme.LIGHT_THEME,</span><br><span class="line">  stream:bloc.dartThemeIsEnabled,</span><br><span class="line">  builder:(contenxt,AsyncSnapshot&lt;AppTheme&gt; snapshot)&#123;</span><br><span class="line">    <span class="keyword">return</span> MaterialApp(</span><br><span class="line">      title:<span class="string">"Jason"</span>,</span><br><span class="line">      theme:snapshot.data.themeData,</span><br><span class="line">      home:PageHome(),</span><br><span class="line">      routes:&lt;<span class="built_in">String</span>,WidgetBuilder&gt;&#123;</span><br><span class="line">        <span class="string">"/pageChatGroup"</span>:(context) =&gt; PageChatGroup(),</span><br><span class="line">        <span class="string">"/laoYu"</span>:(context) =&gt; LaoYu(),</span><br><span class="line">      &#125;</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>AppTheme 是数据结构</li>
-<li>changeTheTheme 是算法</li>
-<li>StreamBuilder 是绑定UI</li>
-</ul>
-<p>这样一整套代码的逻辑就是我们所说的Flutter状态管理。算法就是我们如何管理，数据结构是数据状态，状态管理的本质还是如何通过合理的算法管理数据，如何取，如何接收等，最终展示在UI上，通过UI的变更来提现状态的管理逻辑。</p>
-<h3 id="为什么需要状态管理"><a href="#为什么需要状态管理" class="headerlink" title="为什么需要状态管理"></a>为什么需要状态管理</h3><p>状态管理可以实现组件通信、跨组件数据储存。原生的状态变更是通过具体的组件直接复制，如果页面全部变更，是不是需要每一个都设置一遍，而Flutter的变更就简单粗暴 ，setState搞定，它背后的逻辑是重新build整个页面，发现有变更，再将新的数据复制。其实原生开发与Flutter的本质的区别就是数据与视图完全分离，目前原生也出现了UI绑定框架。说明flutter的设计的先进性。这样设计的弊端是什么？</p>
-<p>答案就是<code>页面如何刷新才是Flutter的关键</code>，原生也面临这个问题，页面的重绘导致丢帧问题，为了效果更好，我们很多时候都选择局部刷新，原生已经很明确的告诉UI要刷新什么更新什么，而对于Flutter来说，这一点恨不清晰，虽然Flutter也做了类似虚拟Dom优化重绘逻辑，但这远远不够，如何合理的更新UI才是最主要的，这个时候一大堆的状态管理就出来了，当然状态管理也不是仅仅为了解决更新问题。我们再思考一个问题，如果我有一个widget A，我想在另外一个widget B中改变widget A的一个状态，或者从网络、数据库取到数据，然后刷新它。</p>
-<p>一个糟糕的写法是，A widget的 state为全局的，当B widget 需要刷新的时候 直接调用 AState对象的 <code>setState</code> 方法.</p>
-<p>这样写有几个问题：</p>
-<p>1、违背了封装的概念，其他所有类都可以拿到A的state对象。</p>
-<p>2、A和B强耦合了。</p>
-<p>3、每次都是重绘整个widget A 性能变差。</p>
-<p>4、不利于测试。</p>
-<p>如何变好了，这就需要我们选择一种合适的状态管理方式。</p>
-<h4 id="状态管理的目标"><a href="#状态管理的目标" class="headerlink" title="状态管理的目标"></a>状态管理的目标</h4><p>其实我们做状态管理，不仅仅是因为它的特点，也是更好地架构。</p>
-<ul>
-<li>代码层次分明，易维护，易阅读。</li>
-<li>可扩展，可以动态替换UI而不影响算法逻辑。</li>
-<li>安全可靠，保持数据的稳定伸缩</li>
-<li>性能佳，局部刷新。</li>
-</ul>
-<p>这不仅仅是状态管理的目的，也是我们做一款优秀应用的基础架构。</p>
-<h3 id="状态管理的基本分类"><a href="#状态管理的基本分类" class="headerlink" title="状态管理的基本分类"></a>状态管理的基本分类</h3><ul>
-<li>局部管理 官方也称Ephemeral State，意思是短暂的状态，这种状态根本不需要做全局处理，StatefulWidget处理即可完成。</li>
-<li>全局管理 官方称App state ，即应用状态，非短暂状态，你要在应用程序的许多部分之间共享，以及希望在用户会话之间保持的状态，就是我们所说的应用程序状态（也称共享状态）。例如：<ul>
-<li>用户偏好</li>
-<li>登录信息</li>
-<li>购物车</li>
-<li>新闻阅读状态</li>
-</ul>
-</li>
-</ul>
-<p>总之，任何Flutter应用程序中都有两种概念性的状态类型。临时状态可以使用State和setState来事项，并且通常是单个窗口小部件的本地状态。剩下的就是应用的状态。两种类型在任何Flutter应用程序中都有自己的位置，两者之间的划分取决于你自己的喜好和应用程序的复杂性。没有最好的管理方式，只有最合适的管理方式。</p>
-<h3 id="底层逻辑"><a href="#底层逻辑" class="headerlink" title="底层逻辑"></a>底层逻辑</h3><p>底层逻辑主要讲，Flutter中目前有哪些可以做到状态管理，有什么缺点，适合做什么不适合做什么，完全明白底层逻辑才不会畏惧复杂的逻辑，即使逻辑复杂也能选择合理的方式去管理状态。</p>
-<ul>
-<li><p>State</p>
-<p>StatefulWidget、SteamBuilder状态管理方式。</p>
-</li>
-<li><p>InheritedWidget</p>
-<p>专门负责Widget树种数据共享的功能型Widget，如Provider、scoped_model就是基于它开发</p>
-</li>
-<li><p>Notification</p>
-<p>与InheritedWidget正好相反，InheritedWidget是从上往下传递数据，Notification是从下往上，但两者都是在自己的Widget树种传递，无法跨越树传递。</p>
-</li>
-<li><p>Stream</p>
-<p>数据流 如Bloc、flutter_redux、fish_redux等也都基于它来做实现。</p>
-</li>
-</ul>
-<p>下面一一分析</p>
-<h3 id="State"><a href="#State" class="headerlink" title="State"></a>State</h3><p>State是我们常用而且使用最频繁的一个状态管理类，它必须结合StatefulWidget一起使用，StreamBuilder继承自StatefulWidget，同样使用setState来管理状态。</p>
-<p>为什么用State管理状态，而不是Widget本身。Flutter设计时让Widget本身是不变的，类似固定的配置信息，那么就需要一个角色来控制它，State就出现了，但State的任何更改都会强制整个Widget重新构建，当然也可以覆盖必要的方法自己控制逻辑。</p>
-<p>注意：setState是整个Widget重新构建（子Widget也会销毁重建），这个点也是为什么不推荐大量使用StatefulWidget的原因。如果页面足够复杂，就会导致严重的性能损耗。建议使用StreamBuilder，它原理上是State，但它做到了子Widget的局部刷新，不会导致整个页面的重建。</p>
-<h4 id="State的缺点"><a href="#State的缺点" class="headerlink" title="State的缺点"></a>State的缺点</h4><ul>
-<li>无法做到夸组件共享数据（这个夸是无关联的，如果是直接的父子关系，不算是跨组件）。一般我们将State的子类设置为私有，所以无法做到让别的组件调用State的setState函数来刷新。</li>
-<li>setState会成为维护的难点，因为到处都有。随着页面状态的增多，可能调用的setState的地方会越来越多，不能统一管理。</li>
-<li>处理数据逻辑和视图混合在一起，违反代码设计原则。比如网络的数据取出来setState的UI上，这样编写代码，导致状态和UI耦合在一起，不利于测试和复用。</li>
-</ul>
-<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>反过来讲，State简单高效，当复杂到需要更好地管理的时候再重构，一个基本原则就是，状态是否需要跨组件使用，如果需要那就用别的方法管理状态而不是State管理。</p>
-<h3 id="InheritedWidget"><a href="#InheritedWidget" class="headerlink" title="InheritedWidget"></a>InheritedWidget</h3><p>InheritedWidget是一个无私的Widget，它可以把自己的状态数据，无私交给所有的子Widget，所有的子Widget可以无条件的继承它的状态。它的数据是只读的，子widget不能修改。</p>
-<h4 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h4><p>缺点：</p>
-<ul>
-<li>容易造成不必要的刷新。</li>
-<li>不支持跨页面（router）的状态，不是同一个树的状态无法获取。</li>
-<li>数据不可变，必须结合StatefulWidget、ChangeNotifier或者Steam使用。</li>
-</ul>
-<p>比较适合在一个属性Widget中，抽象出公有状态，每一个子Widget或者孙Widget都可以获取该状态，我们可以通过手段控制rebuild的粒度来优化重绘逻辑，但它更适合从上往下传递，如果从下往上传递，如何做，下面解答。</p>
-<h3 id="Notification"><a href="#Notification" class="headerlink" title="Notification"></a>Notification</h3><p>它是flutter中跨层数据共享的一种机制，它不是widget，它提供了dispatch方法，来让我们沿着context对应的Element节点向上逐层发送通知。</p>
-<h4 id="小结："><a href="#小结：" class="headerlink" title="小结："></a>小结：</h4><p>缺点</p>
-<ul>
-<li>不支持跨页面的状态，准确的说不支持NotificationListener同级或者父级Widget的状态通知</li>
-<li>本身不支持刷新UI,需要结合State使用</li>
-<li>如果结合State，会导致整个UI的重绘，效率低下不科学。</li>
-</ul>
-<p>使用起来简单，如果页面复杂度高不推荐。</p>
-<h3 id="Stream"><a href="#Stream" class="headerlink" title="Stream"></a>Stream</h3><p>Stream其实是一个生产者消费者模型，一端负责生产，一端负责消费，而且是纯Dart的实现，跟Flutter没什么关系，扯上关系的就是StreamBuilder来构建一个Stream通道的Widget，像知名的rxdart、Bloc、flutter_redux全都用到了Stream的api。所以学习它才是我们掌握状态管理的关键。</p>
-<h4 id="小结-2"><a href="#小结-2" class="headerlink" title="小结"></a>小结</h4><p>缺点</p>
-<ul>
-<li>api生涩，不好理解。</li>
-<li>需要定制化，才能满足更复杂的场景。</li>
-<li>没有自动dispose逻辑。</li>
-</ul>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>以上所有的状态更新都离不开State的支持。</p>
-<h3 id="状态管理的使用原则"><a href="#状态管理的使用原则" class="headerlink" title="状态管理的使用原则"></a>状态管理的使用原则</h3><h4 id="局部管理优于全局"><a href="#局部管理优于全局" class="headerlink" title="局部管理优于全局"></a>局部管理优于全局</h4><p>这个原则来源于，Flutter的性能优化，局部刷新肯定比全局刷新要好很多，那么我们在管理状态的同时，也要考虑该状态到底是局部还是全局，从而编写正确的逻辑。</p>
-<h4 id="保持数据安全性"><a href="#保持数据安全性" class="headerlink" title="保持数据安全性"></a>保持数据安全性</h4><p>用<code>_</code>私有化状态，因为当开发人员众多，当别人看到你的变量的时候，第一反应可能不是找你提供的方法，而是直接对变量操作，那就有可能出现想不到的后果，如果他只能调用你提供的方法，那他就要遵循你方法的逻辑，避免数据被处理错误。</p>
-<h4 id="考虑页面重新build带来的影响"><a href="#考虑页面重新build带来的影响" class="headerlink" title="考虑页面重新build带来的影响"></a>考虑页面重新build带来的影响</h4><p>很多时候页面的重建都会调用build函数，也就是说，在一个生命周期内，build函数是多次被调用的，所以你就要考虑数据的初始化或者刷新怎么样才能合理。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -2215,7 +2167,7 @@
               
                 <a href="/archives/%20">
               
-                  <span class="site-state-item-count">28</span>
+                  <span class="site-state-item-count">29</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
