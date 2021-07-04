@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT" />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="前面两篇文章我们探索了消息查找的流程，包括快速查找和慢速查找，本文开始探索消息查找未找到时候的处理流程。 unrecognized selectorunrecognized selector是我们开发中很熟悉的一种错误，就是找不到方法的时候报错的提示，比如： 123456789101112131415161718&#x2F;&#x2F;  JSPerson.h@interface JSPerson">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS底层探索 - 动态方法决议">
+<meta property="og:url" content="http://yujiusheng.com/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="前面两篇文章我们探索了消息查找的流程，包括快速查找和慢速查找，本文开始探索消息查找未找到时候的处理流程。 unrecognized selectorunrecognized selector是我们开发中很熟悉的一种错误，就是找不到方法的时候报错的提示，比如： 123456789101112131415161718&#x2F;&#x2F;  JSPerson.h@interface JSPerson">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/82d0a5d1f1044e129b5a92cc2dc99429~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a634df8fa05945829cdae9c99022496c~tplv-k3u1fbpfcp-watermark.image">
+<meta property="article:published_time" content="2021-07-04T01:12:56.000Z">
+<meta property="article:modified_time" content="2021-07-04T08:37:27.000Z">
+<meta property="article:author" content="Jason">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/82d0a5d1f1044e129b5a92cc2dc99429~tplv-k3u1fbpfcp-watermark.image">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yujiusheng.com/2021/07/04/iOS底层探索-动态方法解析/"/>
+
+
+
+
+
+  <title>iOS底层探索 - 动态方法决议 | Jason的博客</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Jason的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">iOS底层探索 - 动态方法决议</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-07-04T09:12:56+08:00">
+                2021-07-04
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>前面两篇文章我们探索了消息查找的流程，包括快速查找和慢速查找，本文开始探索消息查找未找到时候的处理流程。</p>
+<h3 id="unrecognized-selector"><a href="#unrecognized-selector" class="headerlink" title="unrecognized selector"></a>unrecognized selector</h3><p><code>unrecognized selector</code>是我们开发中很熟悉的一种错误，就是找不到方法的时候报错的提示，比如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;  JSPerson.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  JSPerson.m</span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  main.m</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们定义一个<code>JSPerson</code>类，声明一个<code>sayNB</code>方法，但是并没有实现，因为<code>oc</code>是一种动态语言，可以在运行时添加方法实现，所以没有实现编译期并不会报错。在<code>main</code>函数里实例化一个<code>JSPerson</code>对象，调用<code>sayNB</code>方法，这个时候程序就会崩溃，报错：</p>
+<p><code>Terminating app due to uncaught exception &#39;NSInvalidArgumentException&#39;, reason: &#39;-[JSPerson sayNB]: unrecognized selector sent to instance 0x101844590&#39;</code>。</p>
+<p>这个错误是怎么来的呢，我们从上一节最后方法找不到的地方开始看，当没有找到方法实现时，<code>lookUpImpOrForward</code>方法返回值是<code>imp = forward_imp;</code>即<code>_objc_msgForward_impcache</code>。<code>objc</code>源码工程里全局搜索这个关键字，在<code>objc-msg-arm64.s</code>文件的<code>745</code>行找到实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">STATIC_ENTRY __objc_msgForward_impcache</span><br><span class="line">	&#x2F;&#x2F; No stret specialization.</span><br><span class="line">	b	__objc_msgForward</span><br><span class="line"></span><br><span class="line">END_ENTRY __objc_msgForward_impcache</span><br><span class="line">	</span><br><span class="line">ENTRY __objc_msgForward</span><br><span class="line"></span><br><span class="line">	adrp	x17, __objc_forward_handler@PAGE</span><br><span class="line">	ldr	p17, [x17, __objc_forward_handler@PAGEOFF]</span><br><span class="line">	&#x2F;&#x2F;&#x2F;返回x17 </span><br><span class="line">	TailCallFunctionPointer x17</span><br><span class="line">	</span><br><span class="line">END_ENTRY __objc_msgForward</span><br></pre></td></tr></table></figure>
+
+<p>这段代码比较简单，调用了<code>__objc_forward_handler</code>方法，继续搜索<code>__objc_forward_handler</code>方法，并没有找到方法实现，根据前面的经验，去掉<code>_</code>继续搜索<code>objc_forward_handler</code>,在<code>objc_runtime.mm</code>文件中找到了实现：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Default forward handler halts the process.</span></span><br><span class="line">__attribute__((noreturn, cold)) <span class="keyword">void</span></span><br><span class="line">objc_defaultForwardHandler(id self, SEL sel)</span><br><span class="line">&#123;</span><br><span class="line">    _objc_fatal(<span class="string">"%c[%s %s]: unrecognized selector sent to instance %p "</span></span><br><span class="line">                <span class="string">"(no message forward handler is installed)"</span>, </span><br><span class="line">                class_isMetaClass(object_getClass(self)) ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                object_getClassName(self), sel_getName(sel), self);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">void</span> *_objc_forward_handler = (<span class="keyword">void</span>*)objc_defaultForwardHandler;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码就显而易见了，找不到方法的时候会执行<code>unrecognized selector</code>报错。</p>
+<h3 id="动态方法决议"><a href="#动态方法决议" class="headerlink" title="动态方法决议"></a>动态方法决议</h3><p>了解了<code>unrecognized selector</code>后我们回到<code>lookUpImpOrForward</code>的流程，当递归完查找所有父类流程没有找到方法实现会继续执行方法后面的代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (slowpath(behavior &amp; LOOKUP_RESOLVER)) &#123;</span><br><span class="line">     behavior ^= LOOKUP_RESOLVER;</span><br><span class="line">     <span class="keyword">return</span> resolveMethod_locked(inst, sel, cls, behavior);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>behavior</code>是<code>lookUpImpOrForward</code>方法的最后一个参数，通过找到方法的调用<code>behavior=LOOKUP_INITIALIZE | LOOKUP_RESOLVER</code>=<code>3</code>。<code>LOOKUP_RESOLVER=2</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">	<span class="comment">// lookUpImpOrForward(obj, sel, cls, LOOKUP_INITIALIZE | LOOKUP_RESOLVER)</span></span><br><span class="line"><span class="keyword">enum</span> &#123;</span><br><span class="line">    LOOKUP_INITIALIZE = <span class="number">1</span>,</span><br><span class="line">    LOOKUP_RESOLVER = <span class="number">2</span>,</span><br><span class="line">    LOOKUP_NIL = <span class="number">4</span>,</span><br><span class="line">    LOOKUP_NOCACHE = <span class="number">8</span>,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>这个<code>if</code>代码块其实是巧妙的使用了<code>单例</code>思想只会执行一次:</p>
+<ul>
+<li>初始behavior &amp; LOOKUP_RESOLVER = <code>3 &amp; 2</code> = <code>2</code>,条件为<code>true</code>执行</li>
+<li><code>behavior ^= LOOKUP_RESOLVER = 3 ^ 2 = 1</code></li>
+<li>如果后面再次进行<code>if</code>判断，<code>behavior &amp; LOOKUP_RESOLVER = 1 &amp; 2 = 0</code>,条件为<code>false</code>就不会执行代码块。</li>
+</ul>
+<p>前面<code>if</code>代码块会执行方法：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> NEVER_INLINE IMP</span><br><span class="line">resolveMethod_locked(id inst, SEL sel, Class cls, <span class="keyword">int</span> behavior)</span><br><span class="line">&#123;</span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    runtimeLock.unlock();</span><br><span class="line">    <span class="comment">//判断是否是元类</span></span><br><span class="line">    <span class="keyword">if</span> (! cls-&gt;isMetaClass()) &#123;</span><br><span class="line">      	<span class="comment">//实例方法 解析</span></span><br><span class="line">        <span class="comment">// try [cls resolveInstanceMethod:sel]</span></span><br><span class="line">        resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// try [nonMetaClass resolveClassMethod:sel]</span></span><br><span class="line">        <span class="comment">// and [cls resolveInstanceMethod:sel]</span></span><br><span class="line">        <span class="comment">//类方法 解析</span></span><br><span class="line">        resolveClassMethod(inst, sel, cls);</span><br><span class="line">        <span class="keyword">if</span> (!lookUpImpOrNilTryCache(inst, sel, cls)) &#123;</span><br><span class="line">            resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// chances are that calling the resolver have populated the cache</span></span><br><span class="line">    <span class="comment">// so attempt using it</span></span><br><span class="line">    <span class="comment">// 如果前面处理了 重新进行查找</span></span><br><span class="line">    <span class="keyword">return</span> lookUpImpOrForwardTryCache(inst, sel, cls, behavior);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="实例方法流程"><a href="#实例方法流程" class="headerlink" title="实例方法流程"></a>实例方法流程</h4><p>我们先看实例方法，实例方法会调用<code>resolveInstanceMethod</code>方法：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">resolveInstanceMethod</span><span class="params">(id inst, SEL sel, Class cls)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertUnlocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    <span class="comment">//resolveInstanceMethod 类方法</span></span><br><span class="line">    SEL resolve_sel = @selector(resolveInstanceMethod:);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!lookUpImpOrNilTryCache(cls, resolve_sel, cls-&gt;ISA(<span class="comment">/*authenticated*/</span><span class="literal">true</span>))) &#123;</span><br><span class="line">        <span class="comment">// Resolver not implemented.</span></span><br><span class="line">      	<span class="comment">// 因为系统有默认实现这里不会执行到</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    BOOL (*msg)(Class, SEL, SEL) = (typeof(msg))objc_msgSend;</span><br><span class="line">    <span class="keyword">bool</span> resolved = msg(cls, resolve_sel, sel);<span class="comment">//resolved 表示方法返回值</span></span><br><span class="line">    <span class="comment">// Cache the result (good or bad) so the resolver doesn't fire next time.</span></span><br><span class="line">    <span class="comment">// +resolveInstanceMethod adds to self a.k.a. cls</span></span><br><span class="line">    <span class="comment">// 继续查找 一次</span></span><br><span class="line">    IMP imp = lookUpImpOrNilTryCache(inst, sel, cls);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (resolved  &amp;&amp;  PrintResolving) &#123;</span><br><span class="line">        <span class="keyword">if</span> (imp) &#123;</span><br><span class="line">            <span class="comment">//找到了imp</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: method %c[%s %s] "</span></span><br><span class="line">                         <span class="string">"dynamically resolved to %p"</span>, </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), imp);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// resolved = true 但是不没有对应的处理方法</span></span><br><span class="line">            <span class="comment">// Method resolver didn't add anything?</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: +[%s resolveInstanceMethod:%s] returned YES"</span></span><br><span class="line">                         <span class="string">", but no new implementation of %c[%s %s] was found"</span>,</span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，其实是在类中添加一个<code>resolveInstanceMethod:</code>进行处理，我们在前面例子的基础上给<code>JSPerson</code>类添加一个<code>resolveInstanceMethod:</code>方法处理：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">- (void)saySomethingDefalut&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayNB)) &#123;</span><br><span class="line">            IMP sayDefalutImp &#x3D; class_getMethodImplementation(self, @selector(saySomethingDefalut));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(self, @selector(saySomethingDefalut));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(self, sel, sayDefalutImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">        return [super resolveInstanceMethod:sel];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>重新运行<code>main</code>方法，发现程序可以正常运行了，控制台打印结果</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"> &lt;JSPerson: <span class="number">0x10194fab0</span>&gt; - -[JSPerson saySomethingDefalut]</span><br></pre></td></tr></table></figure>
+
+<p>通过打印结果我们看到确实进入了<code>resolveInstanceMethod</code>,而且最终执行了<code>saySomethingDefalut</code>方法，实例方法的动态方法解析正常流程就是这样了。</p>
+<p>还有一个<strong>异常情况</strong>就是，如果我们不添加方法处理，只是打印执行<code>NSLog</code>方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        return [super resolveInstanceMethod:sel];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个时候程序崩溃是毋庸置疑的，因为这样写相当于没有处理，但是这时候控制台的打印结果是：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">-[JSPerson sayNB]: unrecognized selector sent to instance <span class="number">0x10193a810</span></span><br></pre></td></tr></table></figure>
+
+<p><code>resolveInstanceMethod</code>执行了<strong>两次</strong>,这是为什么呢,我们在<code>resolveInstanceMethod</code>方法添加断点，使用<code>bt</code>命令查看调用栈：</p>
+<ul>
+<li><p>第一次调用，就是我们刚刚探索的来源是<code>libobjc</code>框架的<code>_objc_msgSend_uncached</code>方法。调用信息如下图</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/82d0a5d1f1044e129b5a92cc2dc99429~tplv-k3u1fbpfcp-watermark.image" alt="1625382251804"></p>
+</li>
+<li><p>第二次调用，消息的来源是<code>CoreFoundation</code>的<code>___forwarding___</code>方法，下一篇我们会探索，调用信息如下图</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a634df8fa05945829cdae9c99022496c~tplv-k3u1fbpfcp-watermark.image" alt="1625382659258"></p>
+</li>
+</ul>
+<h4 id="类方法流程"><a href="#类方法流程" class="headerlink" title="类方法流程"></a>类方法流程</h4><p>类方法的流程就是在<code>resolveClassMethod</code>实现，</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">resolveClassMethod</span><span class="params">(id inst, SEL sel, Class cls)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertUnlocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    ASSERT(cls-&gt;isMetaClass());</span><br><span class="line">    <span class="keyword">if</span> (!lookUpImpOrNilTryCache(inst, @selector(resolveClassMethod:), cls)) &#123;</span><br><span class="line">        <span class="comment">// Resolver not implemented.</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Class nonmeta;</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="function"><span class="keyword">mutex_locker_t</span> <span class="title">lock</span><span class="params">(runtimeLock)</span></span>;</span><br><span class="line">      	<span class="comment">//入参是元类 返回是当前类</span></span><br><span class="line">        nonmeta = getMaybeUnrealizedNonMetaClass(cls, inst);</span><br><span class="line">        <span class="comment">// +initialize path should have realized nonmeta already</span></span><br><span class="line">        <span class="keyword">if</span> (!nonmeta-&gt;isRealized()) &#123;</span><br><span class="line">            _objc_fatal(<span class="string">"nonmeta class %s (%p) unexpectedly not realized"</span>,</span><br><span class="line">                        nonmeta-&gt;nameForLogging(), nonmeta);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    BOOL (*msg)(Class, SEL, SEL) = (typeof(msg))objc_msgSend;</span><br><span class="line"> 		<span class="comment">//向当前类发送消息</span></span><br><span class="line">    <span class="keyword">bool</span> resolved = msg(nonmeta, @selector(resolveClassMethod:), sel);</span><br><span class="line">    <span class="comment">// Cache the result (good or bad) so the resolver doesn't fire next time.</span></span><br><span class="line">    <span class="comment">// +resolveClassMethod adds to self-&gt;ISA() a.k.a. cls</span></span><br><span class="line">    IMP imp = lookUpImpOrNilTryCache(inst, sel, cls);</span><br><span class="line">    <span class="keyword">if</span> (resolved  &amp;&amp;  PrintResolving) &#123;</span><br><span class="line">        <span class="keyword">if</span> (imp) &#123;</span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: method %c[%s %s] "</span></span><br><span class="line">                         <span class="string">"dynamically resolved to %p"</span>, </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), imp);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Method resolver didn't add anything?</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: +[%s resolveClassMethod:%s] returned YES"</span></span><br><span class="line">                         <span class="string">", but no new implementation of %c[%s %s] was found"</span>,</span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个流程和实例方法很相似，在类中添加一个<code>resolveClassMethod:</code>的类方法处理，同样前面的例子我们验证一下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">+ (void)sayHowAreYou;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">  </span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">+ (void)sayAndYou&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveClassMethod:(SEL)sel&#123;</span><br><span class="line">    NSLog(@&quot;resolveClassMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayHowAreYou)) &#123;</span><br><span class="line">            IMP sayAndYouImp &#x3D; class_getMethodImplementation(objc_getMetaClass(&quot;JSPerson&quot;), @selector(sayAndYou));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(objc_getMetaClass(&quot;JSPerson&quot;), @selector(sayAndYou));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(objc_getMetaClass(&quot;JSPerson&quot;), sel, sayAndYouImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">    return [super resolveClassMethod:sel];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        [JSPerson sayHowAreYou];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译运行发现程序正常运行了，打印结果为</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">resolveClassMethod :JSPerson-sayHowAreYou</span><br><span class="line">JSPerson - +[JSPerson sayAndYou]</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">else&#123;</span><br><span class="line">       &#x2F;&#x2F; try [nonMetaClass resolveClassMethod:sel]</span><br><span class="line">       &#x2F;&#x2F; and [cls resolveInstanceMethod:sel]</span><br><span class="line">       &#x2F;&#x2F;类方法 解析</span><br><span class="line">       resolveClassMethod(inst, sel, cls);</span><br><span class="line">       if (!lookUpImpOrNilTryCache(inst, sel, cls)) &#123;</span><br><span class="line">           resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">       &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>细心地我们现在会发现在上面这段代码也就是类方法解析这个流程还有一个<code>resolveInstanceMethod(inst, sel, cls);</code>解析，这个原因是类方法在元类里是以实例方法的形式存在的，所以元类里<code>resolveInstanceMethod</code>对方法做了处理也会正常运行。</p>
+<h3 id="AOP思想处理动态方法决议"><a href="#AOP思想处理动态方法决议" class="headerlink" title="AOP思想处理动态方法决议"></a>AOP思想处理动态方法决议</h3><p>通过上面的动态方法解析流程，和前面我们探索的<a href="https://juejin.cn/post/6975781940519501861" target="_blank" rel="noopener"><code>isa</code>走位图和继承链</a>,我们可以使用<code>AOP</code>的思想，全局处理类的动态方法解析。具体实现就是在<code>NSObject</code>的分类中添加<code>resolveInstanceMethod:</code>类方法，处理方法的动态解析，例如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">@interface NSObject (JS)</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation NSObject (LG)</span><br><span class="line"></span><br><span class="line">- (void)saySomethingDefalut&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayNB)) &#123;</span><br><span class="line">            IMP sayDefalutImp &#x3D; class_getMethodImplementation(self, @selector(saySomethingDefalut));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(self, @selector(saySomethingDefalut));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(self, sel, sayDefalutImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">        return NO;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">  </span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@implementation JSPerson</span><br><span class="line">  </span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行项目发现正常运行，打印结果为：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">&lt;JSPerson: <span class="number">0x100593ed0</span>&gt; - -[NSObject(LG) saySomethingDefalut]</span><br></pre></td></tr></table></figure>
+
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本节我们主要探讨了动态方法解析流程，分实例方法和类方法两种情况</p>
+<ul>
+<li>实例方法是在类中实现<code>resolveInstanceMethod:</code>的类方法，处理方法得动态绑定到异常处理的方法。</li>
+<li>类方法分两部分查找<ol>
+<li>搜索当前类的<code>resolveClassMethod:</code>方法。</li>
+<li>搜索类的元类的<code>resolveInstanceMethod:</code>方法</li>
+</ol>
+</li>
+<li>我们可以利用AOP思想在根类的<code>分类</code>中实现<code>resolveInstanceMethod:</code>从而完成全局方法的动态解析。</li>
+</ul>
+<p>如果没有进行动态方法解析，接下来就会进入消息转发的流程，我们下一节探索。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/06/30/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc-msgSend-%E4%B8%8B/" rel="next" title="iOS底层探索 - objc_msgSend(下)">
+                <i class="fa fa-chevron-left"></i> iOS底层探索 - objc_msgSend(下)
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E6%B6%88%E6%81%AF%E8%BD%AC%E5%8F%91/" rel="prev" title="iOS底层探索 - 消息转发">
+                iOS底层探索 - 消息转发 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Jason</p>
+              <p class="site-description motion-element" itemprop="description">个人技术博客</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/%20">
+              
+                  <span class="site-state-item-count">32</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">标签</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#unrecognized-selector"><span class="nav-number">1.</span> <span class="nav-text">unrecognized selector</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#动态方法决议"><span class="nav-number">2.</span> <span class="nav-text">动态方法决议</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#实例方法流程"><span class="nav-number">2.1.</span> <span class="nav-text">实例方法流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#类方法流程"><span class="nav-number">2.2.</span> <span class="nav-text">类方法流程</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AOP思想处理动态方法决议"><span class="nav-number">3.</span> <span class="nav-text">AOP思想处理动态方法决议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

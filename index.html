@@ -230,6 +230,418 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E6%B6%88%E6%81%AF%E8%BD%AC%E5%8F%91/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E6%B6%88%E6%81%AF%E8%BD%AC%E5%8F%91/" itemprop="url">iOS底层探索 - 消息转发</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-07-04T17:14:03+08:00">
+                2021-07-04
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>上一篇中我们探索了消息发送找不到方法的一个流程<code>动态方法决议</code>，本篇探索<code>动态方法决议</code>也找不到<code>imp</code>的下一步，也就是<code>消息转发</code>。</p>
+<p>和前面的流程不同的是，<code>消息转发</code>的源码并不在<code>libobjc</code>库里，而是在<code>CFFoundtion</code>框架里，<code>CFFoundtion</code>框已经开源的代码里没有找到消息转发的内容，所以我们必须找其它方式探索这个流程。</p>
+<h3 id="通过instrumentObjcMessageSends打印消息日志方式"><a href="#通过instrumentObjcMessageSends打印消息日志方式" class="headerlink" title="通过instrumentObjcMessageSends打印消息日志方式"></a>通过instrumentObjcMessageSends打印消息日志方式</h3><h4 id="instrumentObjcMessageSends的由来"><a href="#instrumentObjcMessageSends的由来" class="headerlink" title="instrumentObjcMessageSends的由来"></a>instrumentObjcMessageSends的由来</h4><p>通过方法调用这条链路<code>lookUpImpOrForward --&gt; log_and_fill_cache --&gt; logMessageSend</code>,我们在<code>logMessageSend</code>方法源码下方找到<code>instrumentObjcMessageSends</code>的实现：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">instrumentObjcMessageSends</span><span class="params">(BOOL flag)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">bool</span> enable = flag;</span><br><span class="line">    <span class="comment">// Shortcut NOP</span></span><br><span class="line">    <span class="keyword">if</span> (objcMsgLogEnabled == enable)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// If enabling, flush all method caches so we get some traces</span></span><br><span class="line">    <span class="keyword">if</span> (enable)</span><br><span class="line">        _objc_flush_caches(Nil);</span><br><span class="line">    <span class="comment">// Sync our log file</span></span><br><span class="line">    <span class="keyword">if</span> (objcMsgLogFD != <span class="number">-1</span>)</span><br><span class="line">        fsync (objcMsgLogFD);</span><br><span class="line">  	<span class="comment">//赋值是否需要打印message log</span></span><br><span class="line">    objcMsgLogEnabled = enable;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>log</code>文件存储的路径我们从<code>logMessageSend</code>方法里可以看到，为<code>/tmp/msgSends</code>目录：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">logMessageSend</span><span class="params">(<span class="keyword">bool</span> isClassMethod,</span></span></span><br><span class="line"><span class="function"><span class="params">                    <span class="keyword">const</span> <span class="keyword">char</span> *objectsClass,</span></span></span><br><span class="line"><span class="function"><span class="params">                    <span class="keyword">const</span> <span class="keyword">char</span> *implementingClass,</span></span></span><br><span class="line"><span class="function"><span class="params">                    SEL selector)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">char</span>	buf[ <span class="number">1024</span> ];</span><br><span class="line">    <span class="comment">// Create/open the log file</span></span><br><span class="line">    <span class="keyword">if</span> (objcMsgLogFD == (<span class="number">-1</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">///日志文件打印路径</span></span><br><span class="line">        <span class="built_in">snprintf</span> (buf, <span class="keyword">sizeof</span>(buf), <span class="string">"/tmp/msgSends-%d"</span>, (<span class="keyword">int</span>) getpid ());</span><br><span class="line">        objcMsgLogFD = secure_open (buf, O_WRONLY | O_CREAT, geteuid());</span><br><span class="line">        <span class="keyword">if</span> (objcMsgLogFD &lt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// no log file - disable logging</span></span><br><span class="line">            objcMsgLogEnabled = <span class="literal">false</span>;</span><br><span class="line">            objcMsgLogFD = <span class="number">-1</span>;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// Make the log entry</span></span><br><span class="line">    <span class="built_in">snprintf</span>(buf, <span class="keyword">sizeof</span>(buf), <span class="string">"%c %s %s %s\n"</span>,</span><br><span class="line">            isClassMethod ? <span class="string">'+'</span> : <span class="string">'-'</span>,</span><br><span class="line">            objectsClass,</span><br><span class="line">            implementingClass,</span><br><span class="line">            sel_getName(selector));</span><br><span class="line"></span><br><span class="line">    objcMsgLogLock.lock();</span><br><span class="line">    <span class="built_in">write</span> (objcMsgLogFD, buf, <span class="built_in">strlen</span>(buf));</span><br><span class="line">    objcMsgLogLock.unlock();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Tell caller to not cache the method</span></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="instrumentObjcMessageSends的使用"><a href="#instrumentObjcMessageSends的使用" class="headerlink" title="instrumentObjcMessageSends的使用"></a>instrumentObjcMessageSends的使用</h4><ol>
+<li>在<code>main.m</code>文件里，通过<code>extern</code>声明<code>instrumentObjcMessageSends</code>方法。</li>
+<li>在调用方法前打开日志，调用方法后关闭日志。代码如下：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">extern void instrumentObjcMessageSends(BOOL flag);</span><br><span class="line"></span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        instrumentObjcMessageSends(YES);</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person saySomething];</span><br><span class="line">        instrumentObjcMessageSends(NO);</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>运行代码，查看日志文件</li>
+</ol>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/131e13fdd8ba4e9c851035e04011c6ce~tplv-k3u1fbpfcp-watermark.image" alt="1625403519834"></p>
+<p>通过日志文件可以清楚的看到都执行了哪些方法：</p>
+<ul>
+<li><code>resolveInstanceMethod</code>方法，即<code>动态方法决议</code></li>
+<li><code>forwardingTargetForSelector</code>方法，即<code>快速消息转发</code></li>
+<li><code>methodSignatureForSelector</code>方法，即<code>慢速消息转发</code></li>
+<li><code>resolveInstanceMethod</code>方法。即第二次<code>动态方法决议</code></li>
+<li>最后执行<code>doesNotRecognizeSelector</code>,抛出异常。</li>
+</ul>
+<p>这种方式我们就可以清楚的看到方法的调用流程，下面我们换一种方式验证一下。</p>
+<h3 id="反编译方式探索"><a href="#反编译方式探索" class="headerlink" title="反编译方式探索"></a>反编译方式探索</h3><p><a href="https://www.hopperapp.com/" target="_blank" rel="noopener">Hopper</a>是一款帮助我们静态分析可执行文件的工具。有了工具后我们还缺少两个东西才能继续探索：</p>
+<ol>
+<li><p>反编译之后，搜索代码的<code>关键字</code></p>
+<p>我们执行运行下面的代码，注意：<code>sayNB</code>方法是没有实现的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行之后会直接崩溃，我们使用<code>bt</code>命令查看调用栈信息</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7445c42269564c2b860969ccd4794c70~tplv-k3u1fbpfcp-watermark.image" alt="1625404761976"></p>
+<p>可以看到这里方法调用的起点是<code>CoreFoundation</code>_<em>forwarding_prep_0__</em> + 120`,所以我们搜索反编译代码的关键字就是<strong>forwarding_prep_0</strong></p>
+</li>
+<li><p>怎么获取我们需要反编译的可执行文件</p>
+<p>通过<code>1</code>步，我们知道<code>__forwarding_prep_0___</code>在<code>CoreFoundation</code>框架中,我们通过<code>lldb</code>的<code>image list</code>命令，找到<code>CoreFoundation</code>可执行文件的位置。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8930d06b559e46309e32738c99056d77~tplv-k3u1fbpfcp-watermark.image" alt="1625405481311"></p>
+<p>通过上图中目录我们找到<code>CoreFoundation</code>文件。</p>
+</li>
+<li><p>前面两个必要条件明确之后，我们打开<code>Hooper</code>软件，选择<code>Try The Demo</code>(主要因为软件太贵，土豪请直接购买正版)，然后将上一步的可执行文件拖入<code>Hooper</code>进行反编译，选择<code>x86(64 bit)</code></p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4999c11756d04c9dae3e524b3e288e5b~tplv-k3u1fbpfcp-watermark.image" alt="1625405841994"></p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e9d4ad3ee4f94c3999a30b4309cdd2ab~tplv-k3u1fbpfcp-watermark.image" alt="1625406148399"></p>
+<p><code>Hooper</code>软件我们用到的工具栏的示意图如下图：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7921490cdb4c421089f3a83d2c4d1763~tplv-k3u1fbpfcp-watermark.image" alt="Hopperc菜单示意图"></p>
+</li>
+<li><p>在<code>搜索框</code>位置搜索<code>__forwarding_prep_0___</code>,选择<code>伪代码</code>视图，发现和我们打印的堆栈信息一致，调用了<code>____forwarding___</code>方法</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> ___forwarding_prep_0___(<span class="keyword">int</span> arg0, <span class="keyword">int</span> arg1, <span class="keyword">int</span> arg2, <span class="keyword">int</span> arg3, <span class="keyword">int</span> arg4, <span class="keyword">int</span> arg5) &#123;</span><br><span class="line">    var_20 = rax;</span><br><span class="line">    var_30 = zero_extend_64(xmm7);</span><br><span class="line">    var_40 = zero_extend_64(xmm6);</span><br><span class="line">    var_50 = zero_extend_64(xmm5);</span><br><span class="line">    var_60 = zero_extend_64(xmm4);</span><br><span class="line">    var_70 = zero_extend_64(xmm3);</span><br><span class="line">    var_80 = zero_extend_64(xmm2);</span><br><span class="line">    var_90 = zero_extend_64(xmm1);</span><br><span class="line">    var_A0 = zero_extend_64(xmm0);</span><br><span class="line">    var_A8 = arg5;</span><br><span class="line">    var_B0 = arg4;</span><br><span class="line">    var_B8 = arg3;</span><br><span class="line">    var_C0 = arg2;</span><br><span class="line">    var_C8 = arg1;</span><br><span class="line">  	<span class="comment">///和我们打印的调用栈一致 </span></span><br><span class="line">    rax = ____forwarding___(&amp;var_D0, <span class="number">0x0</span>);</span><br><span class="line">    <span class="keyword">if</span> (rax != <span class="number">0x0</span>) &#123;</span><br><span class="line">            rax = *rax;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">            rax = objc_msgSend(var_D0, var_C8);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> rax;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>继续看<code>____forwarding___</code>方法的伪代码，首先是判断是否实现<code>快速转发</code>方法<code>forwardingTargetForSelector</code>,如果没有跳转到<code>loc_64a67</code>走<code>慢速转发流程</code></p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/40aabbc8d5924e3999abef17c93a76bd~tplv-k3u1fbpfcp-watermark.image" alt="1625407414541"></p>
+</li>
+<li><p>goto <code>loc_64a67</code>查看<code>慢速转发</code></p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/ef890803c42b4154916182dbd36a3b03~tplv-k3u1fbpfcp-watermark.image" alt="1625407939155"></p>
+</li>
+<li><p>如果没有实现则跳转，直接报错。</p>
+</li>
+</ol>
+<p>通过使用反编译的方式我们也验证了<code>消息转发</code>的流程。</p>
+<h3 id="消息转发实例"><a href="#消息转发实例" class="headerlink" title="消息转发实例"></a>消息转发实例</h3><p>在前面的例子中，我们补充一下<code>消息转发</code>的部分.</p>
+<h4 id="快速消息转发"><a href="#快速消息转发" class="headerlink" title="快速消息转发"></a>快速消息转发</h4><ul>
+<li>我们先定义一个<code>JSProxy</code>类，它实现了<code>sayNB</code>方法</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation JSProxy</span><br><span class="line"></span><br><span class="line">- (void)sayNB&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>在<code>JSPerson</code>类中添加<code>forwardingTargetForSelector</code>方法</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">#import &quot;JSProxy.h&quot;</span><br><span class="line">@implementation JSPerson</span><br><span class="line">- (id)forwardingTargetForSelector:(SEL)aSelector&#123;</span><br><span class="line">    NSLog(@&quot;forwardingTargetForSelector :%@-%@&quot;,self,NSStringFromSelector(aSelector));</span><br><span class="line">    return [JSProxy alloc];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>运行代码程序可以正常运行，打印<code>log</code>如下：</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">24</span>:<span class="number">49.089260</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7682</span>:<span class="number">442095</span>] resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">24</span>:<span class="number">49.090863</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7682</span>:<span class="number">442095</span>] resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">24</span>:<span class="number">49.091431</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7682</span>:<span class="number">442095</span>] forwardingTargetForSelector :&lt;JSPerson: <span class="number">0x600000010160</span>&gt;-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">24</span>:<span class="number">49.091571</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7682</span>:<span class="number">442095</span>] &lt;JSProxy: <span class="number">0x6000000080d0</span>&gt; - -[JSProxy sayNB]</span><br></pre></td></tr></table></figure>
+
+<h4 id="慢速消息转发"><a href="#慢速消息转发" class="headerlink" title="慢速消息转发"></a>慢速消息转发</h4><p>我们在上面例子基础上，在<code>JSPerson</code>类里实现<code>methodSignatureForSelector</code>和<code>forwardInvocation</code>,<code>forwardingTargetForSelector</code>方法返回<code>nil</code>标示不进行<code>快速消息转发</code>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">@implementation JSPerson</span><br><span class="line">- (id)forwardingTargetForSelector:(SEL)aSelector&#123;</span><br><span class="line">    NSLog(@&quot;forwardingTargetForSelector :%@-%@&quot;,self,NSStringFromSelector(aSelector));</span><br><span class="line">    return nil;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">-(NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector&#123;</span><br><span class="line">    NSLog(@&quot;methodSignatureForSelector :%@-%@&quot;,self,NSStringFromSelector(aSelector));</span><br><span class="line">    if (aSelector &#x3D;&#x3D; @selector(sayNB)) &#123;</span><br><span class="line">        return [NSMethodSignature signatureWithObjCTypes:&quot;v@:&quot;];</span><br><span class="line">    &#125;</span><br><span class="line">    return [super methodSignatureForSelector:aSelector];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">-(void)forwardInvocation:(NSInvocation *)anInvocation&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>我们运行代码，发现运行正常，打印结果如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.163137</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.163803</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.164673</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] forwardingTargetForSelector :&lt;JSPerson: <span class="number">0x600000008070</span>&gt;-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165289</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165436</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] methodSignatureForSelector :&lt;JSPerson: <span class="number">0x600000008070</span>&gt;-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165551</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-_forwardStackInvocation:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165634</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165986</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] &lt;JSPerson: <span class="number">0x600000008070</span>&gt; - -[JSPerson forwardInvocation:]</span><br></pre></td></tr></table></figure>
+
+<p>这里可能有人对添加<code>forwardInvocation</code>方法有因为，可以查看<a href="https://developer.apple.com/documentation/objectivec/nsobject/1571955-forwardinvocation" target="_blank" rel="noopener">苹果官方文档</a>查看原因</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>到这里我们就就把整个<code>objc_msgSend</code>的流程探索完了。</p>
+<ol>
+<li>汇编代码快速查找缓存</li>
+<li><code>loopUpImpForward</code>慢速递归查找类以及父类(包括缓存)的方法列表</li>
+<li>动态方法解析处理消息</li>
+<li>快速消息转发流程</li>
+<li>慢速消息转发流程</li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/" itemprop="url">iOS底层探索 - 动态方法决议</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-07-04T09:12:56+08:00">
+                2021-07-04
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>前面两篇文章我们探索了消息查找的流程，包括快速查找和慢速查找，本文开始探索消息查找未找到时候的处理流程。</p>
+<h3 id="unrecognized-selector"><a href="#unrecognized-selector" class="headerlink" title="unrecognized selector"></a>unrecognized selector</h3><p><code>unrecognized selector</code>是我们开发中很熟悉的一种错误，就是找不到方法的时候报错的提示，比如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;  JSPerson.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  JSPerson.m</span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  main.m</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们定义一个<code>JSPerson</code>类，声明一个<code>sayNB</code>方法，但是并没有实现，因为<code>oc</code>是一种动态语言，可以在运行时添加方法实现，所以没有实现编译期并不会报错。在<code>main</code>函数里实例化一个<code>JSPerson</code>对象，调用<code>sayNB</code>方法，这个时候程序就会崩溃，报错：</p>
+<p><code>Terminating app due to uncaught exception &#39;NSInvalidArgumentException&#39;, reason: &#39;-[JSPerson sayNB]: unrecognized selector sent to instance 0x101844590&#39;</code>。</p>
+<p>这个错误是怎么来的呢，我们从上一节最后方法找不到的地方开始看，当没有找到方法实现时，<code>lookUpImpOrForward</code>方法返回值是<code>imp = forward_imp;</code>即<code>_objc_msgForward_impcache</code>。<code>objc</code>源码工程里全局搜索这个关键字，在<code>objc-msg-arm64.s</code>文件的<code>745</code>行找到实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">STATIC_ENTRY __objc_msgForward_impcache</span><br><span class="line">	&#x2F;&#x2F; No stret specialization.</span><br><span class="line">	b	__objc_msgForward</span><br><span class="line"></span><br><span class="line">END_ENTRY __objc_msgForward_impcache</span><br><span class="line">	</span><br><span class="line">ENTRY __objc_msgForward</span><br><span class="line"></span><br><span class="line">	adrp	x17, __objc_forward_handler@PAGE</span><br><span class="line">	ldr	p17, [x17, __objc_forward_handler@PAGEOFF]</span><br><span class="line">	&#x2F;&#x2F;&#x2F;返回x17 </span><br><span class="line">	TailCallFunctionPointer x17</span><br><span class="line">	</span><br><span class="line">END_ENTRY __objc_msgForward</span><br></pre></td></tr></table></figure>
+
+<p>这段代码比较简单，调用了<code>__objc_forward_handler</code>方法，继续搜索<code>__objc_forward_handler</code>方法，并没有找到方法实现，根据前面的经验，去掉<code>_</code>继续搜索<code>objc_forward_handler</code>,在<code>objc_runtime.mm</code>文件中找到了实现：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Default forward handler halts the process.</span></span><br><span class="line">__attribute__((noreturn, cold)) <span class="keyword">void</span></span><br><span class="line">objc_defaultForwardHandler(id self, SEL sel)</span><br><span class="line">&#123;</span><br><span class="line">    _objc_fatal(<span class="string">"%c[%s %s]: unrecognized selector sent to instance %p "</span></span><br><span class="line">                <span class="string">"(no message forward handler is installed)"</span>, </span><br><span class="line">                class_isMetaClass(object_getClass(self)) ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                object_getClassName(self), sel_getName(sel), self);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">void</span> *_objc_forward_handler = (<span class="keyword">void</span>*)objc_defaultForwardHandler;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码就显而易见了，找不到方法的时候会执行<code>unrecognized selector</code>报错。</p>
+<h3 id="动态方法决议"><a href="#动态方法决议" class="headerlink" title="动态方法决议"></a>动态方法决议</h3><p>了解了<code>unrecognized selector</code>后我们回到<code>lookUpImpOrForward</code>的流程，当递归完查找所有父类流程没有找到方法实现会继续执行方法后面的代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (slowpath(behavior &amp; LOOKUP_RESOLVER)) &#123;</span><br><span class="line">     behavior ^= LOOKUP_RESOLVER;</span><br><span class="line">     <span class="keyword">return</span> resolveMethod_locked(inst, sel, cls, behavior);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>behavior</code>是<code>lookUpImpOrForward</code>方法的最后一个参数，通过找到方法的调用<code>behavior=LOOKUP_INITIALIZE | LOOKUP_RESOLVER</code>=<code>3</code>。<code>LOOKUP_RESOLVER=2</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">	<span class="comment">// lookUpImpOrForward(obj, sel, cls, LOOKUP_INITIALIZE | LOOKUP_RESOLVER)</span></span><br><span class="line"><span class="keyword">enum</span> &#123;</span><br><span class="line">    LOOKUP_INITIALIZE = <span class="number">1</span>,</span><br><span class="line">    LOOKUP_RESOLVER = <span class="number">2</span>,</span><br><span class="line">    LOOKUP_NIL = <span class="number">4</span>,</span><br><span class="line">    LOOKUP_NOCACHE = <span class="number">8</span>,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>这个<code>if</code>代码块其实是巧妙的使用了<code>单例</code>思想只会执行一次:</p>
+<ul>
+<li>初始behavior &amp; LOOKUP_RESOLVER = <code>3 &amp; 2</code> = <code>2</code>,条件为<code>true</code>执行</li>
+<li><code>behavior ^= LOOKUP_RESOLVER = 3 ^ 2 = 1</code></li>
+<li>如果后面再次进行<code>if</code>判断，<code>behavior &amp; LOOKUP_RESOLVER = 1 &amp; 2 = 0</code>,条件为<code>false</code>就不会执行代码块。</li>
+</ul>
+<p>前面<code>if</code>代码块会执行方法：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> NEVER_INLINE IMP</span><br><span class="line">resolveMethod_locked(id inst, SEL sel, Class cls, <span class="keyword">int</span> behavior)</span><br><span class="line">&#123;</span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    runtimeLock.unlock();</span><br><span class="line">    <span class="comment">//判断是否是元类</span></span><br><span class="line">    <span class="keyword">if</span> (! cls-&gt;isMetaClass()) &#123;</span><br><span class="line">      	<span class="comment">//实例方法 解析</span></span><br><span class="line">        <span class="comment">// try [cls resolveInstanceMethod:sel]</span></span><br><span class="line">        resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// try [nonMetaClass resolveClassMethod:sel]</span></span><br><span class="line">        <span class="comment">// and [cls resolveInstanceMethod:sel]</span></span><br><span class="line">        <span class="comment">//类方法 解析</span></span><br><span class="line">        resolveClassMethod(inst, sel, cls);</span><br><span class="line">        <span class="keyword">if</span> (!lookUpImpOrNilTryCache(inst, sel, cls)) &#123;</span><br><span class="line">            resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// chances are that calling the resolver have populated the cache</span></span><br><span class="line">    <span class="comment">// so attempt using it</span></span><br><span class="line">    <span class="comment">// 如果前面处理了 重新进行查找</span></span><br><span class="line">    <span class="keyword">return</span> lookUpImpOrForwardTryCache(inst, sel, cls, behavior);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="实例方法流程"><a href="#实例方法流程" class="headerlink" title="实例方法流程"></a>实例方法流程</h4><p>我们先看实例方法，实例方法会调用<code>resolveInstanceMethod</code>方法：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">resolveInstanceMethod</span><span class="params">(id inst, SEL sel, Class cls)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertUnlocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    <span class="comment">//resolveInstanceMethod 类方法</span></span><br><span class="line">    SEL resolve_sel = @selector(resolveInstanceMethod:);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!lookUpImpOrNilTryCache(cls, resolve_sel, cls-&gt;ISA(<span class="comment">/*authenticated*/</span><span class="literal">true</span>))) &#123;</span><br><span class="line">        <span class="comment">// Resolver not implemented.</span></span><br><span class="line">      	<span class="comment">// 因为系统有默认实现这里不会执行到</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    BOOL (*msg)(Class, SEL, SEL) = (typeof(msg))objc_msgSend;</span><br><span class="line">    <span class="keyword">bool</span> resolved = msg(cls, resolve_sel, sel);<span class="comment">//resolved 表示方法返回值</span></span><br><span class="line">    <span class="comment">// Cache the result (good or bad) so the resolver doesn't fire next time.</span></span><br><span class="line">    <span class="comment">// +resolveInstanceMethod adds to self a.k.a. cls</span></span><br><span class="line">    <span class="comment">// 继续查找 一次</span></span><br><span class="line">    IMP imp = lookUpImpOrNilTryCache(inst, sel, cls);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (resolved  &amp;&amp;  PrintResolving) &#123;</span><br><span class="line">        <span class="keyword">if</span> (imp) &#123;</span><br><span class="line">            <span class="comment">//找到了imp</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: method %c[%s %s] "</span></span><br><span class="line">                         <span class="string">"dynamically resolved to %p"</span>, </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), imp);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// resolved = true 但是不没有对应的处理方法</span></span><br><span class="line">            <span class="comment">// Method resolver didn't add anything?</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: +[%s resolveInstanceMethod:%s] returned YES"</span></span><br><span class="line">                         <span class="string">", but no new implementation of %c[%s %s] was found"</span>,</span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，其实是在类中添加一个<code>resolveInstanceMethod:</code>进行处理，我们在前面例子的基础上给<code>JSPerson</code>类添加一个<code>resolveInstanceMethod:</code>方法处理：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">- (void)saySomethingDefalut&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayNB)) &#123;</span><br><span class="line">            IMP sayDefalutImp &#x3D; class_getMethodImplementation(self, @selector(saySomethingDefalut));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(self, @selector(saySomethingDefalut));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(self, sel, sayDefalutImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">        return [super resolveInstanceMethod:sel];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>重新运行<code>main</code>方法，发现程序可以正常运行了，控制台打印结果</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"> &lt;JSPerson: <span class="number">0x10194fab0</span>&gt; - -[JSPerson saySomethingDefalut]</span><br></pre></td></tr></table></figure>
+
+<p>通过打印结果我们看到确实进入了<code>resolveInstanceMethod</code>,而且最终执行了<code>saySomethingDefalut</code>方法，实例方法的动态方法解析正常流程就是这样了。</p>
+<p>还有一个<strong>异常情况</strong>就是，如果我们不添加方法处理，只是打印执行<code>NSLog</code>方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        return [super resolveInstanceMethod:sel];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个时候程序崩溃是毋庸置疑的，因为这样写相当于没有处理，但是这时候控制台的打印结果是：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">-[JSPerson sayNB]: unrecognized selector sent to instance <span class="number">0x10193a810</span></span><br></pre></td></tr></table></figure>
+
+<p><code>resolveInstanceMethod</code>执行了<strong>两次</strong>,这是为什么呢,我们在<code>resolveInstanceMethod</code>方法添加断点，使用<code>bt</code>命令查看调用栈：</p>
+<ul>
+<li><p>第一次调用，就是我们刚刚探索的来源是<code>libobjc</code>框架的<code>_objc_msgSend_uncached</code>方法。调用信息如下图</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/82d0a5d1f1044e129b5a92cc2dc99429~tplv-k3u1fbpfcp-watermark.image" alt="1625382251804"></p>
+</li>
+<li><p>第二次调用，消息的来源是<code>CoreFoundation</code>的<code>___forwarding___</code>方法，下一篇我们会探索，调用信息如下图</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a634df8fa05945829cdae9c99022496c~tplv-k3u1fbpfcp-watermark.image" alt="1625382659258"></p>
+</li>
+</ul>
+<h4 id="类方法流程"><a href="#类方法流程" class="headerlink" title="类方法流程"></a>类方法流程</h4><p>类方法的流程就是在<code>resolveClassMethod</code>实现，</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">resolveClassMethod</span><span class="params">(id inst, SEL sel, Class cls)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertUnlocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    ASSERT(cls-&gt;isMetaClass());</span><br><span class="line">    <span class="keyword">if</span> (!lookUpImpOrNilTryCache(inst, @selector(resolveClassMethod:), cls)) &#123;</span><br><span class="line">        <span class="comment">// Resolver not implemented.</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Class nonmeta;</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="function"><span class="keyword">mutex_locker_t</span> <span class="title">lock</span><span class="params">(runtimeLock)</span></span>;</span><br><span class="line">      	<span class="comment">//入参是元类 返回是当前类</span></span><br><span class="line">        nonmeta = getMaybeUnrealizedNonMetaClass(cls, inst);</span><br><span class="line">        <span class="comment">// +initialize path should have realized nonmeta already</span></span><br><span class="line">        <span class="keyword">if</span> (!nonmeta-&gt;isRealized()) &#123;</span><br><span class="line">            _objc_fatal(<span class="string">"nonmeta class %s (%p) unexpectedly not realized"</span>,</span><br><span class="line">                        nonmeta-&gt;nameForLogging(), nonmeta);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    BOOL (*msg)(Class, SEL, SEL) = (typeof(msg))objc_msgSend;</span><br><span class="line"> 		<span class="comment">//向当前类发送消息</span></span><br><span class="line">    <span class="keyword">bool</span> resolved = msg(nonmeta, @selector(resolveClassMethod:), sel);</span><br><span class="line">    <span class="comment">// Cache the result (good or bad) so the resolver doesn't fire next time.</span></span><br><span class="line">    <span class="comment">// +resolveClassMethod adds to self-&gt;ISA() a.k.a. cls</span></span><br><span class="line">    IMP imp = lookUpImpOrNilTryCache(inst, sel, cls);</span><br><span class="line">    <span class="keyword">if</span> (resolved  &amp;&amp;  PrintResolving) &#123;</span><br><span class="line">        <span class="keyword">if</span> (imp) &#123;</span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: method %c[%s %s] "</span></span><br><span class="line">                         <span class="string">"dynamically resolved to %p"</span>, </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), imp);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Method resolver didn't add anything?</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: +[%s resolveClassMethod:%s] returned YES"</span></span><br><span class="line">                         <span class="string">", but no new implementation of %c[%s %s] was found"</span>,</span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个流程和实例方法很相似，在类中添加一个<code>resolveClassMethod:</code>的类方法处理，同样前面的例子我们验证一下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">+ (void)sayHowAreYou;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">  </span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">+ (void)sayAndYou&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveClassMethod:(SEL)sel&#123;</span><br><span class="line">    NSLog(@&quot;resolveClassMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayHowAreYou)) &#123;</span><br><span class="line">            IMP sayAndYouImp &#x3D; class_getMethodImplementation(objc_getMetaClass(&quot;JSPerson&quot;), @selector(sayAndYou));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(objc_getMetaClass(&quot;JSPerson&quot;), @selector(sayAndYou));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(objc_getMetaClass(&quot;JSPerson&quot;), sel, sayAndYouImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">    return [super resolveClassMethod:sel];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        [JSPerson sayHowAreYou];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译运行发现程序正常运行了，打印结果为</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">resolveClassMethod :JSPerson-sayHowAreYou</span><br><span class="line">JSPerson - +[JSPerson sayAndYou]</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">else&#123;</span><br><span class="line">       &#x2F;&#x2F; try [nonMetaClass resolveClassMethod:sel]</span><br><span class="line">       &#x2F;&#x2F; and [cls resolveInstanceMethod:sel]</span><br><span class="line">       &#x2F;&#x2F;类方法 解析</span><br><span class="line">       resolveClassMethod(inst, sel, cls);</span><br><span class="line">       if (!lookUpImpOrNilTryCache(inst, sel, cls)) &#123;</span><br><span class="line">           resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">       &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>细心地我们现在会发现在上面这段代码也就是类方法解析这个流程还有一个<code>resolveInstanceMethod(inst, sel, cls);</code>解析，这个原因是类方法在元类里是以实例方法的形式存在的，所以元类里<code>resolveInstanceMethod</code>对方法做了处理也会正常运行。</p>
+<h3 id="AOP思想处理动态方法决议"><a href="#AOP思想处理动态方法决议" class="headerlink" title="AOP思想处理动态方法决议"></a>AOP思想处理动态方法决议</h3><p>通过上面的动态方法解析流程，和前面我们探索的<a href="https://juejin.cn/post/6975781940519501861" target="_blank" rel="noopener"><code>isa</code>走位图和继承链</a>,我们可以使用<code>AOP</code>的思想，全局处理类的动态方法解析。具体实现就是在<code>NSObject</code>的分类中添加<code>resolveInstanceMethod:</code>类方法，处理方法的动态解析，例如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">@interface NSObject (JS)</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation NSObject (LG)</span><br><span class="line"></span><br><span class="line">- (void)saySomethingDefalut&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayNB)) &#123;</span><br><span class="line">            IMP sayDefalutImp &#x3D; class_getMethodImplementation(self, @selector(saySomethingDefalut));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(self, @selector(saySomethingDefalut));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(self, sel, sayDefalutImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">        return NO;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">  </span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@implementation JSPerson</span><br><span class="line">  </span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行项目发现正常运行，打印结果为：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">&lt;JSPerson: <span class="number">0x100593ed0</span>&gt; - -[NSObject(LG) saySomethingDefalut]</span><br></pre></td></tr></table></figure>
+
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本节我们主要探讨了动态方法解析流程，分实例方法和类方法两种情况</p>
+<ul>
+<li>实例方法是在类中实现<code>resolveInstanceMethod:</code>的类方法，处理方法得动态绑定到异常处理的方法。</li>
+<li>类方法分两部分查找<ol>
+<li>搜索当前类的<code>resolveClassMethod:</code>方法。</li>
+<li>搜索类的元类的<code>resolveInstanceMethod:</code>方法</li>
+</ol>
+</li>
+<li>我们可以利用AOP思想在根类的<code>分类</code>中实现<code>resolveInstanceMethod:</code>从而完成全局方法的动态解析。</li>
+</ul>
+<p>如果没有进行动态方法解析，接下来就会进入消息转发的流程，我们下一节探索。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/30/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc-msgSend-%E4%B8%8B/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1654,452 +2066,11 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/01/Swift-RxSwift%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/01/Swift-RxSwift%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" itemprop="url">Swift - RxSwift源码分析</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-01T15:35:58+08:00">
-                2021-06-01
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h3 id="RxSwift简介"><a href="#RxSwift简介" class="headerlink" title="RxSwift简介"></a>RxSwift简介</h3><p><code>RxSwift</code> 是 <a href="http://reactivex.io/" target="_blank" rel="noopener"><code>ReactiveX</code></a> 家族的重要一员, <code>ReactiveX</code> 是 <code>Reactive Extensions</code> 的缩写，一般简写为 <code>Rx</code>。<code>ReactiveX</code> 官方给<code>Rx</code>的定义是：<strong>Rx是一个使用可观察数据流进行异步编程的编程接口。</strong></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ReactiveX&#96; 不仅仅是一个编程接口，它是一种编程思想的突破，它影响了许多其它的程序库和框架以及编程语言。它拓展了&#96;观察者模式&#96;，使你能够&#96;自由组合多个异步事件&#96;，而&#96;不需要去关心线程&#96;，&#96;同步，线程安全&#96;，&#96;并发数据以及I&#x2F;O阻塞</span><br></pre></td></tr></table></figure>
-
-<p><code>RxSwift</code> 是 <code>Rx</code> 为 <code>Swift</code> 语言开发的一门函数响应式编程语言， 它可以代替iOS系统的 <code>Target Action</code> / <code>代理</code> / <code>闭包</code> / <code>通知</code> / <code>KVO</code>,同时还提供<code>网络</code>、<code>数据绑定</code>、<code>UI事件处理</code>、<code>UI的展示和更新</code>、<code>多线程</code>……</p>
-<p><code>Swift</code>为值类型，在传值与方法回调上有影响，<code>RxSwift</code>一定程度上弥补<code>Swift</code>的灵活性</p>
-<ul>
-<li><code>RxSwift</code>使得代码复用性较强，减少代码量</li>
-<li><code>RxSwift</code>因为声明都是不可变更，增加代码可读性</li>
-<li><code>RxSwift</code>使得更易于理解业务代码，抽象异步编程，统一代码风格</li>
-<li><code>RxSwift</code>使得代码更易于编写集成单元测试，增加代码稳定性</li>
-</ul>
-<h3 id="RxSwift核心流程"><a href="#RxSwift核心流程" class="headerlink" title="RxSwift核心流程"></a>RxSwift核心流程</h3><p>RxSwift的api设计非常精简，流程就是：</p>
-<p>1、创建序列（）</p>
-<p>2、订阅序列</p>
-<p>3、发送信号</p>
-<p>4、销毁</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1: 创建序列</span></span><br><span class="line"><span class="number">_</span> = <span class="type">Observable</span>&lt;<span class="type">String</span>&gt;.create &#123; (obserber) -&gt; <span class="type">Disposable</span> <span class="keyword">in</span></span><br><span class="line">    <span class="comment">// 3:发送信号</span></span><br><span class="line">    obserber.onNext(<span class="string">"RxSwift 研究"</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="type">Disposables</span>.create()  <span class="comment">// 4、销毁</span></span><br><span class="line">    <span class="comment">// 2: 订阅序列</span></span><br><span class="line">    &#125;.subscribe(onNext: &#123; (text) <span class="keyword">in</span></span><br><span class="line">        <span class="built_in">print</span>(<span class="string">"订阅到:\(text)"</span>)</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 控制台打印：“订阅到:RxSwift 研究”</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="创建序列"><a href="#创建序列" class="headerlink" title="创建序列"></a>创建序列</h3><p>我们先看Create.swift文件的代码：</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">extension</span> <span class="title">ObservableType</span> </span>&#123;</span><br><span class="line">    <span class="comment">// MARK: create</span></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     Creates an observable sequence from a specified subscribe method implementation.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">     - seealso: [create operator on reactivex.io](http://reactivex.io/documentation/operators/create.html)</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">     - parameter subscribe: Implementation of the resulting observable sequence's `subscribe` method.</span></span><br><span class="line"><span class="comment">     - returns: The observable sequence with the specified implementation for the `subscribe` method.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="function"><span class="keyword">func</span> <span class="title">create</span><span class="params">(<span class="number">_</span> subscribe: @escaping <span class="params">(AnyObserver&lt;Element&gt;)</span></span></span> -&gt; <span class="type">Disposable</span>) -&gt; <span class="type">Observable</span>&lt;<span class="type">Element</span>&gt; &#123;</span><br><span class="line">        <span class="type">AnonymousObservable</span>(subscribe)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">final</span> <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">AnonymousObservable</span>&lt;<span class="title">Element</span>&gt;: <span class="title">Producer</span>&lt;<span class="title">Element</span>&gt; </span>&#123;</span><br><span class="line">    <span class="keyword">typealias</span> <span class="type">SubscribeHandler</span> = (<span class="type">AnyObserver</span>&lt;<span class="type">Element</span>&gt;) -&gt; <span class="type">Disposable</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> subscribeHandler: <span class="type">SubscribeHandler</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">init</span>(<span class="number">_</span> subscribeHandler: @escaping <span class="type">SubscribeHandler</span>) &#123;</span><br><span class="line">        <span class="keyword">self</span>.subscribeHandler = subscribeHandler</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">func</span> <span class="title">run</span>&lt;Observer: ObserverType&gt;<span class="params">(<span class="number">_</span> observer: Observer, cancel: Cancelable)</span></span> -&gt; (sink: <span class="type">Disposable</span>, subscription: <span class="type">Disposable</span>) <span class="keyword">where</span> <span class="type">Observer</span>.<span class="type">Element</span> == <span class="type">Element</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> sink = <span class="type">AnonymousObservableSink</span>(observer: observer, cancel: cancel)</span><br><span class="line">        <span class="keyword">let</span> subscription = sink.run(<span class="keyword">self</span>)</span><br><span class="line">        <span class="keyword">return</span> (sink: sink, subscription: subscription)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>我们可以看到，可观察序列的创建是利用扩展<code>ObservableType</code>协议的<code>create</code>方法实现的,里面创建了<code>AnonymousObservable</code>(匿名可观察序列) ，这个命名体现了作者的思维，这是一个内部类，具备一些通用特性（具有自己功能的类才会命名）可以总结一下：</p>
-<ul>
-<li><code>create</code>方法的时候创建了一个内部对象<code>AnonymousObservable</code></li>
-<li><code>AnonymousObservable</code>保存了外界传入的闭包</li>
-<li><code>AnonymousObservable</code>继承了<code>Producer</code></li>
-</ul>
-<p>接下来我们看一下<code>Producer</code>类</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Producer</span>&lt;<span class="title">Element</span>&gt;: <span class="title">Observable</span>&lt;<span class="title">Element</span>&gt; </span>&#123;</span><br><span class="line">    <span class="keyword">override</span> <span class="keyword">init</span>() &#123;</span><br><span class="line">        <span class="keyword">super</span>.<span class="keyword">init</span>()</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">func</span> <span class="title">subscribe</span>&lt;Observer: ObserverType&gt;<span class="params">(<span class="number">_</span> observer: Observer)</span></span> -&gt; <span class="type">Disposable</span> <span class="keyword">where</span> <span class="type">Observer</span>.<span class="type">Element</span> == <span class="type">Element</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> !<span class="type">CurrentThreadScheduler</span>.isScheduleRequired &#123;</span><br><span class="line">            <span class="comment">// The returned disposable needs to release all references once it was disposed.</span></span><br><span class="line">            <span class="keyword">let</span> disposer = <span class="type">SinkDisposer</span>()</span><br><span class="line">            <span class="keyword">let</span> sinkAndSubscription = <span class="keyword">self</span>.run(observer, cancel: disposer)</span><br><span class="line">            disposer.setSinkAndSubscription(sink: sinkAndSubscription.sink, subscription: sinkAndSubscription.subscription)</span><br><span class="line">            <span class="keyword">return</span> disposer</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="type">CurrentThreadScheduler</span>.instance.schedule(()) &#123; <span class="number">_</span> <span class="keyword">in</span></span><br><span class="line">                <span class="keyword">let</span> disposer = <span class="type">SinkDisposer</span>()</span><br><span class="line">                <span class="keyword">let</span> sinkAndSubscription = <span class="keyword">self</span>.run(observer, cancel: disposer)</span><br><span class="line">                disposer.setSinkAndSubscription(sink: sinkAndSubscription.sink, subscription: sinkAndSubscription.subscription)</span><br><span class="line">                <span class="keyword">return</span> disposer</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">func</span> <span class="title">run</span>&lt;Observer: ObserverType&gt;<span class="params">(<span class="number">_</span> observer: Observer, cancel: Cancelable)</span></span> -&gt; (sink: <span class="type">Disposable</span>, subscription: <span class="type">Disposable</span>) <span class="keyword">where</span> <span class="type">Observer</span>.<span class="type">Element</span> == <span class="type">Element</span> &#123;</span><br><span class="line">        rxAbstractMethod()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>可以看到Producer有一个很重要的方法<code>subscribe</code>(订阅)，<code>subscribe</code>方法最后返回一个<code>Disposable</code>对象。</p>
-<h3 id="订阅序列"><a href="#订阅序列" class="headerlink" title="订阅序列"></a>订阅序列</h3><p>我们看一下<code>ObservableType</code>拓展（ObservableType+Extensions.swift）的功能，订阅的方法<code>subscribe</code>（注意这个方法和<code>Producer</code>的<code>subscribe</code>不是同一个）</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">     Subscribes an element handler, an error handler, a completion handler and disposed handler to an observable sequence.</span></span><br><span class="line"><span class="comment">     - parameter onNext: Action to invoke for each element in the observable sequence.</span></span><br><span class="line"><span class="comment">     - parameter onError: Action to invoke upon errored termination of the observable sequence.</span></span><br><span class="line"><span class="comment">     - parameter onCompleted: Action to invoke upon graceful termination of the observable sequence.</span></span><br><span class="line"><span class="comment">     - parameter onDisposed: Action to invoke upon any type of termination of sequence (if the sequence has</span></span><br><span class="line"><span class="comment">     gracefully completed, errored, or if the generation is canceled by disposing subscription).</span></span><br><span class="line"><span class="comment">     - returns: Subscription object used to unsubscribe from the observable sequence.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">subscribe</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">        onNext: <span class="params">(<span class="params">(Element)</span></span></span></span> -&gt; <span class="type">Void</span>)? = <span class="literal">nil</span>,</span><br><span class="line">        onError: ((<span class="type">Swift</span>.<span class="type">Error</span>) -&gt; <span class="type">Void</span>)? = <span class="literal">nil</span>,</span><br><span class="line">        onCompleted: (() -&gt; <span class="type">Void</span>)? = <span class="literal">nil</span>,</span><br><span class="line">        onDisposed: (() -&gt; <span class="type">Void</span>)? = <span class="literal">nil</span></span><br><span class="line">    ) -&gt; <span class="type">Disposable</span> &#123;</span><br><span class="line">            <span class="keyword">let</span> disposable: <span class="type">Disposable</span></span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">let</span> disposed = onDisposed &#123;</span><br><span class="line">                disposable = <span class="type">Disposables</span>.create(with: disposed)</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span> &#123;</span><br><span class="line">                disposable = <span class="type">Disposables</span>.create()</span><br><span class="line">            &#125;</span><br><span class="line">            #<span class="keyword">if</span> <span class="type">DEBUG</span></span><br><span class="line">                <span class="keyword">let</span> synchronizationTracker = <span class="type">SynchronizationTracker</span>()</span><br><span class="line">            #endif</span><br><span class="line">            <span class="keyword">let</span> callStack = <span class="type">Hooks</span>.recordCallStackOnError ? <span class="type">Hooks</span>.customCaptureSubscriptionCallstack() : []</span><br><span class="line">      			<span class="comment">///以下重点关注的代码 创建匿名观察者</span></span><br><span class="line">            <span class="keyword">let</span> observer = <span class="type">AnonymousObserver</span>&lt;<span class="type">Element</span>&gt; &#123; event <span class="keyword">in</span> </span><br><span class="line">                #<span class="keyword">if</span> <span class="type">DEBUG</span></span><br><span class="line">                    synchronizationTracker.register(synchronizationErrorMessage: .<span class="keyword">default</span>)</span><br><span class="line">                    <span class="keyword">defer</span> &#123; synchronizationTracker.unregister() &#125;</span><br><span class="line">                #endif</span><br><span class="line">                <span class="keyword">switch</span> event &#123;</span><br><span class="line">                <span class="keyword">case</span> .next(<span class="keyword">let</span> value):</span><br><span class="line">                    onNext?(value)</span><br><span class="line">                <span class="keyword">case</span> .error(<span class="keyword">let</span> error):</span><br><span class="line">                    <span class="keyword">if</span> <span class="keyword">let</span> onError = onError &#123;</span><br><span class="line">                        onError(error)</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">else</span> &#123;</span><br><span class="line">                        <span class="type">Hooks</span>.defaultErrorHandler(callStack, error)</span><br><span class="line">                    &#125;</span><br><span class="line">                    disposable.dispose()</span><br><span class="line">                <span class="keyword">case</span> .completed:</span><br><span class="line">                    onCompleted?()</span><br><span class="line">                    disposable.dispose()</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="type">Disposables</span>.create(</span><br><span class="line">                <span class="keyword">self</span>.asObservable().subscribe(observer),</span><br><span class="line">                disposable</span><br><span class="line">            )</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>代码说明：</p>
-<ul>
-<li><p><code>E</code>是<code>Swift</code>的关联类型，这个如果仔细看过可观察序列的继承链源码应该不难得出：这个<code>E</code> 就是我们的 序列类型，我们这里就是<code>String</code></p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Observable</span>&lt;<span class="title">Element</span>&gt; : <span class="title">ObservableType</span> </span>&#123;</span><br><span class="line">    <span class="comment">/// Type of elements in sequence.</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">typealias</span> <span class="type">E</span> = <span class="type">Element</span></span><br></pre></td></tr></table></figure>
-</li>
-<li><p>创建<code>AnonymousObserver</code>对象，可以类比前面<code>create</code>的<code>AnonymousObservable</code>对象，初始化参数为闭包，保存了外界传入的<code>onNext</code>,<code>onError</code>,<code>onComplete</code>,<code>onDisposed</code>的处理回调闭包。</p>
-</li>
-<li><p><code>self.asObservable()</code>是我们的<code>RxSwift</code>为了保持一致性的写法。</p>
-</li>
-<li><p><code>self.asObservable().subscribe(observer)</code>其实本质就是<code>self.</code>subscribe(observer),通过可观察序列的继承关系，我们可以快速定位到<code>Producer</code>订阅代码</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">override</span> <span class="function"><span class="keyword">func</span> <span class="title">subscribe</span>&lt;Observer: ObserverType&gt;<span class="params">(<span class="number">_</span> observer: Observer)</span></span> -&gt; <span class="type">Disposable</span> <span class="keyword">where</span> <span class="type">Observer</span>.<span class="type">Element</span> == <span class="type">Element</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> !<span class="type">CurrentThreadScheduler</span>.isScheduleRequired &#123;</span><br><span class="line">        <span class="comment">// The returned disposable needs to release all references once it was disposed.</span></span><br><span class="line">        <span class="keyword">let</span> disposer = <span class="type">SinkDisposer</span>()</span><br><span class="line">        <span class="keyword">let</span> sinkAndSubscription = <span class="keyword">self</span>.run(observer, cancel: disposer)</span><br><span class="line">        disposer.setSinkAndSubscription(sink: sinkAndSubscription.sink, subscription: sinkAndSubscription.subscription)</span><br><span class="line">        <span class="keyword">return</span> disposer</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="type">CurrentThreadScheduler</span>.instance.schedule(()) &#123; <span class="number">_</span> <span class="keyword">in</span></span><br><span class="line">            <span class="keyword">let</span> disposer = <span class="type">SinkDisposer</span>()</span><br><span class="line">            <span class="keyword">let</span> sinkAndSubscription = <span class="keyword">self</span>.run(observer, cancel: disposer)</span><br><span class="line">            disposer.setSinkAndSubscription(sink: sinkAndSubscription.sink, subscription: sinkAndSubscription.subscription)</span><br><span class="line">            <span class="keyword">return</span> disposer</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>销毁代码后面在分析</p>
-</li>
-<li><p><code>self.run</code>这个代码最终由我们生产者<code>Producer</code>(抽象方法找子类)延伸到具体事务代码<code>AnonymousObservable.run</code></p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">override</span> <span class="function"><span class="keyword">func</span> <span class="title">run</span>&lt;Observer: ObserverType&gt;<span class="params">(<span class="number">_</span> observer: Observer, cancel: Cancelable)</span></span> -&gt; (sink: <span class="type">Disposable</span>, subscription: <span class="type">Disposable</span>) <span class="keyword">where</span> <span class="type">Observer</span>.<span class="type">Element</span> == <span class="type">Element</span> &#123;</span><br><span class="line">      <span class="keyword">let</span> sink = <span class="type">AnonymousObservableSink</span>(observer: observer, cancel: cancel)</span><br><span class="line">      <span class="keyword">let</span> subscription = sink.run(<span class="keyword">self</span>)</span><br><span class="line">      <span class="keyword">return</span> (sink: sink, subscription: subscription)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>这里调用了<code>sink.run(self)</code>方法，将业务处理下沉，分工更加明确。</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">run</span><span class="params">(<span class="number">_</span> parent: Parent)</span></span> -&gt; <span class="type">Disposable</span> &#123;</span><br><span class="line">    parent.subscribeHandler(<span class="type">AnyObserver</span>(<span class="keyword">self</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p><code>parent</code>是上面传入进来的<code>AnonymousObservable</code>对象</p>
-</li>
-<li><p>这个地方我们可以看到调用了<code>AnonymousObservable</code>对象的<code>subscribeHandler</code>方法，这里我们清楚了，为什么<code>序列订阅</code>的时候流程会执行我们的<code>序列闭包</code>，然后去执行<code>发送响应</code></p>
-</li>
-<li><p>发送响应的代码后面再分析，下面还有个点是<code>AnyObserver(self)</code></p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Construct an instance whose `on(event)` calls `observer.on(event)`</span></span><br><span class="line"><span class="comment">///</span></span><br><span class="line"><span class="comment">/// - parameter observer: Observer that receives sequence events.</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">init</span>&lt;<span class="type">Observer</span>: <span class="type">ObserverType</span>&gt;(<span class="number">_</span> observer: <span class="type">Observer</span>) <span class="keyword">where</span> <span class="type">Observer</span>.<span class="type">Element</span> == <span class="type">Element</span> &#123;</span><br><span class="line">     <span class="keyword">self</span>.observer = observer.on</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>这个构造方法里面，我们创建了一个结构体<code>AnyObserver</code>保存了一个信息<code>AnonymousObservableSink.on</code>函数。注意不是<code>AnonymousObservableSink</code></p>
-</li>
-</ul>
-<h3 id="发送响应"><a href="#发送响应" class="headerlink" title="发送响应"></a>发送响应</h3><p>通过上面的分析，我们清楚了<code>observer.onNext(&quot;&quot;)</code>本质是<code>AnyObserver.onNext(&quot;&quot;)</code>,我们发现AnyObserver没有这个方法，顺着思路找父类，找<code>ObserverType</code></p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Convenience API extensions to provide alternate next, error, completed events</span></span><br><span class="line"><span class="class"><span class="keyword">extension</span> <span class="title">ObserverType</span> </span>&#123;</span><br><span class="line">    <span class="comment">/// Convenience method equivalent to `on(.next(element: Element))`</span></span><br><span class="line">    <span class="comment">///</span></span><br><span class="line">    <span class="comment">/// - parameter element: Next element to send to observer(s)</span></span><br><span class="line">  	<span class="comment">///这里是我们关注的点 AnyObserver.onNext("")实际调用这里</span></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">onNext</span><span class="params">(<span class="number">_</span> element: Element)</span></span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.on(.next(element))</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/// Convenience method equivalent to `on(.completed)`</span></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">onCompleted</span><span class="params">()</span></span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.on(.completed)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/// Convenience method equivalent to `on(.error(Swift.Error))`</span></span><br><span class="line">    <span class="comment">/// - parameter error: Swift.Error to send to observer(s)</span></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">onError</span><span class="params">(<span class="number">_</span> error: Swift.Error)</span></span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.on(.error(error))</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><p>外界调用的<code>observer.onNext(&quot;&quot;)</code>再次变形：<code>AnyObserver.on(.next(&quot;&quot;))</code>,<code>AnyObserver</code>调用了<code>on</code>里面的<code>.next</code>函数，<code>.next</code>函数带有我们最终的参数</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Construct an instance whose `on(event)` calls `observer.on(event)`</span></span><br><span class="line"><span class="comment">/// - parameter observer: Observer that receives sequence events.</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">init</span>&lt;<span class="type">Observer</span>: <span class="type">ObserverType</span>&gt;(<span class="number">_</span> observer: <span class="type">Observer</span>) <span class="keyword">where</span> <span class="type">Observer</span>.<span class="type">Element</span> == <span class="type">Element</span> &#123;</span><br><span class="line">    <span class="keyword">self</span>.observer = observer.on</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/// Send `event` to this observer.</span></span><br><span class="line"><span class="comment">/// - parameter event: Event instance.</span></span><br><span class="line"><span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">on</span><span class="params">(<span class="number">_</span> event: Event&lt;Element&gt;)</span></span> &#123;</span><br><span class="line">     <span class="keyword">self</span>.observer(event)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p><code>self.observer</code> 构造初始化就是：<code>AnonymousObservableSink .on 函数</code></p>
-</li>
-<li><p><code>self.observer(event)</code> -&gt; <code>AnonymousObservableSink .on(event)</code> 其中 <code>event = .next(&quot;&quot;)</code> 最终我们的核心逻辑又回到了 <code>sink</code></p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">AnonymousObservableSink</span>&lt;<span class="title">Observer</span>: <span class="title">ObserverType</span>&gt;: <span class="title">Sink</span>&lt;<span class="title">Observer</span>&gt;, <span class="title">ObserverType</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">func</span> <span class="title">on</span><span class="params">(<span class="number">_</span> event: Event&lt;Element&gt;)</span></span> &#123;</span><br><span class="line">        #<span class="keyword">if</span> <span class="type">DEBUG</span></span><br><span class="line">            <span class="keyword">self</span>.synchronizationTracker.register(synchronizationErrorMessage: .<span class="keyword">default</span>)</span><br><span class="line">            <span class="keyword">defer</span> &#123; <span class="keyword">self</span>.synchronizationTracker.unregister() &#125;</span><br><span class="line">        #endif</span><br><span class="line">        <span class="keyword">switch</span> event &#123;</span><br><span class="line">        <span class="keyword">case</span> .next:</span><br><span class="line">            <span class="keyword">if</span> load(<span class="keyword">self</span>.isStopped) == <span class="number">1</span> &#123;</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">self</span>.forwardOn(event)</span><br><span class="line">        <span class="keyword">case</span> .error, .completed:</span><br><span class="line">            <span class="keyword">if</span> fetchOr(<span class="keyword">self</span>.isStopped, <span class="number">1</span>) == <span class="number">0</span> &#123;</span><br><span class="line">                <span class="keyword">self</span>.forwardOn(event)</span><br><span class="line">                <span class="keyword">self</span>.dispose()</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p><code>self.forwardOn(event)</code> 这也是执行的核心代码，因为 <code>AnonymousObservableSink</code> 继承 <code>Sink</code> 这里还有封装，请看下面的代码</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Sink</span>&lt;<span class="title">Observer</span>: <span class="title">ObserverType</span>&gt;: <span class="title">Disposable</span> </span>&#123;</span><br><span class="line">    <span class="keyword">final</span> <span class="function"><span class="keyword">func</span> <span class="title">forwardOn</span><span class="params">(<span class="number">_</span> event: Event&lt;Observer.Element&gt;)</span></span> &#123;</span><br><span class="line">        #<span class="keyword">if</span> <span class="type">DEBUG</span></span><br><span class="line">            <span class="keyword">self</span>.synchronizationTracker.register(synchronizationErrorMessage: .<span class="keyword">default</span>)</span><br><span class="line">            <span class="keyword">defer</span> &#123; <span class="keyword">self</span>.synchronizationTracker.unregister() &#125;</span><br><span class="line">        #endif</span><br><span class="line">        <span class="keyword">if</span> isFlagSet(<span class="keyword">self</span>.disposed, <span class="number">1</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">self</span>.observer.on(event)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>其中 <code>self.observer</code> 就是我们初始化保存的 <code>观察者：AnonymousObserver</code></p>
-</li>
-<li><p>到这里我们得出了发送序列的本质就是<code>AnonymousObserver.on（.next(&quot;&quot;)）</code>,这个逻辑又回到了我们<code>订阅序列</code>时候创建的<code>AnonymousObserver</code>参数闭包的调用。</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> observer = <span class="type">AnonymousObserver</span>&lt;<span class="type">E</span>&gt; &#123; event <span class="keyword">in</span></span><br><span class="line">    <span class="keyword">switch</span> event &#123;</span><br><span class="line">    <span class="keyword">case</span> .next(<span class="keyword">let</span> value):</span><br><span class="line">        onNext?(value)</span><br><span class="line">    <span class="keyword">case</span> .error(<span class="keyword">let</span> error):</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">let</span> onError = onError &#123;</span><br><span class="line">            onError(error)</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="type">Hooks</span>.defaultErrorHandler(callStack, error)</span><br><span class="line">        &#125;</span><br><span class="line">        disposable.dispose()</span><br><span class="line">    <span class="keyword">case</span> .completed:</span><br><span class="line">        onCompleted?()</span><br><span class="line">        disposable.dispose()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>判断<code>event</code>进而调用<code>onNext?(value)</code>,因为枚举的关联值<code>value=&quot;&quot;</code>,接下来外界<code>onNext</code>的调用参数。</p>
-</li>
-</ul>
-<h3 id="销毁"><a href="#销毁" class="headerlink" title="销毁"></a>销毁</h3><p>我们先看一下创建序列到销毁的执行代码</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建序列</span></span><br><span class="line"><span class="keyword">let</span> ob = <span class="type">Observable</span>&lt;<span class="type">Any</span>&gt;.create &#123; (observer) -&gt; <span class="type">Disposable</span> <span class="keyword">in</span></span><br><span class="line">    observer.onNext(<span class="string">"Jason"</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="type">Disposables</span>.create &#123;</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">"销毁释放了"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 序列订阅</span></span><br><span class="line"><span class="keyword">let</span> dispose = ob.subscribe(onNext: &#123; (anything) <span class="keyword">in</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"订阅到了:\(anything)"</span>)</span><br><span class="line">&#125;, onError: &#123; (error) <span class="keyword">in</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"订阅到了:\(error)"</span>)</span><br><span class="line">&#125;, onCompleted: &#123;</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"完成了"</span>)</span><br><span class="line">&#125;) &#123;</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">"销毁回调"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><p>这段代码里面关于销毁相关的代码就是<code>Disposables.create {print(&quot;销毁释放了&quot;)}</code>,所以我们直接定位到<code>Disposables</code>类（AnonymousDisposable.swift文件）。</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">extension</span> <span class="title">Disposables</span> </span>&#123;</span><br><span class="line">    <span class="comment">/// Constructs a new disposable with the given action used for disposal.</span></span><br><span class="line">    <span class="comment">///</span></span><br><span class="line">    <span class="comment">/// - parameter dispose: Disposal action which will be run upon calling `dispose`.</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="function"><span class="keyword">func</span> <span class="title">create</span><span class="params">(with dispose: @escaping <span class="params">()</span></span></span> -&gt; <span class="type">Void</span>) -&gt; <span class="type">Cancelable</span> &#123;</span><br><span class="line">        <span class="type">AnonymousDisposable</span>(disposeAction: dispose)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>可以看出，这里创建了一个匿名销毁序列<code>AnonymousDisposable</code>,和订阅一样的手法。继续看<code>AnonymousDisposable</code>代码</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// When dispose method is called, disposal action will be dereferenced.</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">AnonymousDisposable</span> : <span class="title">DisposeBase</span>, <span class="title">Cancelable</span> </span>&#123;</span><br><span class="line">    <span class="comment">// Non-deprecated version of the constructor, used by `Disposables.create(with:)`</span></span><br><span class="line">    <span class="keyword">fileprivate</span> <span class="keyword">init</span>(disposeAction: @escaping <span class="type">DisposeAction</span>) &#123;</span><br><span class="line">        <span class="keyword">self</span>.disposeAction = disposeAction</span><br><span class="line">        <span class="keyword">super</span>.<span class="keyword">init</span>()</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/// Calls the disposal action if and only if the current instance hasn't been disposed yet.</span></span><br><span class="line">    <span class="comment">///</span></span><br><span class="line">    <span class="comment">/// After invoking disposal action, disposal action will be dereferenced.</span></span><br><span class="line">    <span class="comment">///销毁核心的逻辑</span></span><br><span class="line">    <span class="keyword">fileprivate</span> <span class="function"><span class="keyword">func</span> <span class="title">dispose</span><span class="params">()</span></span> &#123;</span><br><span class="line">        <span class="keyword">if</span> fetchOr(<span class="keyword">self</span>.disposed, <span class="number">1</span>) == <span class="number">0</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">let</span> action = <span class="keyword">self</span>.disposeAction &#123;</span><br><span class="line">                <span class="keyword">self</span>.disposeAction = <span class="literal">nil</span></span><br><span class="line">                action()</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>上我们看到，初始化方法里保存了销毁响应闭包，什么时候调用，我们看下面的<code>dispose()</code>方法。</p>
-</li>
-<li><p>fetchOr(self.disposed, 1)是一个单项标记手段，这里利用了牛逼的算法标记可以降低依赖和更加快速。</p>
-</li>
-<li><p>主要就是保证只会销毁一次</p>
-</li>
-<li><p>销毁会首先<code>self.disposeAction = nil</code>,将回调闭包置空</p>
-</li>
-<li><p>最后调用闭包调用<code>action()</code>,这里是一个局部变量不需要再置空</p>
-</li>
-</ul>
-<p>下面我们看一下<code>dispose()</code>是什么时候调用的</p>
-<p>上面的流程，我们再序列的回调闭包：<code>subscriberHandle</code>里面，这个流程之前有一个重要的流程就是订阅<code>subscriber</code></p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> <span class="keyword">let</span> disposed = onDisposed &#123;</span><br><span class="line">  disposable = <span class="type">Disposables</span>.create(with: disposed)  </span><br><span class="line">&#125;<span class="keyword">else</span> &#123;</span><br><span class="line">  disposable = <span class="type">Disposables</span>.create()</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><p>这里保存外界传入的销毁闭包</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">switch</span> event &#123;</span><br><span class="line"><span class="keyword">case</span> .next(<span class="keyword">let</span> value):</span><br><span class="line">    onNext?(value)</span><br><span class="line"><span class="keyword">case</span> .error(<span class="keyword">let</span> error):</span><br><span class="line">  <span class="comment">// 响应外界调回闭包</span></span><br><span class="line">    disposable.dispose()</span><br><span class="line"><span class="keyword">case</span> .completed:</span><br><span class="line">  <span class="comment">// 响应外界调回闭包</span></span><br><span class="line">    disposable.dispose()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>观察者回调里面调用， 响应外界调回闭包</p>
-</li>
-</ul>
-<ul>
-<li><code>return Disposables.create(self.asObservable().subscribe(observer),disposable)</code> 综合来看，我们的重点必然在这句代码，沟通下面流程的 <code>subscribe</code>, 外界订阅返回的销毁者（可以随时随地进行 <code>dispose.dispose()</code> ）</li>
-<li>上面代码跟进去看到<code>BinaryDisposable(disposable1, disposable2)</code> 原来创建的二元销毁者！</li>
-</ul>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">dispose</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">if</span> fetchOr(<span class="keyword">self</span>._isDisposed, <span class="number">1</span>) == <span class="number">0</span> &#123;</span><br><span class="line">        <span class="keyword">self</span>._disposable1?.dispose()</span><br><span class="line">        <span class="keyword">self</span>._disposable2?.dispose()</span><br><span class="line">        <span class="keyword">self</span>._disposable1 = <span class="literal">nil</span></span><br><span class="line">        <span class="keyword">self</span>._disposable2 = <span class="literal">nil</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><p>二元销毁者的 <code>dispose</code> 方法也在预料之中，分别销毁</p>
-</li>
-<li><p>那么我们的重点就应该探索，在 <code>subscribe</code> 这里面创建的关键销毁者是什么?</p>
-</li>
-<li><p>下面我们进入非常熟悉的：<code>Producer</code></p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> disposer = <span class="type">SinkDisposer</span>()</span><br><span class="line"><span class="keyword">let</span> sinkAndSubscription = <span class="keyword">self</span>.run(observer, cancel: disposer)</span><br><span class="line">disposer.setSinkAndSubscription(sink: sinkAndSubscription.sink,</span><br><span class="line"> subscription: sinkAndSubscription.subscription)</span><br><span class="line"><span class="comment">// 返回销毁者</span></span><br><span class="line"><span class="keyword">return</span> disposer</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>看到 <code>SinkDisposer</code> 就熟悉了，普通销毁者：<code>AnonymousDisposable</code> , 关键销毁者： <code>SinkDisposer</code></p>
-</li>
-<li><p>先看什么东西进入了 <code>SinkDisposer</code></p>
-</li>
-<li><p><code>self.run(observer, cancel: disposer)</code> 证明里面需要用到 <code>SinkDisposer</code></p>
-</li>
-<li><p><code>disposer.setSinkAndSubscription</code> 常规操作</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">setSinkAndSubscription</span><span class="params">(sink: Disposable, subscription: Disposable)</span></span> &#123;</span><br><span class="line">    <span class="keyword">self</span>._sink = sink</span><br><span class="line">    <span class="keyword">self</span>._subscription = subscription</span><br><span class="line"><span class="comment">// 获取状态 </span></span><br><span class="line">    <span class="keyword">let</span> previousState = fetchOr(<span class="keyword">self</span>._state, </span><br><span class="line"><span class="type">DisposeState</span>.sinkAndSubscriptionSet.rawValue)</span><br><span class="line"><span class="comment">// 如果状态满足就销毁</span></span><br><span class="line">    <span class="keyword">if</span> (previousState &amp; <span class="type">DisposeState</span>.disposed.rawValue) != <span class="number">0</span> &#123;</span><br><span class="line">        sink.dispose()</span><br><span class="line">        subscription.dispose()</span><br><span class="line">        <span class="keyword">self</span>._sink = <span class="literal">nil</span></span><br><span class="line">        <span class="keyword">self</span>._subscription = <span class="literal">nil</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>保存了两个属性 : <code>sink</code> 和 <code>subscription</code>(就是外界创建序列的闭包的返回销毁者)</p>
-</li>
-<li><p>取了某一个状态：<code>previousState</code>,判断状态的条件，然后执行 这两个保存属性的销毁和置空释放销毁 ： <code>.dispose() + = nil</code></p>
-</li>
-<li><p>其实是可以理解，就是我们在加入的东西其实需要销毁的，不应该保留的，那么没必要给它继续保留生命迹象</p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建 sink 保存了销毁者</span></span><br><span class="line"><span class="keyword">let</span> sink = <span class="type">AnonymousObservableSink</span>(observer: observer, cancel: cancel)</span><br><span class="line"><span class="comment">// 省略不相管代码。。。。</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">on</span><span class="params">(<span class="number">_</span> event: Event&lt;Element&gt;)</span></span> &#123;</span><br><span class="line">    <span class="keyword">switch</span> event &#123;</span><br><span class="line">    <span class="keyword">case</span> .next:</span><br><span class="line">        <span class="keyword">self</span>.forwardOn(event)</span><br><span class="line">    <span class="keyword">case</span> .error, .completed:</span><br><span class="line">        <span class="keyword">if</span> fetchOr(<span class="keyword">self</span>._isStopped, <span class="number">1</span>) == <span class="number">0</span> &#123;</span><br><span class="line">            <span class="keyword">self</span>.forwardOn(event)</span><br><span class="line">            <span class="comment">// 关键点：完成和错误信号的响应式必然会直接开启销毁的</span></span><br><span class="line">            <span class="keyword">self</span>.dispose()</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>完成和错误信号的响应式必然会直接开启销毁的 ： <code>self.dispose()</code>! 这里也解释了：一旦我们的序列发出完成或者错误就无法再次响应了！</p>
-</li>
-<li><p>剩下一个问题： <strong>到底我们的销毁的是什么</strong></p>
-<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">dispose</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">let</span> previousState = fetchOr(<span class="keyword">self</span>._state, <span class="type">DisposeState</span>.disposed.rawValue)</span><br><span class="line">    <span class="keyword">if</span> (previousState &amp; <span class="type">DisposeState</span>.sinkAndSubscriptionSet.rawValue) != <span class="number">0</span> &#123;</span><br><span class="line">        sink.dispose()</span><br><span class="line">        subscription.dispose()</span><br><span class="line">        <span class="keyword">self</span>._sink = <span class="literal">nil</span></span><br><span class="line">        <span class="keyword">self</span>._subscription = <span class="literal">nil</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>无论我们直接销毁还是系统帮助我们销毁必然会调用：<code>dispose()</code></p>
-</li>
-<li><p>我们查看 <code>dispose()</code> 得出: 就是在初始化初期我们保留的两个属性的操作</p>
-</li>
-<li><p><code>sink.dispose() + self._sink = nil</code> &amp; <code>subscription.dispose() + self._subscription = nil</code> 执行相关释放和销毁</p>
-</li>
-</ul>
-<h4 id="总结一下销毁"><a href="#总结一下销毁" class="headerlink" title="总结一下销毁"></a>总结一下销毁</h4><p>第一：内部创建的临时序列和观察者都会随着对外的观察者和序列的生命周期而销毁释放。</p>
-<p>第二：外界观察者和序列会随着他们的作用域空间而释放</p>
-<p>第三：释放不了只是对象的释放有问题，常规内存管理问题</p>
-<p>第四：最为一个再牛逼的框架也不能对程序员写的代码直接管理控制</p>
-<p>第五：<code>RxSwift</code> 的观察和序列以及销毁者就是普通对象。</p>
-<p>到这里RxSwift从创建序列-&gt;订阅序列-&gt;发送信号-&gt;销毁的源码解析就结束了，里面的精妙还是需要细细品味的。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/28/GitHub-s-file-size-limit-of-100-00-MB%E8%A7%A3%E5%86%B3%E5%8A%9E%E6%B3%95/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/05/28/GitHub-s-file-size-limit-of-100-00-MB%E8%A7%A3%E5%86%B3%E5%8A%9E%E6%B3%95/" itemprop="url">GitHub's file size limit of 100.00 MB解决办法(转)</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-05-28T14:42:48+08:00">
-                2021-05-28
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E9%81%87%E5%88%B0%E7%9A%84%E9%97%AE%E9%A2%98/" itemprop="url" rel="index">
-                    <span itemprop="name">遇到的问题</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <p>上传github发现不给上传100m以上文件的错误,按着提示进行了,用到一个叫lfs的工具专门用来上传大文件的！附<a href="https://github.com/git-lfs/git-lfs" target="_blank" rel="noopener">git-lfs</a> 1.安装 mac</p>
-<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">brew install git-lfs</span><br><span class="line">git lfs install</span><br></pre></td></tr></table></figure>
-
-<p>找出超过100m的文件</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd 目标项目path</span><br><span class="line">find .&#x2F; -size +100M</span><br></pre></td></tr></table></figure>
-
-<p>大文件加入git large file storage上面</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git lfs track &quot;name_of_a_giant_file&quot;</span><br><span class="line">#example:</span><br><span class="line">git lfs track &quot;.&#x2F;&#x2F;huanxin&#x2F;HXTest&#x2F;Hyphenate.framework&#x2F;Hyphenate&quot;</span><br></pre></td></tr></table></figure>
-
-<p>添加到git上</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git add path_of_a_giant_file</span><br><span class="line">#example:</span><br><span class="line">git add .&#x2F;&#x2F;huanxin&#x2F;HXTest&#x2F;Hyphenate.framework&#x2F;Hyphenate</span><br></pre></td></tr></table></figure>
-
-<p>仅供记录以后遇到类似问题查找。</p>
-<p><a href="https://juejin.cn/post/6844904205476478989" target="_blank" rel="noopener">原文地址</a></p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
   <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/2/">&lt;i class&#x3D;&quot;fa fa-angle-right&quot;&gt;&lt;&#x2F;i&gt;</a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><a class="extend next" rel="next" href="/page/2/">&lt;i class&#x3D;&quot;fa fa-angle-right&quot;&gt;&lt;&#x2F;i&gt;</a>
   </nav>
 
 
@@ -2145,7 +2116,7 @@
               
                 <a href="/archives/%20">
               
-                  <span class="site-state-item-count">30</span>
+                  <span class="site-state-item-count">32</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
