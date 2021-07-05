@@ -1,126 +1,47 @@
 <!DOCTYPE html>
-
-
-
-  
-
-
-<html class="theme-next muse use-motion" lang="zh-Hans">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
 <meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
 
 
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
 
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yujiusheng.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
 
-
-
-
-
-
-<meta http-equiv="Cache-Control" content="no-transform" />
-<meta http-equiv="Cache-Control" content="no-siteapp" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-  
-  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
-
-
-
-
-
-
-
-<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
-
-<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
-
-
-  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
-
-
-  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
-
-
-  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
-
-
-  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
-
-
-
-
-
-  <meta name="keywords" content="Hexo, NexT" />
-
-
-
-
-
-
-
-
-
-
-<meta name="description" content="个人技术博客">
+  <meta name="description" content="个人技术博客">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Jason的博客">
 <meta property="og:url" content="http://yujiusheng.com/index.html">
 <meta property="og:site_name" content="Jason的博客">
 <meta property="og:description" content="个人技术博客">
+<meta property="og:locale" content="zh_CN">
 <meta property="article:author" content="Jason">
 <meta name="twitter:card" content="summary">
 
+<link rel="canonical" href="http://yujiusheng.com/">
 
 
-<script type="text/javascript" id="hexo.configurations">
-  var NexT = window.NexT || {};
-  var CONFIG = {
-    root: '/',
-    scheme: 'Muse',
-    version: '5.1.4',
-    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
-    fancybox: true,
-    tabs: true,
-    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
-    duoshuo: {
-      userId: '0',
-      author: '博主'
-    },
-    algolia: {
-      applicationID: '',
-      apiKey: '',
-      indexName: '',
-      hits: {"per_page":10},
-      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
-    }
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : true,
+    isPost : false,
+    lang   : 'zh-CN'
   };
 </script>
-
-
-
-  <link rel="canonical" href="http://yujiusheng.com/"/>
-
-
-
-
 
   <title>Jason的博客</title>
   
@@ -130,165 +51,134 @@
 
 
 
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
 
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
 
-<meta name="generator" content="Hexo 4.2.1"></head>
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
 
-<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+</head>
 
-  
-  
-    
-  
-
-  <div class="container sidebar-position-left 
-  page-home">
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
     <div class="headband"></div>
 
-    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-brand-wrapper">
-  <div class="site-meta ">
-    
-
-    <div class="custom-logo-site-title">
-      <a href="/"  class="brand" rel="start">
-        <span class="logo-line-before"><i></i></span>
-        <span class="site-title">Jason的博客</span>
-        <span class="logo-line-after"><i></i></span>
-      </a>
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
     </div>
-      
-        <p class="site-subtitle"></p>
-      
   </div>
 
-  <div class="site-nav-toggle">
-    <button>
-      <span class="btn-bar"></span>
-      <span class="btn-bar"></span>
-      <span class="btn-bar"></span>
-    </button>
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Jason的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
   </div>
 </div>
 
+
+
+
 <nav class="site-nav">
-  
-
-  
-    <ul id="menu" class="menu">
-      
-        
+  <ul id="menu" class="main-menu menu">
         <li class="menu-item menu-item-home">
-          <a href="/%20" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
-            
-            首页
-          </a>
-        </li>
-      
-        
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
         <li class="menu-item menu-item-archives">
-          <a href="/archives/%20" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
-            
-            归档
-          </a>
-        </li>
-      
 
-      
-    </ul>
-  
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
 
-  
+  </li>
+  </ul>
 </nav>
 
 
 
- </div>
+
+</div>
     </header>
 
-    <main id="main" class="main">
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
       <div class="main-inner">
         <div class="content-wrap">
-          <div id="content" class="content">
+          
+
+          <div class="content index posts-expand">
             
-  <section id="posts" class="posts-expand">
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E6%B6%88%E6%81%AF%E8%BD%AC%E5%8F%91/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E6%B6%88%E6%81%AF%E8%BD%AC%E5%8F%91/" itemprop="url">iOS底层探索 - 消息转发</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E6%B6%88%E6%81%AF%E8%BD%AC%E5%8F%91/" class="post-title-link" itemprop="url">iOS底层探索 - 消息转发</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
+              <span class="post-meta-item-text">发表于</span>
               
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-07-04T17:14:03+08:00">
-                2021-07-04
-              </time>
-            
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-07-04 17:14:03 / 修改时间：22:52:15" itemprop="dateCreated datePublished" datetime="2021-07-04T17:14:03+08:00">2021-07-04</time>
+            </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -296,12 +186,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>上一篇中我们探索了消息发送找不到方法的一个流程<code>动态方法决议</code>，本篇探索<code>动态方法决议</code>也找不到<code>imp</code>的下一步，也就是<code>消息转发</code>。</p>
+          <p>上一篇中我们探索了消息发送找不到方法的一个流程<code>动态方法决议</code>，本篇探索<code>动态方法决议</code>也找不到<code>imp</code>的下一步，也就是<code>消息转发</code>。</p>
 <p>和前面的流程不同的是，<code>消息转发</code>的源码并不在<code>libobjc</code>库里，而是在<code>CFFoundtion</code>框架里，<code>CFFoundtion</code>框已经开源的代码里没有找到消息转发的内容，所以我们必须找其它方式探索这个流程。</p>
 <h3 id="通过instrumentObjcMessageSends打印消息日志方式"><a href="#通过instrumentObjcMessageSends打印消息日志方式" class="headerlink" title="通过instrumentObjcMessageSends打印消息日志方式"></a>通过instrumentObjcMessageSends打印消息日志方式</h3><h4 id="instrumentObjcMessageSends的由来"><a href="#instrumentObjcMessageSends的由来" class="headerlink" title="instrumentObjcMessageSends的由来"></a>instrumentObjcMessageSends的由来</h4><p>通过方法调用这条链路<code>lookUpImpOrForward --&gt; log_and_fill_cache --&gt; logMessageSend</code>,我们在<code>logMessageSend</code>方法源码下方找到<code>instrumentObjcMessageSends</code>的实现：</p>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">instrumentObjcMessageSends</span><span class="params">(BOOL flag)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">bool</span> enable = flag;</span><br><span class="line">    <span class="comment">// Shortcut NOP</span></span><br><span class="line">    <span class="keyword">if</span> (objcMsgLogEnabled == enable)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// If enabling, flush all method caches so we get some traces</span></span><br><span class="line">    <span class="keyword">if</span> (enable)</span><br><span class="line">        _objc_flush_caches(Nil);</span><br><span class="line">    <span class="comment">// Sync our log file</span></span><br><span class="line">    <span class="keyword">if</span> (objcMsgLogFD != <span class="number">-1</span>)</span><br><span class="line">        fsync (objcMsgLogFD);</span><br><span class="line">  	<span class="comment">//赋值是否需要打印message log</span></span><br><span class="line">    objcMsgLogEnabled = enable;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -394,112 +279,56 @@
 <li>慢速消息转发流程</li>
 </ol>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/" itemprop="url">iOS底层探索 - 动态方法决议</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">iOS底层探索 - 动态方法决议</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
+              <span class="post-meta-item-text">发表于</span>
               
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-07-04T09:12:56+08:00">
-                2021-07-04
-              </time>
-            
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-07-04 09:12:56 / 修改时间：16:37:27" itemprop="dateCreated datePublished" datetime="2021-07-04T09:12:56+08:00">2021-07-04</time>
+            </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -507,12 +336,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>前面两篇文章我们探索了消息查找的流程，包括快速查找和慢速查找，本文开始探索消息查找未找到时候的处理流程。</p>
+          <p>前面两篇文章我们探索了消息查找的流程，包括快速查找和慢速查找，本文开始探索消息查找未找到时候的处理流程。</p>
 <h3 id="unrecognized-selector"><a href="#unrecognized-selector" class="headerlink" title="unrecognized selector"></a>unrecognized selector</h3><p><code>unrecognized selector</code>是我们开发中很熟悉的一种错误，就是找不到方法的时候报错的提示，比如：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;  JSPerson.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  JSPerson.m</span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  main.m</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -595,112 +419,62 @@
 </ul>
 <p>如果没有进行动态方法解析，接下来就会进入消息转发的流程，我们下一节探索。</p>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/30/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc-msgSend-%E4%B8%8B/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/30/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc-msgSend-%E4%B8%8B/" itemprop="url">iOS底层探索 - objc_msgSend(下)</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/30/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc-msgSend-%E4%B8%8B/" class="post-title-link" itemprop="url">iOS底层探索 - objc_msgSend(下)</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-30T11:14:56+08:00">
-                2021-06-30
-              </time>
-            
+              <span class="post-meta-item-text">发表于</span>
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-06-30 11:14:56" itemprop="dateCreated datePublished" datetime="2021-06-30T11:14:56+08:00">2021-06-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-03 22:51:26" itemprop="dateModified" datetime="2021-07-03T22:51:26+08:00">2021-07-03</time>
+              </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -708,12 +482,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>上一篇文章中我们探索了消息的快速查找(缓存)，本文我们探索慢速查找。</p>
+          <p>上一篇文章中我们探索了消息的快速查找(缓存)，本文我们探索慢速查找。</p>
 <h3 id="汇编探索回到C-探索"><a href="#汇编探索回到C-探索" class="headerlink" title="汇编探索回到C++探索"></a>汇编探索回到<code>C++</code>探索</h3><p>上一篇我们已经知道当快速查找找不到的时候会执行到<code>__objc_msgSend_uncached</code>方法，我们先看一下这个方法的源码：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">	STATIC_ENTRY __objc_msgSend_uncached</span><br><span class="line">	UNWIND __objc_msgSend_uncached, FrameWithNoSaves</span><br><span class="line">	&#x2F;&#x2F; THIS IS NOT A CALLABLE C FUNCTION</span><br><span class="line">	&#x2F;&#x2F; Out-of-band p15 is the class to search</span><br><span class="line">	&#x2F;&#x2F; imp</span><br><span class="line">	&#x2F;&#x2F;方法表查找</span><br><span class="line">	MethodTableLookup</span><br><span class="line">	&#x2F;&#x2F;调用返回 x17</span><br><span class="line">	TailCallFunctionPointer x17</span><br><span class="line">	END_ENTRY __objc_msgSend_uncached</span><br><span class="line">	</span><br><span class="line">	.macro MethodTableLookup</span><br><span class="line">	&#x2F;&#x2F;&#x2F;</span><br><span class="line">	SAVE_REGS MSGSEND</span><br><span class="line">	&#x2F;&#x2F; lookUpImpOrForward(obj, sel, cls, LOOKUP_INITIALIZE | LOOKUP_RESOLVER)</span><br><span class="line">	&#x2F;&#x2F; receiver and selector already in x0 and x1</span><br><span class="line">	mov	x2, x16</span><br><span class="line">	mov	x3, #3</span><br><span class="line">	&#x2F;&#x2F;方法查找</span><br><span class="line">	bl	_lookUpImpOrForward</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; IMP in x0 --</span><br><span class="line">	&#x2F;&#x2F;将查找到的方法传给 x17</span><br><span class="line">	mov	x17, x0</span><br><span class="line">	RESTORE_REGS MSGSEND</span><br><span class="line">.endmacro</span><br></pre></td></tr></table></figure>
 
@@ -747,112 +516,62 @@
 <p>我们这个例子是<code>sel</code>实际的位置大于中间值的情况，小于中间值的情况也类似，就不举例验证了。</p>
 <h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本节我们探索了消息的慢速查找流程，具体流程上面已列出，大体流程就是递归查找类以及其父类的<code>sel</code>，如果找到就添加到缓存后返回<code>imp</code>,如果找到根类也没有找到就是走<code>动态方法解析</code>过程，我们下一篇继续探索。</p>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc_msgSend-%E4%B8%8A/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc_msgSend-%E4%B8%8A/" itemprop="url">iOS底层探索 - objc_msgSend(上)</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-objc_msgSend-%E4%B8%8A/" class="post-title-link" itemprop="url">iOS底层探索 - objc_msgSend(上)</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-27T20:14:59+08:00">
-                2021-06-27
-              </time>
-            
+              <span class="post-meta-item-text">发表于</span>
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-06-27 20:14:59" itemprop="dateCreated datePublished" datetime="2021-06-27T20:14:59+08:00">2021-06-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-06-30 10:48:44" itemprop="dateModified" datetime="2021-06-30T10:48:44+08:00">2021-06-30</time>
+              </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -860,12 +579,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>上一篇探究了<code>catch_t</code>的结构和<code>insert</code>流程，<code>insert</code>的调用方法还不清楚，我们本篇就从<code>insert</code>的调用开始探索。 在探索之前我们首先看一下<code>runtime</code>的概念。</p>
+          <p>上一篇探究了<code>catch_t</code>的结构和<code>insert</code>流程，<code>insert</code>的调用方法还不清楚，我们本篇就从<code>insert</code>的调用开始探索。 在探索之前我们首先看一下<code>runtime</code>的概念。</p>
 <h3 id="runtime"><a href="#runtime" class="headerlink" title="runtime"></a>runtime</h3><p><code>runtime</code>翻译过来就是<code>运行时</code>，与其对应的一个词是<code>编译时</code>，它们的区别是：</p>
 <ul>
 <li><p><strong>编译时</strong> 顾名思义就是正在编译的时候 . 那啥叫编译呢?就是编译器帮你把源代码翻译成机器能识别的代码，(当然只是一般意义上这么说，实际上可能只是翻译成某个中间状态的语言）</p>
@@ -918,112 +632,56 @@
 </ul>
 <p>下一篇我们继续探索找不到的情况也就是<code>_objc_msgSend_uncached</code>的流程。</p>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-catche-t/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-catche-t/" itemprop="url">iOS底层探索 - catche_t</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-catche-t/" class="post-title-link" itemprop="url">iOS底层探索 - catche_t</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
+              <span class="post-meta-item-text">发表于</span>
               
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-27T09:35:08+08:00">
-                2021-06-27
-              </time>
-            
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-06-27 09:35:08 / 修改时间：17:39:09" itemprop="dateCreated datePublished" datetime="2021-06-27T09:35:08+08:00">2021-06-27</time>
+            </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -1031,12 +689,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>前面我们探索了<code>Class</code>的<code>bits</code>属性，这篇我们主要探究一下类的第三个属性<code>cache</code>，了解一下苹果对缓存的处理。我们首先看一下<code>cache</code>的内存结构。</p>
+          <p>前面我们探索了<code>Class</code>的<code>bits</code>属性，这篇我们主要探究一下类的第三个属性<code>cache</code>，了解一下苹果对缓存的处理。我们首先看一下<code>cache</code>的内存结构。</p>
 <h3 id="cache-t的结构"><a href="#cache-t的结构" class="headerlink" title="cache_t的结构"></a><code>cache_t</code>的结构</h3><p>先看一下<code>cache_t</code>的定义：</p>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cache_t</span> &#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    explicit_atomic&lt;<span class="keyword">uintptr_t</span>&gt; _bucketsAndMaybeMask; <span class="comment">// 8</span></span><br><span class="line">    <span class="keyword">union</span> &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            explicit_atomic&lt;<span class="keyword">mask_t</span>&gt;    _maybeMask; <span class="comment">// 4</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __LP64__</span></span><br><span class="line">            <span class="keyword">uint16_t</span>                   _flags;  <span class="comment">// 2</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">            <span class="keyword">uint16_t</span>                   _occupied; <span class="comment">// 2</span></span><br><span class="line">        &#125;;</span><br><span class="line">        explicit_atomic&lt;<span class="keyword">preopt_cache_t</span> *&gt; _originalPreoptCache; <span class="comment">// 8</span></span><br><span class="line">    &#125;;</span><br><span class="line">  <span class="comment">///省略代码</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">incrementOccupied</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setBucketsAndMask</span><span class="params">(struct <span class="keyword">bucket_t</span> *newBuckets, <span class="keyword">mask_t</span> newMask)</span></span>;</span><br><span class="line">  <span class="comment">///省略代码</span></span><br><span class="line">		<span class="function"><span class="keyword">unsigned</span> <span class="title">capacity</span><span class="params">()</span> <span class="keyword">const</span></span>;</span><br><span class="line">    <span class="function">struct <span class="keyword">bucket_t</span> *<span class="title">buckets</span><span class="params">()</span> <span class="keyword">const</span></span>;</span><br><span class="line">    <span class="function">Class <span class="title">cls</span><span class="params">()</span> <span class="keyword">const</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">reallocate</span><span class="params">(<span class="keyword">mask_t</span> oldCapacity, <span class="keyword">mask_t</span> newCapacity, <span class="keyword">bool</span> freeOld)</span></span>;</span><br><span class="line">  <span class="comment">///省略代码</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">insert</span><span class="params">(SEL sel, IMP imp, id receiver)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">copyCacheNolock</span><span class="params">(objc_imp_cache_entry *<span class="built_in">buffer</span>, <span class="keyword">int</span> len)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">eraseNolock</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *func)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">init</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">collectNolock</span><span class="params">(<span class="keyword">bool</span> collectALot)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">size_t</span> <span class="title">bytesForCapacity</span><span class="params">(<span class="keyword">uint32_t</span> cap)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -1090,112 +743,62 @@
 <li>如果缓存不存在执行<code>set</code>方法存储缓存后结束方法。</li>
 </ul>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/20/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8B/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/20/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8B/" itemprop="url">iOS底层探索 - 类的结构(下)</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/20/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8B/" class="post-title-link" itemprop="url">iOS底层探索 - 类的结构(下)</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-20T16:00:05+08:00">
-                2021-06-20
-              </time>
-            
+              <span class="post-meta-item-text">发表于</span>
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-06-20 16:00:05" itemprop="dateCreated datePublished" datetime="2021-06-20T16:00:05+08:00">2021-06-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-06-21 10:03:00" itemprop="dateModified" datetime="2021-06-21T10:03:00+08:00">2021-06-21</time>
+              </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -1203,12 +806,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>上一篇文章中我们探索了类的结构，留下了一个疑问就是<code>class_ro_t</code>和<code>class_rw_t</code>的区别，我们从这个区别开始。</p>
+          <p>上一篇文章中我们探索了类的结构，留下了一个疑问就是<code>class_ro_t</code>和<code>class_rw_t</code>的区别，我们从这个区别开始。</p>
 <h3 id="class-ro-t和class-rw-t的区别"><a href="#class-ro-t和class-rw-t的区别" class="headerlink" title="class_ro_t和class_rw_t的区别"></a><code>class_ro_t</code>和<code>class_rw_t</code>的区别</h3><h4 id="class-ro-t"><a href="#class-ro-t" class="headerlink" title="class_ro_t"></a><code>class_ro_t</code></h4><p><code>class_ro_t</code>存储了当前类在编译期就已经确定的<code>属性</code>、<code>方法</code>和遵循的<code>协议</code>,里面没有<code>category</code>的方法。运行时添加的方法存储在运行时生成的<code>class_rw_t</code>中。</p>
 <p><code>ro</code>标示的是<code>read only</code>,是无法进行修改的，我们看一下它的定义：</p>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">class_ro_t</span> &#123;</span></span><br><span class="line">    <span class="keyword">uint32_t</span> flags;</span><br><span class="line">    <span class="keyword">uint32_t</span> instanceStart;</span><br><span class="line">    <span class="keyword">uint32_t</span> instanceSize;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> __LP64__</span></span><br><span class="line">    <span class="keyword">uint32_t</span> reserved;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="keyword">union</span> &#123;</span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">uint8_t</span> * ivarLayout;</span><br><span class="line">        Class nonMetaclass;</span><br><span class="line">    &#125;;</span><br><span class="line">    explicit_atomic&lt;<span class="keyword">const</span> <span class="keyword">char</span> *&gt; name;</span><br><span class="line">    <span class="comment">// With ptrauth, this is signed if it points to a small list, but</span></span><br><span class="line">    <span class="comment">// may be unsigned if it points to a big list.</span></span><br><span class="line">    <span class="keyword">void</span> *baseMethodList;<span class="comment">//方法列表的获取方法</span></span><br><span class="line">    <span class="keyword">protocol_list_t</span> * baseProtocols;</span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">ivar_list_t</span> * ivars;<span class="comment">//成员变量列表</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">uint8_t</span> * weakIvarLayout;</span><br><span class="line">    <span class="keyword">property_list_t</span> *baseProperties;<span class="comment">//属性列表</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// This field exists only when RO_HAS_SWIFT_INITIALIZER is set.</span></span><br><span class="line">    _objc_swiftMetadataInitializer __ptrauth_objc_method_list_imp _swiftMetadataInitializer_NEVER_USE[<span class="number">0</span>];</span><br><span class="line">    <span class="function">_objc_swiftMetadataInitializer <span class="title">swiftMetadataInitializer</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (flags &amp; RO_HAS_SWIFT_INITIALIZER) &#123;</span><br><span class="line">            <span class="keyword">return</span> _swiftMetadataInitializer_NEVER_USE[<span class="number">0</span>];</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> nil;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="keyword">char</span> *<span class="title">getName</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> name.load(<span class="built_in">std</span>::memory_order_acquire);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">uint16_t</span> methodListPointerDiscriminator = <span class="number">0xC310</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> 0 <span class="comment">// <span class="doctag">FIXME:</span> enable this when we get a non-empty definition of __ptrauth_objc_method_list_pointer from ptrauth.h.</span></span></span><br><span class="line">        <span class="keyword">static_assert</span>(<span class="built_in">std</span>::is_same&lt;</span><br><span class="line">                      <span class="keyword">void</span> * __ptrauth_objc_method_list_pointer *,</span><br><span class="line">                      <span class="keyword">void</span> * __ptrauth(ptrauth_key_method_list_pointer, <span class="number">1</span>, methodListPointerDiscriminator) *&gt;::value,</span><br><span class="line">                      <span class="string">"Method list pointer signing discriminator must match ptrauth.h"</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="function"><span class="keyword">method_list_t</span> *<span class="title">baseMethods</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __has_feature(ptrauth_calls)</span></span><br><span class="line">        <span class="keyword">method_list_t</span> *ptr = ptrauth_strip((<span class="keyword">method_list_t</span> *)baseMethodList, ptrauth_key_method_list_pointer);</span><br><span class="line">        <span class="keyword">if</span> (ptr == <span class="literal">nullptr</span>)</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">        <span class="comment">// Don't auth if the class_ro and the method list are both in the shared cache.</span></span><br><span class="line">        <span class="comment">// This is secure since they'll be read-only, and this allows the shared cache</span></span><br><span class="line">        <span class="comment">// to cut down on the number of signed pointers it has.</span></span><br><span class="line">        <span class="keyword">bool</span> roInSharedCache = objc::inSharedCache((<span class="keyword">uintptr_t</span>)<span class="keyword">this</span>);</span><br><span class="line">        <span class="keyword">bool</span> listInSharedCache = objc::inSharedCache((<span class="keyword">uintptr_t</span>)ptr);</span><br><span class="line">        <span class="keyword">if</span> (roInSharedCache &amp;&amp; listInSharedCache)</span><br><span class="line">            <span class="keyword">return</span> ptr;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Auth all other small lists.</span></span><br><span class="line">        <span class="keyword">if</span> (ptr-&gt;isSmallList())</span><br><span class="line">            ptr = ptrauth_auth_data((<span class="keyword">method_list_t</span> *)baseMethodList,</span><br><span class="line">                                    ptrauth_key_method_list_pointer,</span><br><span class="line">                                    ptrauth_blend_discriminator(&amp;baseMethodList,</span><br><span class="line">                                                                methodListPointerDiscriminator));</span><br><span class="line">        <span class="keyword">return</span> ptr;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">        <span class="keyword">return</span> (<span class="keyword">method_list_t</span> *)baseMethodList;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    &#125;</span><br><span class="line">	<span class="comment">///省略代码</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
@@ -1328,112 +926,62 @@
 </ul>
 <p>本文我们主要研究了类的<code>ro</code>和<code>rw</code>的区别，属性的<code>set</code>方法，以及<code>isKindOfClass</code>vs<code>isMemberOfClass</code>的源码，类的探究就到这里了，有遗漏的话后面会补充。</p>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/19/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8A/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/19/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8A/" itemprop="url">iOS底层探索 - 类的结构(上)</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/19/iOS%E5%BA%95%E5%B1%82-%E7%B1%BB%E7%9A%84%E7%BB%93%E6%9E%84-%E4%B8%8A/" class="post-title-link" itemprop="url">iOS底层探索 - 类的结构(上)</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-19T20:18:17+08:00">
-                2021-06-19
-              </time>
-            
+              <span class="post-meta-item-text">发表于</span>
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-06-19 20:18:17" itemprop="dateCreated datePublished" datetime="2021-06-19T20:18:17+08:00">2021-06-19</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-06-20 22:28:19" itemprop="dateModified" datetime="2021-06-20T22:28:19+08:00">2021-06-20</time>
+              </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -1441,12 +989,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>我们在上一篇文章里探索了<code>对象的本质</code>，我们知道对象在底层是<code>objc_object</code>结构体，<code>objc_object</code>第一个成员是<code>isa</code>,今天我们从<code>isa</code>开始探索。</p>
+          <p>我们在上一篇文章里探索了<code>对象的本质</code>，我们知道对象在底层是<code>objc_object</code>结构体，<code>objc_object</code>第一个成员是<code>isa</code>,今天我们从<code>isa</code>开始探索。</p>
 <h3 id="isa的指向"><a href="#isa的指向" class="headerlink" title="isa的指向"></a><code>isa</code>的指向</h3><p>我们首先还是先定义一个继承<code>NSObject</code>的类<code>JSPerson</code>,在<code>main</code>方法里实例化。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;  JSPerson.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  JSPerson.m</span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;main.m</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        &#x2F;&#x2F; 0x00007ffffffffff8</span><br><span class="line">        JSPerson *p &#x3D; [JSPerson alloc];</span><br><span class="line">        NSLog(@&quot;%@&quot;,p);&#x2F;&#x2F;断点</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
 
@@ -1533,112 +1076,62 @@
 </ul>
 <p>类在<code>class_rw_t</code>存储属性、方法、协议等信息，在<code>class_ro_t</code>里存储了成员变量、<code>baseMethodList</code>、<code>baseProtocols</code>、<code>baseProperties</code>等信息，那<code>class_ro_t</code>和<code>class_rw_t</code>的区别是什么呢，我们下一篇文章继续探索。</p>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/13/iOS%E5%BA%95%E5%B1%82-%E5%AF%B9%E8%B1%A1%E7%9A%84%E6%9C%AC%E8%B4%A8/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/13/iOS%E5%BA%95%E5%B1%82-%E5%AF%B9%E8%B1%A1%E7%9A%84%E6%9C%AC%E8%B4%A8/" itemprop="url">iOS底层探索 - 对象的本质</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/13/iOS%E5%BA%95%E5%B1%82-%E5%AF%B9%E8%B1%A1%E7%9A%84%E6%9C%AC%E8%B4%A8/" class="post-title-link" itemprop="url">iOS底层探索 - 对象的本质</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-13T20:38:04+08:00">
-                2021-06-13
-              </time>
-            
+              <span class="post-meta-item-text">发表于</span>
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-06-13 20:38:04" itemprop="dateCreated datePublished" datetime="2021-06-13T20:38:04+08:00">2021-06-13</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-06-20 22:20:15" itemprop="dateModified" datetime="2021-06-20T22:20:15+08:00">2021-06-20</time>
+              </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -1646,12 +1139,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>前面我们探索过<code>NSObject</code>的<code>alloc</code>方法及<code>内存对齐</code>的规则，我们本文主要探索<code>OC</code>对象的本质。</p>
+          <p>前面我们探索过<code>NSObject</code>的<code>alloc</code>方法及<code>内存对齐</code>的规则，我们本文主要探索<code>OC</code>对象的本质。</p>
 <h3 id="查找对象的定义"><a href="#查找对象的定义" class="headerlink" title="查找对象的定义"></a>查找对象的定义</h3><p>提到对象的本质，我们最先想到的就是看源码，那怎么定位源码中对象的定义的内容呢。感觉无从下手，那我们就先定义一个对象初始化一下，利用<code>clang</code>命令，将<code>OC</code>代码转换成<code>c++</code>代码找一下线索。我们先定义一个类<code>JSPerson</code>,然后初始化对象：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">@property (nonatomic, strong) NSString *firstName;</span><br><span class="line"></span><br><span class="line">@property (nonatomic, strong) NSString *lastName;</span><br><span class="line">@end</span><br><span class="line">   </span><br><span class="line">@implementation JSPerson</span><br><span class="line">@end</span><br><span class="line">   </span><br><span class="line">#import &quot;JSPerson.h&quot;</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">  @autoreleasepool &#123;</span><br><span class="line">      JSPerson *person &#x3D; [[JSPerson alloc] init];</span><br><span class="line">      person.firstName  &#x3D; @&quot;Jason&quot;;</span><br><span class="line">      person.lastName    &#x3D; @&quot;Test&quot;;</span><br><span class="line">      NSLog(@&quot;%@&quot;,person.firstName);</span><br><span class="line">      NSLog(@&quot;%@&quot;,person.firstName);</span><br><span class="line">      &#125;</span><br><span class="line">   return 0;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
 
@@ -1723,112 +1211,56 @@
 <p>通过上面的位运算，我们可以确定<code>shiftcls</code>存储的就是<code>JSPerson</code>类的地址。</p>
 <p>在我们实际开发中我们定义的对象的<code>isa</code>基本都是<code>nonpointer</code>，好处不言而喻可以增加内存的利用率，减少内存浪费。对象的本质就先探索到这里，后续文章我们继续探索。</p>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/08/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%AD%97%E8%8A%82%E5%AF%B9%E9%BD%90/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/08/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%AD%97%E8%8A%82%E5%AF%B9%E9%BD%90/" itemprop="url">iOS底层探索 - 内存对齐</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/08/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%AD%97%E8%8A%82%E5%AF%B9%E9%BD%90/" class="post-title-link" itemprop="url">iOS底层探索 - 内存对齐</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
+              <span class="post-meta-item-text">发表于</span>
               
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-08T19:46:07+08:00">
-                2021-06-08
-              </time>
-            
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-06-08 19:46:07 / 修改时间：21:32:21" itemprop="dateCreated datePublished" datetime="2021-06-08T19:46:07+08:00">2021-06-08</time>
+            </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -1836,12 +1268,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p>在上一篇<code>alloc</code>方法的探索中，我们提到了<code>内存对齐</code>的概念，这篇文章我们就主要介绍一下<code>内存对齐</code>。</p>
+          <p>在上一篇<code>alloc</code>方法的探索中，我们提到了<code>内存对齐</code>的概念，这篇文章我们就主要介绍一下<code>内存对齐</code>。</p>
 <h3 id="结构体的字节对齐"><a href="#结构体的字节对齐" class="headerlink" title="结构体的字节对齐"></a>结构体的字节对齐</h3><h4 id="一个例子"><a href="#一个例子" class="headerlink" title="一个例子"></a>一个例子</h4><p>我们首先定义几个结构体，初始化，看一下每个结构体的内存大小。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">struct JSPerson1 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    char b;</span><br><span class="line">    int c;</span><br><span class="line">    short d;</span><br><span class="line">&#125;struct1;</span><br><span class="line">struct JSPerson2 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    int b;</span><br><span class="line">    char c;</span><br><span class="line">    short d;        </span><br><span class="line">&#125;struct2;</span><br><span class="line">struct JSPerson3 &#123;</span><br><span class="line">    double a;</span><br><span class="line">    int b;</span><br><span class="line">    char c;</span><br><span class="line">    short d;</span><br><span class="line">    int e;</span><br><span class="line">    struct JSPerson1 str;</span><br><span class="line">  	int f;</span><br><span class="line">&#125;struct3;</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        NSLog(@&quot;struct1的大小&#x3D;&#x3D;%lu&quot;,sizeof(struct1));</span><br><span class="line">        NSLog(@&quot;struct2的大小&#x3D;&#x3D;%lu&quot;,sizeof(struct2));</span><br><span class="line">        NSLog(@&quot;struct3的大小&#x3D;&#x3D;%lu&quot;,sizeof(struct3));</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -1896,112 +1323,62 @@
 <p>看到这里我们明白了，原来编译器帮我们做了一层优化，将属性按照最优的顺序转换成成员变量。所以我们定义属性的顺序并不会影响到对象实际占用的内存大小。</p>
 <p>内存对齐的内容就探索到这里，后面会继续探索<code>ios 底层</code>。</p>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
       
-
-  
-
   
   
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/06/iOS%E5%BA%95%E5%B1%82-alloc%E6%96%B9%E6%B3%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="">
       <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Jason的博客">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2021/06/06/iOS%E5%BA%95%E5%B1%82-alloc%E6%96%B9%E6%B3%95/" itemprop="url">iOS底层探索-alloc方法</a></h1>
-        
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/06/iOS%E5%BA%95%E5%B1%82-alloc%E6%96%B9%E6%B3%95/" class="post-title-link" itemprop="url">iOS底层探索-alloc方法</a>
+        </h2>
 
         <div class="post-meta">
-          <span class="post-time">
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-06T16:23:12+08:00">
-                2021-06-06
-              </time>
-            
+              <span class="post-meta-item-text">发表于</span>
 
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
+              <time title="创建时间：2021-06-06 16:23:12" itemprop="dateCreated datePublished" datetime="2021-06-06T16:23:12+08:00">2021-06-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-06-20 22:21:12" itemprop="dateModified" datetime="2021-06-20T22:21:12+08:00">2021-06-20</time>
+              </span>
 
           
 
         </div>
       </header>
-    
 
     
     
@@ -2009,12 +1386,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
-        
-          
-            <p><code>alloc</code>是我们日常开发中经常遇到，下面我们从源码层面分析一下，<code>alloc</code>方法的底层。</p>
+          <p><code>alloc</code>是我们日常开发中经常遇到，下面我们从源码层面分析一下，<code>alloc</code>方法的底层。</p>
 <h3 id="准备工作-获取源码"><a href="#准备工作-获取源码" class="headerlink" title="准备工作-获取源码"></a>准备工作-获取源码</h3><ul>
 <li>从苹果<a href="https://opensource.apple.com/tarballs/" target="_blank" rel="noopener">开源网站</a>下载<code>objc</code>的源码。</li>
 <li>根据<a href="https://juejin.cn/post/6914265121183236104" target="_blank" rel="noopener">这个教程</a>将源码调试成可编译的状态<h3 id="开始探究"><a href="#开始探究" class="headerlink" title="开始探究"></a>开始探究</h3>我们新建一个类JSPerson<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;.m</span><br><span class="line">@implementation JSPerson</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
@@ -2032,45 +1404,24 @@
 </ul>
 <p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/62281d7404a940a9bcf2390166545e97~tplv-k3u1fbpfcp-watermark.image" alt="alloc流程.png"></p>
 
-          
-        
       
     </div>
-    
-    
-    
 
     
-
     
-
     
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
+      <footer class="post-footer">
         <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
+      </footer>
   </article>
+  
+  
+  
 
-
-    
-  </section>
 
   
   <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><a class="extend next" rel="next" href="/page/2/">&lt;i class&#x3D;&quot;fa fa-angle-right&quot;&gt;&lt;&#x2F;i&gt;</a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -2078,161 +1429,137 @@
           </div>
           
 
-
-          
-
-        </div>
-        
-          
-  
-  <div class="sidebar-toggle">
-    <div class="sidebar-toggle-line-wrap">
-      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
-      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
-      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
-    </div>
-  </div>
-
-  <aside id="sidebar" class="sidebar">
-    
-    <div class="sidebar-inner">
-
-      
-
-      
-
-      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
-        <div class="site-overview">
-          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-            
-              <p class="site-author-name" itemprop="name">Jason</p>
-              <p class="site-description motion-element" itemprop="description">个人技术博客</p>
-          </div>
-
-          <nav class="site-state motion-element">
-
-            
-              <div class="site-state-item site-state-posts">
-              
-                <a href="/archives/%20">
-              
-                  <span class="site-state-item-count">32</span>
-                  <span class="site-state-item-name">日志</span>
-                </a>
-              </div>
-            
-
-            
-              
-              
-              <div class="site-state-item site-state-categories">
-                <a href="/categories/index.html">
-                  <span class="site-state-item-count">1</span>
-                  <span class="site-state-item-name">分类</span>
-                </a>
-              </div>
-            
-
-            
-              
-              
-              <div class="site-state-item site-state-tags">
-                
-                  <span class="site-state-item-count">5</span>
-                  <span class="site-state-item-name">标签</span>
-                
-              </div>
-            
-
-          </nav>
-
-          
-
-          
-
-          
-          
-
-          
-          
-
-          
-
-        </div>
-      </section>
-
-      
-
-      
-
-    </div>
-  </aside>
-
-
-        
-      </div>
-    </main>
-
-    <footer id="footer" class="footer">
-      <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
-  <span class="with-love">
-    <i class="fa fa-user"></i>
-  </span>
-  <span class="author" itemprop="copyrightHolder">Jason</span>
-
-  
-</div>
-
-
-  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
-
-
-
-  <span class="post-meta-divider">|</span>
-
-
-
-  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
-
-
-
-
-        
-
-
-
-
-
-
-
-        
-      </div>
-    </footer>
-
-    
-      <div class="back-to-top">
-        <i class="fa fa-arrow-up"></i>
-        
-      </div>
-    
-
-    
-
-  </div>
-
-  
-
-<script type="text/javascript">
-  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
-    window.Promise = null;
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
   }
 </script>
 
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Jason</p>
+  <div class="site-description" itemprop="description">个人技术博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
 
 
 
 
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
 
 
 
@@ -2250,107 +1577,8 @@
 
 
 
-  
-  
-    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
-  
-
-  
-  
-    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
-  
-
-  
-  
-    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
-  
-
-  
-  
-    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
-  
-
-  
-  
-    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
-  
-
-  
-  
-    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
-  
 
 
-  
-
-
-  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
-
-  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
-
-
-
-  
-  
-
-  
-
-  
-
-
-  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
-
-
-
-  
-
-
-  
-
-
-
-
-	
-
-
-
-
-
-  
-
-
-
-
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-
-
-
-
-  
-
-  
-
-  
-
-  
-  
-
-  
 
   
 
