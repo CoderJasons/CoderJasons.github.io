@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yujiusheng.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="本文我们研究分类的加载流程。 分类的本质在研究对象、类的本质的时候，我们都用clang命令将main.m转换成main.cpp文件查看其本质，分类也不例外，我们使用相同的方法分析。 首先我们定义一个JSPerson的分类： 123456789101112131415@interface JSPerson (TestLoad)- (void)sayCategory;@end@implementati">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS底层探索-类的加载(下)">
+<meta property="og:url" content="http://yujiusheng.com/2021/07/18/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD-%E4%B8%8B/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="本文我们研究分类的加载流程。 分类的本质在研究对象、类的本质的时候，我们都用clang命令将main.m转换成main.cpp文件查看其本质，分类也不例外，我们使用相同的方法分析。 首先我们定义一个JSPerson的分类： 123456789101112131415@interface JSPerson (TestLoad)- (void)sayCategory;@end@implementati">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fbe0d82210524777a295602d1a33f6f7~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a1dd3596aa214f329bc1ad2d90806c03~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fbe0d82210524777a295602d1a33f6f7~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/faaa15082c19440daa4b8200bd9e935d~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/61f7e74b7b9243e79e0e0037a439df38~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a5733fd8764141f1937743cd459a0382~tplv-k3u1fbpfcp-watermark.image">
+<meta property="article:published_time" content="2021-07-18T06:03:41.000Z">
+<meta property="article:modified_time" content="2021-07-18T12:37:27.000Z">
+<meta property="article:author" content="Jason">
+<meta property="article:tag" content="iOS底层">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fbe0d82210524777a295602d1a33f6f7~tplv-k3u1fbpfcp-watermark.image">
+
+<link rel="canonical" href="http://yujiusheng.com/2021/07/18/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD-%E4%B8%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>iOS底层探索-类的加载(下) | Jason的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Jason的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/18/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD-%E4%B8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          iOS底层探索-类的加载(下)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-07-18 14:03:41 / 修改时间：20:37:27" itemprop="dateCreated datePublished" datetime="2021-07-18T14:03:41+08:00">2021-07-18</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文我们研究分类的加载流程。</p>
+<h3 id="分类的本质"><a href="#分类的本质" class="headerlink" title="分类的本质"></a>分类的本质</h3><p>在研究<code>对象</code>、<code>类</code>的本质的时候，我们都用<code>clang</code>命令将<code>main.m</code>转换成<code>main.cpp</code>文件查看其本质，<code>分类</code>也不例外，我们使用相同的方法分析。</p>
+<p>首先我们定义一个<code>JSPerson</code>的分类：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson (TestLoad)</span><br><span class="line"></span><br><span class="line">- (void)sayCategory;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation JSPerson (TestLoad)</span><br><span class="line"></span><br><span class="line">- (void)sayCategory&#123;</span><br><span class="line">    NSLog(@&quot;JSPersonCategpry say : %s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (void)load&#123;</span><br><span class="line">    NSLog(@&quot;JSPersonCategpry load&quot;);</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>然后在<code>main.m</code>文件中使用：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *p &#x3D; [JSPerson alloc];</span><br><span class="line">        [p sayCategory];</span><br><span class="line">        NSLog(@&quot;Hello, World!&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们执行：</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">clang -rewrite-objc main.m -o main.cpp</span><br></pre></td></tr></table></figure>
+
+<p>我们打开<code>main.cpp</code>文件，找到分类相关的代码。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> _<span class="title">category_t</span> *<span class="title">L_OBJC_LABEL_CATEGORY_</span>$ [1] __<span class="title">attribute__</span>((<span class="title">used</span>, <span class="title">section</span> ("__<span class="title">DATA</span>, __<span class="title">objc_catlist</span>,<span class="title">regular</span>,<span class="title">no_dead_strip</span>")))= &#123;</span></span><br><span class="line">	&amp;_OBJC_$_CATEGORY_JSPerson_$_TestLoad,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">category_t</span> &#123;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="keyword">char</span> *name;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> _<span class="title">class_t</span> *<span class="title">cls</span>;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">method_list_t</span> *<span class="title">instance_methods</span>;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">method_list_t</span> *<span class="title">class_methods</span>;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">protocol_list_t</span> *<span class="title">protocols</span>;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">prop_list_t</span> *<span class="title">properties</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>我们从源码里也能搜索到它的定义：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">category_t</span> &#123;</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">char</span> *name;</span><br><span class="line">    <span class="keyword">classref_t</span> cls;</span><br><span class="line">    WrappedPtr&lt;<span class="keyword">method_list_t</span>, PtrauthStrip&gt; instanceMethods;</span><br><span class="line">    WrappedPtr&lt;<span class="keyword">method_list_t</span>, PtrauthStrip&gt; classMethods;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">protocol_list_t</span> *<span class="title">protocols</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">property_list_t</span> *<span class="title">instanceProperties</span>;</span></span><br><span class="line">    <span class="comment">// Fields below this point are not always present on disk.</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">property_list_t</span> *_<span class="title">classProperties</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">method_list_t</span> *<span class="title">methodsForMeta</span><span class="params">(<span class="keyword">bool</span> isMeta)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (isMeta) <span class="keyword">return</span> classMethods;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">return</span> instanceMethods;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">property_list_t</span> *<span class="title">propertiesForMeta</span><span class="params">(<span class="keyword">bool</span> isMeta, struct header_info *hi)</span></span>;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">protocol_list_t</span> *<span class="title">protocolsForMeta</span><span class="params">(<span class="keyword">bool</span> isMeta)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (isMeta) <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">return</span> protocols;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到<code>分类</code>的本质是<code>结构体</code>：<code>category_t</code>。</p>
+<p>我们继续回到<code>_read_images</code>函数探索。</p>
+<h3 id="rwe的赋值"><a href="#rwe的赋值" class="headerlink" title="rwe的赋值"></a>rwe的赋值</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> rwe = cls-&gt;data()-&gt;extAllocIfNeeded();</span><br></pre></td></tr></table></figure>
+
+<p><code>extAllocIfNeeded</code>方法的实现：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">class_rw_ext_t</span> *<span class="title">extAllocIfNeeded</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> v = get_ro_or_rwe();</span><br><span class="line">    <span class="keyword">if</span> (fastpath(v.is&lt;<span class="keyword">class_rw_ext_t</span> *&gt;())) &#123;</span><br><span class="line">          <span class="keyword">return</span> v.<span class="built_in">get</span>&lt;<span class="keyword">class_rw_ext_t</span> *&gt;(&amp;ro_or_rw_ext);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">          <span class="keyword">return</span> extAlloc(v.<span class="built_in">get</span>&lt;<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *&gt;(&amp;ro_or_rw_ext));</span><br><span class="line">      &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">class_rw_ext_t</span> *</span><br><span class="line"><span class="keyword">class_rw_t</span>::extAlloc(<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *ro, <span class="keyword">bool</span> deepCopy)</span><br><span class="line">&#123;</span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">auto</span> rwe = objc::zalloc&lt;<span class="keyword">class_rw_ext_t</span>&gt;();</span><br><span class="line"></span><br><span class="line">    rwe-&gt;version = (ro-&gt;flags &amp; RO_META) ? <span class="number">7</span> : <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">method_list_t</span> *<span class="built_in">list</span> = ro-&gt;baseMethods();</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">list</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (deepCopy) <span class="built_in">list</span> = <span class="built_in">list</span>-&gt;duplicate();</span><br><span class="line">        rwe-&gt;methods.attachLists(&amp;<span class="built_in">list</span>, <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// See comments in objc_duplicateClass</span></span><br><span class="line">    <span class="comment">// property lists and protocol lists historically</span></span><br><span class="line">    <span class="comment">// have not been deep-copied</span></span><br><span class="line">    <span class="comment">//</span></span><br><span class="line">    <span class="comment">// This is probably wrong and ought to be fixed some day</span></span><br><span class="line">    <span class="keyword">property_list_t</span> *proplist = ro-&gt;baseProperties;</span><br><span class="line">    <span class="keyword">if</span> (proplist) &#123;</span><br><span class="line">        rwe-&gt;properties.attachLists(&amp;proplist, <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">protocol_list_t</span> *protolist = ro-&gt;baseProtocols;</span><br><span class="line">    <span class="keyword">if</span> (protolist) &#123;</span><br><span class="line">        rwe-&gt;protocols.attachLists(&amp;protolist, <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    set_ro_or_rwe(rwe, ro);</span><br><span class="line">    <span class="keyword">return</span> rwe;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在<code>auto rwe = cls-&gt;data()-&gt;extAllocIfNeeded();</code>是进行rwe的创建,那么为什么要在这里进行<code>rwe的初始化</code>？？因为我们现在要做一件事：往<code>本类</code>中<code>添加属性、方法、协议</code>等,即对原来的 clean memory要进行处理了</p>
+<ul>
+<li>进入<code>extAllocIfNeeded</code>方法的源码实现，判断rwe是否存在，如果存在则直接获取，如果不存在则开辟</li>
+<li>进入<code>extAlloc</code>源码实现，即对rwe 0-1的过程，在此过程中，就将<code>本类的data数据</code>加载进去了</li>
+<li>其中关键代码是<code>rwe-&gt;methods.attachLists(mlists + ATTACH_BUFSIZ - mcount, mcount);</code>即存入mlists的末尾，<code>mlists</code>的数据来源前面的<code>for循环</code></li>
+<li>在调试运行时，发现<code>category_t</code>中的<code>name</code>编译时是<code>JSPerson</code>（参考clang编译时的那么），运行时是<code>TestLoad</code>即分类的名字</li>
+<li>代码<code>mlists[ATTACH_BUFSIZ - ++mcount] = mlist;</code>，经过调试发现此时的<code>mcount</code>等于<code>1</code>，即可以理解为 <code>倒序插入</code>,<code>64</code>的原因是允许容纳64个（最多64个分类）</li>
+</ul>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>本类 中 需要添加属性、方法等，所以需要<code>初始化rwe</code>,rwe的初始化主要涉及：<code>分类、addMethod、addProperty、addprotocol</code> ， 即<code>对原始类进行修改或者处理时(运行时)，才会进行rwe的初始化</code></p>
+<h3 id="attachCategories"><a href="#attachCategories" class="headerlink" title="attachCategories"></a>attachCategories</h3><p>通过<code>attachCategories</code>反推<code>分类的加载</code>，我们<code>libobjc</code>源码全局搜索<code>attachCategories</code>的调用，发现有两个地方调用：<code>attachToClass</code>和<code>load_categories_nolock</code>。</p>
+<p>####attachToClass</p>
+<p>调用<code>attachToClass</code>的方法只有一个<code>methodizeClass</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">methodizeClass</span><span class="params">(Class cls, Class previously)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">///省略代码</span></span><br><span class="line">    <span class="keyword">if</span> (previously) &#123;</span><br><span class="line">        <span class="keyword">if</span> (isMeta) &#123;</span><br><span class="line">            objc::unattachedCategories.attachToClass(cls, previously,</span><br><span class="line">                                                     ATTACH_METACLASS);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// When a class relocates, categories with class methods</span></span><br><span class="line">            <span class="comment">// may be registered on the class itself rather than on</span></span><br><span class="line">            <span class="comment">// the metaclass. Tell attachToClass to look for those.</span></span><br><span class="line">            objc::unattachedCategories.attachToClass(cls, previously,</span><br><span class="line">                                                     ATTACH_CLASS_AND_METACLASS);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    objc::unattachedCategories.attachToClass(cls, cls,</span><br><span class="line">                                             isMeta ? ATTACH_METACLASS : ATTACH_CLASS);</span><br><span class="line">		<span class="comment">///省略代码</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里有一个<code>previously</code>执行条件，我们依次网上查找调用链，发现<code>previously==nil</code>,<code>previously</code>参数只是方便动态化调试，所以实际调用的只有下面这一处代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">objc::unattachedCategories.attachToClass(cls, cls,</span><br><span class="line">                                             isMeta ? ATTACH_METACLASS : ATTACH_CLASS);</span><br></pre></td></tr></table></figure>
+
+<h4 id="load-categories-nolock"><a href="#load-categories-nolock" class="headerlink" title="load_categories_nolock"></a>load_categories_nolock</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">load_categories_nolock</span><span class="params">(header_info *hi)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">bool</span> hasClassProperties = hi-&gt;info()-&gt;hasCategoryClassProperties();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">size_t</span> count;</span><br><span class="line">    <span class="keyword">auto</span> processCatlist = [&amp;](<span class="keyword">category_t</span> * <span class="keyword">const</span> *catlist) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">unsigned</span> i = <span class="number">0</span>; i &lt; count; i++) &#123;</span><br><span class="line">            <span class="keyword">category_t</span> *cat = catlist[i];</span><br><span class="line">            Class cls = remapClass(cat-&gt;cls);</span><br><span class="line">            <span class="keyword">locstamped_category_t</span> lc&#123;cat, hi&#125;;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (!cls) &#123;</span><br><span class="line">                <span class="comment">// Category's target class is missing (probably weak-linked).</span></span><br><span class="line">                <span class="comment">// Ignore the category.</span></span><br><span class="line">                <span class="keyword">if</span> (PrintConnecting) &#123;</span><br><span class="line">                    _objc_inform(<span class="string">"CLASS: IGNORING category \?\?\?(%s) %p with "</span></span><br><span class="line">                                 <span class="string">"missing weak-linked target class"</span>,</span><br><span class="line">                                 cat-&gt;name, cat);</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// Process this category.</span></span><br><span class="line">            <span class="keyword">if</span> (cls-&gt;isStubClass()) &#123;</span><br><span class="line">                <span class="comment">// Stub classes are never realized. Stub classes</span></span><br><span class="line">                <span class="comment">// don't know their metaclass until they're</span></span><br><span class="line">                <span class="comment">// initialized, so we have to add categories with</span></span><br><span class="line">                <span class="comment">// class methods or properties to the stub itself.</span></span><br><span class="line">                <span class="comment">// methodizeClass() will find them and add them to</span></span><br><span class="line">                <span class="comment">// the metaclass as appropriate.</span></span><br><span class="line">                <span class="keyword">if</span> (cat-&gt;instanceMethods ||</span><br><span class="line">                    cat-&gt;protocols ||</span><br><span class="line">                    cat-&gt;instanceProperties ||</span><br><span class="line">                    cat-&gt;classMethods ||</span><br><span class="line">                    cat-&gt;protocols ||</span><br><span class="line">                    (hasClassProperties &amp;&amp; cat-&gt;_classProperties))</span><br><span class="line">                &#123;</span><br><span class="line">                    objc::unattachedCategories.addForClass(lc, cls);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// First, register the category with its target class.</span></span><br><span class="line">                <span class="comment">// Then, rebuild the class's method lists (etc) if</span></span><br><span class="line">                <span class="comment">// the class is realized.</span></span><br><span class="line">                <span class="keyword">if</span> (cat-&gt;instanceMethods ||  cat-&gt;protocols</span><br><span class="line">                    ||  cat-&gt;instanceProperties)</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">if</span> (cls-&gt;isRealized()) &#123;</span><br><span class="line">                        attachCategories(cls, &amp;lc, <span class="number">1</span>, ATTACH_EXISTING);</span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        objc::unattachedCategories.addForClass(lc, cls);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (cat-&gt;classMethods  ||  cat-&gt;protocols</span><br><span class="line">                    ||  (hasClassProperties &amp;&amp; cat-&gt;_classProperties))</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">if</span> (cls-&gt;ISA()-&gt;isRealized()) &#123;</span><br><span class="line">                        attachCategories(cls-&gt;ISA(), &amp;lc, <span class="number">1</span>, ATTACH_EXISTING | ATTACH_METACLASS);</span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        objc::unattachedCategories.addForClass(lc, cls-&gt;ISA());</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    processCatlist(hi-&gt;catlist(&amp;count));</span><br><span class="line">    processCatlist(hi-&gt;catlist2(&amp;count));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>全局搜素<code>load_categories_nolock</code>,发现调用<code>load_categories_nolock</code>的地方有两处</p>
+<ul>
+<li><code>loadAllCategories</code></li>
+<li><code>_read_images</code></li>
+</ul>
+<p>但是经过调试发现，是不会走<code>_read_images</code>方法中的if流程的，而是走的<code>loadAllCategories</code>方法中的。</p>
+<h4 id="attachLists"><a href="#attachLists" class="headerlink" title="attachLists"></a>attachLists</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">attachLists</span><span class="params">(List* <span class="keyword">const</span> * addedLists, <span class="keyword">uint32_t</span> addedCount)</span> </span>&#123;</span><br><span class="line">     <span class="keyword">if</span> (addedCount == <span class="number">0</span>) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">     <span class="keyword">if</span> (hasArray()) &#123;</span><br><span class="line">         <span class="comment">// many lists -&gt; many lists</span></span><br><span class="line">         <span class="keyword">uint32_t</span> oldCount = <span class="built_in">array</span>()-&gt;count;</span><br><span class="line">         <span class="keyword">uint32_t</span> newCount = oldCount + addedCount;</span><br><span class="line">         <span class="keyword">array_t</span> *newArray = (<span class="keyword">array_t</span> *)<span class="built_in">malloc</span>(<span class="keyword">array_t</span>::byteSize(newCount));</span><br><span class="line">         newArray-&gt;count = newCount;</span><br><span class="line">         <span class="built_in">array</span>()-&gt;count = newCount;</span><br><span class="line"></span><br><span class="line">         <span class="keyword">for</span> (<span class="keyword">int</span> i = oldCount - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i--)</span><br><span class="line">                newArray-&gt;lists[i + addedCount] = <span class="built_in">array</span>()-&gt;lists[i];</span><br><span class="line">         <span class="keyword">for</span> (<span class="keyword">unsigned</span> i = <span class="number">0</span>; i &lt; addedCount; i++)</span><br><span class="line">             newArray-&gt;lists[i] = addedLists[i];</span><br><span class="line">         <span class="built_in">free</span>(<span class="built_in">array</span>());</span><br><span class="line">         setArray(newArray);</span><br><span class="line">         validate();</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="keyword">else</span> <span class="keyword">if</span> (!<span class="built_in">list</span>  &amp;&amp;  addedCount == <span class="number">1</span>) &#123;</span><br><span class="line">         <span class="comment">// 0 lists -&gt; 1 list</span></span><br><span class="line">         <span class="built_in">list</span> = addedLists[<span class="number">0</span>];</span><br><span class="line">         validate();</span><br><span class="line">     &#125; </span><br><span class="line">     <span class="keyword">else</span> &#123;</span><br><span class="line">         <span class="comment">// 1 list -&gt; many lists</span></span><br><span class="line">         Ptr&lt;List&gt; oldList = <span class="built_in">list</span>;</span><br><span class="line">         <span class="keyword">uint32_t</span> oldCount = oldList ? <span class="number">1</span> : <span class="number">0</span>;</span><br><span class="line">         <span class="keyword">uint32_t</span> newCount = oldCount + addedCount;</span><br><span class="line">         setArray((<span class="keyword">array_t</span> *)<span class="built_in">malloc</span>(<span class="keyword">array_t</span>::byteSize(newCount)));</span><br><span class="line">         <span class="built_in">array</span>()-&gt;count = newCount;</span><br><span class="line">         <span class="keyword">if</span> (oldList) <span class="built_in">array</span>()-&gt;lists[addedCount] = oldList;</span><br><span class="line">         <span class="keyword">for</span> (<span class="keyword">unsigned</span> i = <span class="number">0</span>; i &lt; addedCount; i++)</span><br><span class="line">             <span class="built_in">array</span>()-&gt;lists[i] = addedLists[i];</span><br><span class="line">         validate();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个函数一共三部分我们分别看：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (!<span class="built_in">list</span>  &amp;&amp;  addedCount == <span class="number">1</span>) &#123;</span><br><span class="line">      <span class="comment">// 0 lists -&gt; 1 list</span></span><br><span class="line">      <span class="built_in">list</span> = addedLists[<span class="number">0</span>];</span><br><span class="line">       validate();</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>把<code>addedLists[0]</code>赋值给<code>list</code>,<code>list</code>是一维数组。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">// 1 list -&gt; many lists</span></span><br><span class="line">      Ptr&lt;List&gt; oldList = <span class="built_in">list</span>;</span><br><span class="line">      <span class="keyword">uint32_t</span> oldCount = oldList ? <span class="number">1</span> : <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">uint32_t</span> newCount = oldCount + addedCount;</span><br><span class="line">      setArray((<span class="keyword">array_t</span> *)<span class="built_in">malloc</span>(<span class="keyword">array_t</span>::byteSize(newCount)));</span><br><span class="line">      <span class="built_in">array</span>()-&gt;count = newCount;</span><br><span class="line">      <span class="keyword">if</span> (oldList) <span class="built_in">array</span>()-&gt;lists[addedCount] = oldList;</span><br><span class="line">      <span class="keyword">for</span> (<span class="keyword">unsigned</span> i = <span class="number">0</span>; i &lt; addedCount; i++)</span><br><span class="line">          <span class="built_in">array</span>()-&gt;lists[i] = addedLists[i];</span><br><span class="line">      validate();</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个情况是<code>list</code>不为空，新建一个扩容的数组，将之前的数据放在<code>lists[addedCount]</code>位置，新元素放到之前<code>list</code>的前面。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (hasArray()) &#123;</span><br><span class="line">    <span class="comment">// many lists -&gt; many lists</span></span><br><span class="line">    <span class="keyword">uint32_t</span> oldCount = <span class="built_in">array</span>()-&gt;count;</span><br><span class="line">    <span class="keyword">uint32_t</span> newCount = oldCount + addedCount;</span><br><span class="line">    <span class="keyword">array_t</span> *newArray = (<span class="keyword">array_t</span> *)<span class="built_in">malloc</span>(<span class="keyword">array_t</span>::byteSize(newCount));</span><br><span class="line">    newArray-&gt;count = newCount;</span><br><span class="line">    <span class="built_in">array</span>()-&gt;count = newCount;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = oldCount - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i--)</span><br><span class="line">           newArray-&gt;lists[i + addedCount] = <span class="built_in">array</span>()-&gt;lists[i];</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">unsigned</span> i = <span class="number">0</span>; i &lt; addedCount; i++)</span><br><span class="line">        newArray-&gt;lists[i] = addedLists[i];</span><br><span class="line">    <span class="built_in">free</span>(<span class="built_in">array</span>());</span><br><span class="line">    setArray(newArray);</span><br><span class="line">    validate();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这段其实和上次类似，依然将新数组插入到前面，新数组中的新元素在数组首部。</p>
+<h3 id="分类加载的四种情况"><a href="#分类加载的四种情况" class="headerlink" title="分类加载的四种情况"></a>分类加载的四种情况</h3><p>根据<code>类</code>和<code>分类</code>是否实现<code>+load()</code>方法分为四种情况。</p>
+<p>我们先定义<code>JSPerson</code>及它的<code>分类</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayHello;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">#import &quot;JSPerson.h&quot;</span><br><span class="line"></span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">- (void)sayHello&#123;</span><br><span class="line"></span><br><span class="line">    NSLog(@&quot;JSPerson say : Hello!!!&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (void)load&#123;&#125;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@interface JSPerson (Test)</span><br><span class="line"></span><br><span class="line">- (void)saySomething;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">#import &quot;JSPerson+Test.h&quot;</span><br><span class="line"></span><br><span class="line">@implementation JSPerson (Test)</span><br><span class="line"></span><br><span class="line">- (void)saySomething&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (void)load&#123;&#125;</span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="非懒加载分类和非懒加载类"><a href="#非懒加载分类和非懒加载类" class="headerlink" title="非懒加载分类和非懒加载类"></a>非懒加载分类和非懒加载类</h4><p>我们在<code>JSPerson</code>类和分类中都实现<code>load</code>，我们在<code>realizeClassWithoutSwift</code>添加断点</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fbe0d82210524777a295602d1a33f6f7~tplv-k3u1fbpfcp-watermark.image" alt="类和分类都是非懒加载分类加载"></p>
+<p>我们用<code>lldb</code>打印当前<code>ro</code>的方法</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">readClass JSPerson....</span><br><span class="line">_read_images JSPerson....</span><br><span class="line">(lldb) p ro</span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *) $<span class="number">0</span> = <span class="number">0x0000000100004280</span></span><br><span class="line">(lldb) p *$<span class="number">0</span></span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">class_ro_t</span>) $<span class="number">1</span> = &#123;</span><br><span class="line">  flags = <span class="number">0</span></span><br><span class="line">  instanceStart = <span class="number">8</span></span><br><span class="line">  instanceSize = <span class="number">8</span></span><br><span class="line">  reserved = <span class="number">0</span></span><br><span class="line">   = &#123;</span><br><span class="line">    ivarLayout = <span class="number">0x0000000000000000</span></span><br><span class="line">    nonMetaclass = nil</span><br><span class="line">  &#125;</span><br><span class="line">  name = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">const</span> <span class="keyword">char</span> *&gt; = <span class="string">"JSPerson"</span> &#123;</span><br><span class="line">      Value = <span class="number">0x0000000100003bbc</span> <span class="string">"JSPerson"</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  baseMethodList = <span class="number">0x00000001000042c8</span></span><br><span class="line">  baseProtocols = <span class="number">0x0000000000000000</span></span><br><span class="line">  ivars = <span class="number">0x0000000000000000</span></span><br><span class="line">  weakIvarLayout = <span class="number">0x0000000000000000</span></span><br><span class="line">  baseProperties = <span class="number">0x0000000000000000</span></span><br><span class="line">  _swiftMetadataInitializer_NEVER_USE = &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">1.b</span>aseMethods()</span><br><span class="line">(<span class="keyword">method_list_t</span> *) $<span class="number">2</span> = <span class="number">0x00000001000042c8</span></span><br><span class="line">(lldb) p *$<span class="number">2</span></span><br><span class="line">(<span class="keyword">method_list_t</span>) $<span class="number">3</span> = &#123;</span><br><span class="line">  entsize_list_tt&lt;<span class="keyword">method_t</span>, <span class="keyword">method_list_t</span>, <span class="number">4294901763</span>, <span class="keyword">method_t</span>::pointer_modifier&gt; = (entsizeAndFlags = <span class="number">24</span>, count = <span class="number">1</span>)</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">3.</span><span class="built_in">get</span>(<span class="number">0</span>).big()</span><br><span class="line">(<span class="keyword">method_t</span>::big) $<span class="number">4</span> = &#123;</span><br><span class="line">  name = <span class="string">"sayHello"</span></span><br><span class="line">  types = <span class="number">0x0000000100003cfd</span> <span class="string">"v16@0:8"</span></span><br><span class="line">  imp = <span class="number">0x00000001000036b0</span> (KCObjcBuild`-[JSPerson sayHello])</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>发现此时只有<code>类</code>的方法，并没有<code>分类</code>的方法，说明<code>分类</code>目前还没有加载。</p>
+<p>我们在<code>attachCategories</code>添加断点，继续执行代码：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a1dd3596aa214f329bc1ad2d90806c03~tplv-k3u1fbpfcp-watermark.image" alt="非懒加载分类"></p>
+<p>继续用<code>lldb</code>调试程序：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">(lldb) p mlist</span><br><span class="line">(<span class="keyword">method_list_t</span> *) $<span class="number">5</span> = <span class="number">0x0000000100004420</span></span><br><span class="line">(lldb) p *$<span class="number">5</span></span><br><span class="line">(<span class="keyword">method_list_t</span>) $<span class="number">6</span> = &#123;</span><br><span class="line">  entsize_list_tt&lt;<span class="keyword">method_t</span>, <span class="keyword">method_list_t</span>, <span class="number">4294901763</span>, <span class="keyword">method_t</span>::pointer_modifier&gt; = (entsizeAndFlags = <span class="number">24</span>, count = <span class="number">1</span>)</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">6.</span><span class="built_in">get</span>(<span class="number">0</span>).big()</span><br><span class="line">(<span class="keyword">method_t</span>::big) $<span class="number">7</span> = &#123;</span><br><span class="line">  name = <span class="string">"saySomething"</span></span><br><span class="line">  types = <span class="number">0x0000000100003cfd</span> <span class="string">"v16@0:8"</span></span><br><span class="line">  imp = <span class="number">0x00000001000037f0</span> (KCObjcBuild`-[JSPerson(Test) saySomething])</span><br><span class="line">&#125;</span><br><span class="line">(lldb)</span><br></pre></td></tr></table></figure>
+
+<p>说明现在分类被加载了，被加载到了<code>rwe</code>中：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">rwe-&gt;methods.attachLists(mlists + ATTACH_BUFSIZ - mcount, mcount);</span><br></pre></td></tr></table></figure>
+
+<p>注意：<code>ATTACH_BUFSIZ=64</code>也就是说<code>分类</code>的方法个数不能大于64。</p>
+<h4 id="非懒加载分类和懒加载类"><a href="#非懒加载分类和懒加载类" class="headerlink" title="非懒加载分类和懒加载类"></a>非懒加载分类和懒加载类</h4><p>我们删除<code>JSPerson</code>类的<code>load</code>方法，重新运行程序。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fbe0d82210524777a295602d1a33f6f7~tplv-k3u1fbpfcp-watermark.image" alt="类和分类都是非懒加载分类加载"></p>
+<p>继续在我们第一个断点位置使用<code>lldb</code>调试：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">_read_images JSPerson....</span><br><span class="line">(lldb) p ro</span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *) $<span class="number">0</span> = <span class="number">0x00000001000042a8</span></span><br><span class="line">(lldb) p *$<span class="number">0</span></span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">class_ro_t</span>) $<span class="number">1</span> = &#123;</span><br><span class="line">  flags = <span class="number">0</span></span><br><span class="line">  instanceStart = <span class="number">8</span></span><br><span class="line">  instanceSize = <span class="number">8</span></span><br><span class="line">  reserved = <span class="number">0</span></span><br><span class="line">   = &#123;</span><br><span class="line">    ivarLayout = <span class="number">0x0000000000000000</span></span><br><span class="line">    nonMetaclass = nil</span><br><span class="line">  &#125;</span><br><span class="line">  name = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">const</span> <span class="keyword">char</span> *&gt; = <span class="string">"JSPerson"</span> &#123;</span><br><span class="line">      Value = <span class="number">0x0000000100003bbc</span> <span class="string">"JSPerson"</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  baseMethodList = <span class="number">0x0000000100004178</span></span><br><span class="line">  baseProtocols = <span class="number">0x0000000000000000</span></span><br><span class="line">  ivars = <span class="number">0x0000000000000000</span></span><br><span class="line">  weakIvarLayout = <span class="number">0x0000000000000000</span></span><br><span class="line">  baseProperties = <span class="number">0x0000000000000000</span></span><br><span class="line">  _swiftMetadataInitializer_NEVER_USE = &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">1.b</span>aseMethods()</span><br><span class="line">(<span class="keyword">method_list_t</span> *) $<span class="number">2</span> = <span class="number">0x0000000100004178</span></span><br><span class="line">(lldb) p *$<span class="number">2</span></span><br><span class="line">(<span class="keyword">method_list_t</span>) $<span class="number">3</span> = &#123;</span><br><span class="line">  entsize_list_tt&lt;<span class="keyword">method_t</span>, <span class="keyword">method_list_t</span>, <span class="number">4294901763</span>, <span class="keyword">method_t</span>::pointer_modifier&gt; = (entsizeAndFlags = <span class="number">24</span>, count = <span class="number">2</span>)</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">3.</span><span class="built_in">get</span>(<span class="number">0</span>).big()</span><br><span class="line">(<span class="keyword">method_t</span>::big) $<span class="number">4</span> = &#123;</span><br><span class="line">  name = <span class="string">"saySomething"</span></span><br><span class="line">  types = <span class="number">0x0000000100003cfd</span> <span class="string">"v16@0:8"</span></span><br><span class="line">  imp = <span class="number">0x00000001000037f0</span> (KCObjcBuild`-[JSPerson(Test) saySomething])</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">3.</span><span class="built_in">get</span>(<span class="number">1</span>).big()</span><br><span class="line">(<span class="keyword">method_t</span>::big) $<span class="number">5</span> = &#123;</span><br><span class="line">  name = <span class="string">"sayHello"</span></span><br><span class="line">  types = <span class="number">0x0000000100003cfd</span> <span class="string">"v16@0:8"</span></span><br><span class="line">  imp = <span class="number">0x00000001000036b0</span> (KCObjcBuild`-[JSPerson sayHello])</span><br><span class="line">&#125;</span><br><span class="line">(lldb)</span><br></pre></td></tr></table></figure>
+
+<p>发现<code>分类</code>已经加载了,<code>类</code>也加载了，说明<code>非懒加载类</code>会使<code>懒加载的类</code>在启动时提前加载（如果没有分类是第一次调用时加载），说明加载的时机是<code>编译期</code>。</p>
+<h4 id="懒加载分类和非懒加载类"><a href="#懒加载分类和非懒加载类" class="headerlink" title="懒加载分类和非懒加载类"></a>懒加载分类和非懒加载类</h4><p>我们删除<code>JSPerson</code>分类的<code>load</code>方法，重新运行程序。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/faaa15082c19440daa4b8200bd9e935d~tplv-k3u1fbpfcp-watermark.image" alt="类和分类都是非懒加载分类加载"></p>
+<p>使用<code>lldb</code>调试：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">(lldb) p ro</span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">class_ro_t</span> *) $<span class="number">0</span> = <span class="number">0x00000001000042a8</span></span><br><span class="line">(lldb) p *$<span class="number">0</span></span><br><span class="line">(<span class="keyword">const</span> <span class="keyword">class_ro_t</span>) $<span class="number">1</span> = &#123;</span><br><span class="line">  flags = <span class="number">0</span></span><br><span class="line">  instanceStart = <span class="number">8</span></span><br><span class="line">  instanceSize = <span class="number">8</span></span><br><span class="line">  reserved = <span class="number">0</span></span><br><span class="line">   = &#123;</span><br><span class="line">    ivarLayout = <span class="number">0x0000000000000000</span></span><br><span class="line">    nonMetaclass = nil</span><br><span class="line">  &#125;</span><br><span class="line">  name = &#123;</span><br><span class="line">    <span class="built_in">std</span>::__1::atomic&lt;<span class="keyword">const</span> <span class="keyword">char</span> *&gt; = <span class="string">"JSPerson"</span> &#123;</span><br><span class="line">      Value = <span class="number">0x0000000100003bbc</span> <span class="string">"JSPerson"</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  baseMethodList = <span class="number">0x0000000100004158</span></span><br><span class="line">  baseProtocols = <span class="number">0x0000000000000000</span></span><br><span class="line">  ivars = <span class="number">0x0000000000000000</span></span><br><span class="line">  weakIvarLayout = <span class="number">0x0000000000000000</span></span><br><span class="line">  baseProperties = <span class="number">0x0000000000000000</span></span><br><span class="line">  _swiftMetadataInitializer_NEVER_USE = &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">1.b</span>aseMethods()</span><br><span class="line">(<span class="keyword">method_list_t</span> *) $<span class="number">2</span> = <span class="number">0x0000000100004158</span></span><br><span class="line">(lldb) p *$<span class="number">2</span></span><br><span class="line">(<span class="keyword">method_list_t</span>) $<span class="number">3</span> = &#123;</span><br><span class="line">  entsize_list_tt&lt;<span class="keyword">method_t</span>, <span class="keyword">method_list_t</span>, <span class="number">4294901763</span>, <span class="keyword">method_t</span>::pointer_modifier&gt; = (entsizeAndFlags = <span class="number">24</span>, count = <span class="number">2</span>)</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">3.</span><span class="built_in">get</span>(<span class="number">0</span>).big()</span><br><span class="line">(<span class="keyword">method_t</span>::big) $<span class="number">4</span> = &#123;</span><br><span class="line">  name = <span class="string">"saySomething"</span></span><br><span class="line">  types = <span class="number">0x0000000100003cfd</span> <span class="string">"v16@0:8"</span></span><br><span class="line">  imp = <span class="number">0x00000001000037f0</span> (KCObjcBuild`-[JSPerson(Test) saySomething])</span><br><span class="line">&#125;</span><br><span class="line">(lldb) p $<span class="number">3.</span><span class="built_in">get</span>(<span class="number">1</span>).big()</span><br><span class="line">(<span class="keyword">method_t</span>::big) $<span class="number">5</span> = &#123;</span><br><span class="line">  name = <span class="string">"sayHello"</span></span><br><span class="line">  types = <span class="number">0x0000000100003cfd</span> <span class="string">"v16@0:8"</span></span><br><span class="line">  imp = <span class="number">0x00000001000036c0</span> (KCObjcBuild`-[JSPerson sayHello])</span><br><span class="line">&#125;</span><br><span class="line">(lldb)</span><br></pre></td></tr></table></figure>
+
+<p>发现<code>分类</code>和<code>类</code>都已经加载了，说明加载的时机也是<code>编译期</code>。</p>
+<h4 id="懒加载分类和懒加载类"><a href="#懒加载分类和懒加载类" class="headerlink" title="懒加载分类和懒加载类"></a>懒加载分类和懒加载类</h4><p>我们把<code>类</code>和<code>分类</code>的<code>load</code>方法都删除，重新运行程序</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/61f7e74b7b9243e79e0e0037a439df38~tplv-k3u1fbpfcp-watermark.image" alt="懒加载分类第一次调用"></p>
+<p>依然走到断点，注意观察左边的调用栈，发现是从<code>lookUpImpOrForward</code>,说明是在第一次调用方法的时候加载的。</p>
+<h3 id="One-More-Condition"><a href="#One-More-Condition" class="headerlink" title="One More Condition"></a>One More Condition</h3><p>前面四种情况基本能包括了<code>分类</code>,但是还有种情况就是：有多个分类，部分分类实现了<code>load</code>方法主类也实现了<code>load</code>。我们就探索一下这个情况，新建一个<code>JSPerson</code>的分类</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson (Test2)</span><br><span class="line"></span><br><span class="line">- (void)saySomething2;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation JSPerson (Test2)</span><br><span class="line"></span><br><span class="line">- (void)saySomething2&#123;</span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>根据前面我们其实应清楚，就是实现<code>load</code>的分类肯定会在运行时加载，我们关注的点就在于没有实现<code>load</code>方法的分类是什么时候加载的呢也就是<code>attachCategories</code>是否会加载未实现<code>load</code>方法的分类，运行程序</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a5733fd8764141f1937743cd459a0382~tplv-k3u1fbpfcp-watermark.image" alt="多个分类加载"></p>
+<p>使用<code>lldb</code>调试：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">lldb) p cat</span><br><span class="line">(<span class="keyword">category_t</span> *) $<span class="number">1</span> = <span class="number">0x0000000100004448</span></span><br><span class="line">(lldb) p *$<span class="number">1</span></span><br><span class="line">(<span class="keyword">category_t</span>) $<span class="number">2</span> = &#123;</span><br><span class="line">  name = <span class="number">0x0000000100003b8f</span> <span class="string">"Test2"</span></span><br><span class="line">  cls = <span class="number">0x00000001000049a0</span></span><br><span class="line">  instanceMethods = &#123;</span><br><span class="line">    ptr = <span class="number">0x0000000100004428</span></span><br><span class="line">  &#125;</span><br><span class="line">  classMethods = &#123;</span><br><span class="line">    ptr = <span class="number">0x0000000000000000</span></span><br><span class="line">  &#125;</span><br><span class="line">  protocols = <span class="number">0x0000000000000000</span></span><br><span class="line">  instanceProperties = <span class="number">0x0000000000000000</span></span><br><span class="line">  _classProperties = <span class="number">0x0000000000000000</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">operator</span>() -JSPerson....</span><br><span class="line">attachCategories -JSPerson....</span><br><span class="line">(lldb) p cat</span><br><span class="line">(<span class="keyword">category_t</span> *) $<span class="number">3</span> = <span class="number">0x00000001000044c8</span></span><br><span class="line">(lldb) p *$<span class="number">3</span></span><br><span class="line">(<span class="keyword">category_t</span>) $<span class="number">4</span> = &#123;</span><br><span class="line">  name = <span class="number">0x0000000100003b95</span> <span class="string">"Test"</span></span><br><span class="line">  cls = <span class="number">0x00000001000049a0</span></span><br><span class="line">  instanceMethods = &#123;</span><br><span class="line">    ptr = <span class="number">0x0000000100004488</span></span><br><span class="line">  &#125;</span><br><span class="line">  classMethods = &#123;</span><br><span class="line">    ptr = <span class="number">0x00000001000044a8</span></span><br><span class="line">  &#125;</span><br><span class="line">  protocols = <span class="number">0x0000000000000000</span></span><br><span class="line">  instanceProperties = <span class="number">0x0000000000000000</span></span><br><span class="line">  _classProperties = <span class="number">0x0000000000000000</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>调试我们发现，两个分类都加载了，也就是只要有一个分类实现了<code>load</code>，其他分类都会在<code>启动时</code>加载。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本篇主要是探索了<code>分类</code>的加载，主要分为5种情况</p>
+<ul>
+<li>非懒加载类和非懒加载分类：此时分类是在<code>运行时</code>,也就是<code>程序启动</code>的时候加载的。</li>
+<li>懒加载类和非懒加载分类：此时分类是在<code>编译时</code>加载</li>
+<li>非懒加载类和懒加载分类：此时分类也是在<code>编译时</code>加载</li>
+<li>懒加载类和懒加载分类：此时分类在第一次调用时加载。</li>
+<li>非懒加载类，多个分类，部分是非懒加载分类：此时所有分类都是在<code>程序启动</code>时加载。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/iOS%E5%BA%95%E5%B1%82/" rel="tag"># iOS底层</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/07/17/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD-%E4%B8%AD/" rel="prev" title="iOS底层探索-类的加载（中）">
+      <i class="fa fa-chevron-left"></i> iOS底层探索-类的加载（中）
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#分类的本质"><span class="nav-number">1.</span> <span class="nav-text">分类的本质</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rwe的赋值"><span class="nav-number">2.</span> <span class="nav-text">rwe的赋值</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#小结"><span class="nav-number">2.1.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#attachCategories"><span class="nav-number">3.</span> <span class="nav-text">attachCategories</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#load-categories-nolock"><span class="nav-number">3.1.</span> <span class="nav-text">load_categories_nolock</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#attachLists"><span class="nav-number">3.2.</span> <span class="nav-text">attachLists</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分类加载的四种情况"><span class="nav-number">4.</span> <span class="nav-text">分类加载的四种情况</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#非懒加载分类和非懒加载类"><span class="nav-number">4.1.</span> <span class="nav-text">非懒加载分类和非懒加载类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#非懒加载分类和懒加载类"><span class="nav-number">4.2.</span> <span class="nav-text">非懒加载分类和懒加载类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#懒加载分类和非懒加载类"><span class="nav-number">4.3.</span> <span class="nav-text">懒加载分类和非懒加载类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#懒加载分类和懒加载类"><span class="nav-number">4.4.</span> <span class="nav-text">懒加载分类和懒加载类</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#One-More-Condition"><span class="nav-number">5.</span> <span class="nav-text">One More Condition</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Jason</p>
+  <div class="site-description" itemprop="description">个人技术博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

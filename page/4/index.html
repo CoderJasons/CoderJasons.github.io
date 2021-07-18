@@ -147,6 +147,295 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/09/iOS%E7%9A%84%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/05/09/iOS%E7%9A%84%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/" class="post-title-link" itemprop="url">iOS的内存对齐</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-05-09 09:05:24 / 修改时间：10:37:15" itemprop="dateCreated datePublished" datetime="2021-05-09T09:05:24+08:00">2021-05-09</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>上文中在分析alloc函数的时候，发现有个步骤是给对象分配内存空间，在分配内存空间的时候有一个内存对齐的概念，本文就详细说明一下内存对齐。</p>
+<h3 id="NSObject对象占用多少内存空间"><a href="#NSObject对象占用多少内存空间" class="headerlink" title="NSObject对象占用多少内存空间"></a>NSObject对象占用多少内存空间</h3><p>看下面这段代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">NSObject *obj &#x3D; [[NSObject alloc] init];</span><br><span class="line">NSLog(@&quot;实际占用： class_getInstanceSize &#x3D; %zd&quot;, class_getInstanceSize([NSObject class]));</span><br><span class="line">NSLog(@&quot;系统分配：malloc_size &#x3D; %zd&quot;, malloc_size((__bridge const void *)(obj)));</span><br><span class="line">NSLog(@&quot;NSObject类型占用：sizeOf &#x3D; %zd&quot;, sizeof(obj));</span><br></pre></td></tr></table></figure>
+
+<p>可以看到打印结果是</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">实际占用： class_getInstanceSize &#x3D; 8</span><br><span class="line">系统分配：malloc_size &#x3D; 16</span><br><span class="line">NSObject类型占用：sizeOf &#x3D; 8</span><br></pre></td></tr></table></figure>
+
+<p>说明NSObject对象占用的内存空间是8个字节，但是系统分配的空间是16字节。这是为什么，我们看一下核心代码，根据上文可以知道，各个函数的调用是<code>allocWithZone</code>-&gt;<code>_objc_rootAllocWithZone</code>-&gt;<code>_class-createInstanceFromZone</code>,前两个函数都是简单的调用后一个函数，代码集中在<code>_class-createInstanceFromZone</code>里</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> ALWAYS_INLINE id</span><br><span class="line">_class_createInstanceFromZone(Class cls, <span class="keyword">size_t</span> extraBytes, <span class="keyword">void</span> *zone,</span><br><span class="line">                              <span class="keyword">int</span> construct_flags = OBJECT_CONSTRUCT_NONE,</span><br><span class="line">                              <span class="keyword">bool</span> cxxConstruct = <span class="literal">true</span>,</span><br><span class="line">                              <span class="keyword">size_t</span> *outAllocatedSize = nil)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Read class's info bits all at once for performance</span></span><br><span class="line">    <span class="keyword">bool</span> hasCxxCtor = cxxConstruct &amp;&amp; cls-&gt;hasCxxCtor();</span><br><span class="line">    <span class="keyword">bool</span> hasCxxDtor = cls-&gt;hasCxxDtor();</span><br><span class="line">    <span class="keyword">bool</span> fast = cls-&gt;canAllocNonpointer();</span><br><span class="line">    <span class="keyword">size_t</span> <span class="built_in">size</span>;</span><br><span class="line">		<span class="comment">//这里是分配内存空间的</span></span><br><span class="line">    <span class="built_in">size</span> = cls-&gt;instanceSize(extraBytes);</span><br><span class="line">    <span class="keyword">if</span> (outAllocatedSize) *outAllocatedSize = <span class="built_in">size</span>;</span><br><span class="line"></span><br><span class="line">    id obj;</span><br><span class="line">    <span class="keyword">if</span> (zone) &#123;</span><br><span class="line">        obj = (id)malloc_zone_calloc((<span class="keyword">malloc_zone_t</span> *)zone, <span class="number">1</span>, <span class="built_in">size</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        obj = (id)<span class="built_in">calloc</span>(<span class="number">1</span>, <span class="built_in">size</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (slowpath(!obj)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (construct_flags &amp; OBJECT_CONSTRUCT_CALL_BADALLOC) &#123;</span><br><span class="line">            <span class="keyword">return</span> _objc_callBadAllocHandler(cls);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> nil;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!zone &amp;&amp; fast) &#123;</span><br><span class="line">        obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// Use raw pointer isa on the assumption that they might be</span></span><br><span class="line">        <span class="comment">// doing something weird with the zone or RR.</span></span><br><span class="line">        obj-&gt;initIsa(cls);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (fastpath(!hasCxxCtor)) &#123;</span><br><span class="line">        <span class="keyword">return</span> obj;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    construct_flags |= OBJECT_CONSTRUCT_FREE_ONFAILURE;</span><br><span class="line">    <span class="keyword">return</span> object_cxxConstructFromClass(obj, cls, construct_flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后我们看<code>instanceSize</code>函数</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">size_t</span> <span class="title">instanceSize</span><span class="params">(<span class="keyword">size_t</span> extraBytes)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (fastpath(cache.hasFastInstanceSize(extraBytes))) &#123;</span><br><span class="line">        <span class="keyword">return</span> cache.fastInstanceSize(extraBytes);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">size_t</span> <span class="built_in">size</span> = alignedInstanceSize() + extraBytes;</span><br><span class="line">    <span class="comment">// CF requires all objects be at least 16 bytes.</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">size</span> &lt; <span class="number">16</span>) <span class="built_in">size</span> = <span class="number">16</span>;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">size</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到当size&lt;16的时候，系统会分配16个字节。</p>
+<h3 id="内存对齐规则"><a href="#内存对齐规则" class="headerlink" title="内存对齐规则"></a>内存对齐规则</h3><p><strong>1、结构体变量的首地址是其最长基本类型成员的整数倍；</strong></p>
+<p><strong>2、结构体每个成员相对于结构体首地址的偏移量（offset）都是成员大小的整数倍，如不满足，对前一个成员填充字节以满足；</strong></p>
+<p><strong>3、结构体的总大小为结构体最大基本类型成员变量大小的整数倍；</strong></p>
+<p><strong>4、结构体中的成员变量都是分配在连续的内存空间中。</strong></p>
+<p>自定义一个类验证一下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">@interface TestMemory : NSObject&#123;</span><br><span class="line">    int _age;</span><br><span class="line">    NSString *_name;</span><br><span class="line">    int _weight;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>像刚开始一样，我们打印<code>TestMemory</code>对象的内存大小</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">TestMemory *obj &#x3D; [[TestMemory alloc] init];</span><br><span class="line">NSLog(@&quot;实际占用： class_getInstanceSize &#x3D; %zd&quot;, class_getInstanceSize([TestMemory class]));</span><br><span class="line">NSLog(@&quot;系统分配：malloc_size &#x3D; %zd&quot;, malloc_size((__bridge const void *)(obj)));</span><br><span class="line">NSLog(@&quot;TestMemory类型占用：sizeOf &#x3D; %zd&quot;, sizeof(obj));</span><br></pre></td></tr></table></figure>
+
+<p>打印结果</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">实际占用： class_getInstanceSize = <span class="number">32</span></span><br><span class="line">系统分配：malloc_size = <span class="number">32</span></span><br><span class="line">TestMemory类型占用：sizeOf = <span class="number">8</span></span><br></pre></td></tr></table></figure>
+
+<p>将<code>TestMemory</code>转成C++代码看一下结构体内容</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xcrun -sdk iphonesimulator clang -rewrite-objc TestMemory.m</span><br></pre></td></tr></table></figure>
+
+<p>结构体内容</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">TestMemory_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span><span class="comment">//8个字节</span></span><br><span class="line">	<span class="keyword">int</span> _age;<span class="comment">//int 正常4个字节 </span></span><br><span class="line">	NSString *_name;<span class="comment">//8个字节</span></span><br><span class="line">	<span class="keyword">int</span> _weight;<span class="comment">//4个字节</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>根据内存对齐规则2，_name变量的起始地址将会是8的整数倍，_age变量后面空了4个字节，可以计算出大小为8+4+4(填充4字节)+8+4=28，根据规则3，需要是最大成员的整数倍，所以28向上对8取整，内存大小为32。</p>
+<p>下面我们修改一下<code>TestMemory</code>成员变量的顺序</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">@interface TestMemory : NSObject&#123;</span><br><span class="line">    int _age;</span><br><span class="line">    int _weight;</span><br><span class="line">    NSString *_name;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>现在打印的结果是：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">实际占用： class_getInstanceSize &#x3D; 24</span><br><span class="line">系统分配：malloc_size &#x3D; 32</span><br><span class="line">TestMemory类型占用：sizeOf &#x3D; 8</span><br></pre></td></tr></table></figure>
+
+<p>可以看到实际占用的大小为24了，我们看一下c++的结构体代码</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">TestMemory_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span><span class="comment">//8字节</span></span><br><span class="line">	<span class="keyword">int</span> _age;<span class="comment">//4字节</span></span><br><span class="line">	<span class="keyword">int</span> _weight;<span class="comment">//4字节</span></span><br><span class="line">	NSString *_name;<span class="comment">//8字节</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>因为我们调整了一下顺序，_name的起始地址是8的倍数，所以不需要再_weight字节后面填充字节，大小就为8+4+4+8=24，因为24是8的倍数，所以也不需要根据规则3对8向上取整，实际占用内存空间就是24。</p>
+<p>到这里我们可以得出一个结论，成员变量顺序不同可以影响对象站内内存的空间大小。现在我们可能会想如果我们实际开发中定义属性的顺序会不会影响内存大小呢，如果影响如果不注意岂不是对象的内存大小会有很大差别？带着这个问题我们看一下定义属性的c++代码。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">@interface TestMemory : NSObject&#123;</span><br><span class="line">&#x2F;&#x2F;    int _age;</span><br><span class="line">&#x2F;&#x2F;    int _weight;</span><br><span class="line">&#x2F;&#x2F;    NSString *_name;</span><br><span class="line">&#125;</span><br><span class="line">@property (nonatomic,assign)int age;</span><br><span class="line">@property (nonatomic,strong)NSString *name;</span><br><span class="line">@property (nonatomic,assign)int weight;</span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>我们定义属性的顺序和第一次测试的顺序相同。c++代码</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">TestMemory_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span></span><br><span class="line">	<span class="keyword">int</span> _age;</span><br><span class="line">	<span class="keyword">int</span> _weight;</span><br><span class="line">	NSString * _Nonnull _name;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到结构体里成员变量的顺序已经改变过了，说明苹果已经进行了优化，我们实际开发定义属性的时候，不会因为属性定义顺序的不同而影响对象占用的内存大小。</p>
+<p><a href="https://sg.jianshu.io/p/6abf116d659d" target="_blank" rel="noopener">参考文档</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/08/iOS%E5%BA%95%E5%B1%82%EF%BC%9Aalloc%E5%92%8Cinit/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/05/08/iOS%E5%BA%95%E5%B1%82%EF%BC%9Aalloc%E5%92%8Cinit/" class="post-title-link" itemprop="url">iOS底层：alloc和init</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-05-08 16:55:16 / 修改时间：22:17:18" itemprop="dateCreated datePublished" datetime="2021-05-08T16:55:16+08:00">2021-05-08</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>NSObject是OC中大部分类的基类，了解NSObject对象的初始化对于我们进一步理解对象内存的管理有一定帮助，本文主要探索<code>alloc</code>和<code>init</code>底层实现。</p>
+<h3 id="如何debug源码"><a href="#如何debug源码" class="headerlink" title="如何debug源码"></a>如何debug源码</h3><p>可以参考 <a href="https://juejin.cn/post/6844903959161733133" target="_blank" rel="noopener">https://juejin.cn/post/6844903959161733133</a></p>
+<h3 id="alloc"><a href="#alloc" class="headerlink" title="alloc"></a>alloc</h3><p>新建一个工程，在main方法里添加代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">NSObject *objc &#x3D; [NSObject alloc];</span><br></pre></td></tr></table></figure>
+
+<p>添加一个断点符号 objc_alloc</p>
+<p>运行工程，现在项目就会断点到<code>objc_alloc</code>方法</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">objc_alloc(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> callAlloc(cls, <span class="literal">true</span><span class="comment">/*checkNil*/</span>, <span class="literal">false</span><span class="comment">/*allocWithZone*/</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里会调用 <code>callAlloc</code>方法，参数<code>checkNil = true</code>,<code>allocWithZone = false</code>，下面具体看<code>callAlloc</code>方法</p>
+<h4 id="callAlloc方法"><a href="#callAlloc方法" class="headerlink" title="callAlloc方法"></a><code>callAlloc</code>方法</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">callAlloc(Class cls, <span class="keyword">bool</span> checkNil, <span class="keyword">bool</span> allocWithZone=<span class="literal">false</span>)</span><br><span class="line">&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __OBJC2__</span></span><br><span class="line">  	<span class="comment">//判断是否为空</span></span><br><span class="line">    <span class="keyword">if</span> (slowpath(checkNil &amp;&amp; !cls)) <span class="keyword">return</span> nil;</span><br><span class="line">  	<span class="comment">//判断是否有allocWithZone方法</span></span><br><span class="line">    <span class="keyword">if</span> (fastpath(!cls-&gt;ISA()-&gt;hasCustomAWZ())) &#123;</span><br><span class="line">        <span class="keyword">return</span> _objc_rootAllocWithZone(cls, nil);</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// No shortcuts available.</span></span><br><span class="line">    <span class="keyword">if</span> (allocWithZone) &#123;</span><br><span class="line">        <span class="keyword">return</span> ((id(*)(id, SEL, struct _NSZone *))objc_msgSend)(cls, @selector(allocWithZone:), nil);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ((id(*)(id, SEL))objc_msgSend)(cls, @selector(alloc));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看出如果有自定义的<code>allocWithZone</code>方法就会调用<code>_objc_rootAllocWithZone</code>方法，后面会根据<code>allocWithZone</code>是否为true选择执行<code>allocWithZone</code>还是<code>alloc</code>方法。这里我们一步步走断点，最后调用的是<code>alloc</code>方法。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">+ (id)alloc &#123;</span><br><span class="line">    return _objc_rootAlloc(self);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p><code>alloc</code>的方法调用了<code>_objc_rootAlloc</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">_objc_rootAlloc(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> callAlloc(cls, <span class="literal">false</span><span class="comment">/*checkNil*/</span>, <span class="literal">true</span><span class="comment">/*allocWithZone*/</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到<code>_objc_rootAlloc</code>调用的也是<code>callAlloc</code>方法，和上一次调用不同的是参数<code>checkNil = true</code> <code>allocWithZone = true</code></p>
+<h4 id="第二次调用callAlloc方法"><a href="#第二次调用callAlloc方法" class="headerlink" title="第二次调用callAlloc方法"></a>第二次调用<code>callAlloc</code>方法</h4><p>一步步执行断点看到这次执行到<code>allocWithZone</code>方法</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+ (id)allocWithZone:(struct _NSZone *)zone &#123;</span><br><span class="line">    <span class="keyword">return</span> _objc_rootAllocWithZone(self, (<span class="keyword">malloc_zone_t</span> *)zone);</span><br><span class="line">&#125;</span><br><span class="line">_objc_rootAllocWithZone(Class cls, <span class="keyword">malloc_zone_t</span> *zone __unused)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// allocWithZone under __OBJC2__ ignores the zone parameter</span></span><br><span class="line">    <span class="keyword">return</span> _class_createInstanceFromZone(cls, <span class="number">0</span>, nil,</span><br><span class="line">                                         OBJECT_CONSTRUCT_CALL_BADALLOC);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到核心代码在<code>_class_createInstanceFromZone</code>方法里</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line">_class_createInstanceFromZone(Class cls, <span class="keyword">size_t</span> extraBytes, <span class="keyword">void</span> *zone,</span><br><span class="line">                              <span class="keyword">int</span> construct_flags = OBJECT_CONSTRUCT_NONE,</span><br><span class="line">                              <span class="keyword">bool</span> cxxConstruct = <span class="literal">true</span>,</span><br><span class="line">                              <span class="keyword">size_t</span> *outAllocatedSize = nil)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Read class's info bits all at once for performance</span></span><br><span class="line">    <span class="keyword">bool</span> hasCxxCtor = cxxConstruct &amp;&amp; cls-&gt;hasCxxCtor();</span><br><span class="line">    <span class="keyword">bool</span> hasCxxDtor = cls-&gt;hasCxxDtor();</span><br><span class="line">    <span class="keyword">bool</span> fast = cls-&gt;canAllocNonpointer();</span><br><span class="line">    <span class="keyword">size_t</span> <span class="built_in">size</span>;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">size</span> = cls-&gt;instanceSize(extraBytes);</span><br><span class="line">    <span class="keyword">if</span> (outAllocatedSize) *outAllocatedSize = <span class="built_in">size</span>;</span><br><span class="line"></span><br><span class="line">    id obj;</span><br><span class="line">    <span class="keyword">if</span> (zone) &#123;</span><br><span class="line">        <span class="comment">// 根据给定的 zone 和 size 开辟内存</span></span><br><span class="line">        obj = (id)malloc_zone_calloc((<span class="keyword">malloc_zone_t</span> *)zone, <span class="number">1</span>, <span class="built_in">size</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 根据 size 开辟内存</span></span><br><span class="line">        obj = (id)<span class="built_in">calloc</span>(<span class="number">1</span>, <span class="built_in">size</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (slowpath(!obj)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (construct_flags &amp; OBJECT_CONSTRUCT_CALL_BADALLOC) &#123;</span><br><span class="line">            <span class="keyword">return</span> _objc_callBadAllocHandler(cls);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> nil;</span><br><span class="line">    &#125;</span><br><span class="line">		<span class="comment">// 这里 zone 传入的也是nil，而 fast 拿到的是 true，所以会进入这里的逻辑</span></span><br><span class="line">    <span class="keyword">if</span> (!zone &amp;&amp; fast) &#123;</span><br><span class="line">        obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// Use raw pointer isa on the assumption that they might be</span></span><br><span class="line">        <span class="comment">// doing something weird with the zone or RR.</span></span><br><span class="line">        obj-&gt;initIsa(cls);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (fastpath(!hasCxxCtor)) &#123;</span><br><span class="line">        <span class="keyword">return</span> obj;</span><br><span class="line">    &#125;</span><br><span class="line">		<span class="comment">// 如果有 C++ 初始化构造器和析构器，进行优化加速整个流程</span></span><br><span class="line">    construct_flags |= OBJECT_CONSTRUCT_FREE_ONFAILURE;</span><br><span class="line">    <span class="keyword">return</span> object_cxxConstructFromClass(obj, cls, construct_flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>_class_createInstanceFromZone</code>方法主要调用了三个函数 <code>instanceSize</code>、<code>calloc</code>、<code>initInstanceIsa</code></p>
+<p>先看<code>instanceSize</code>函数</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">size_t</span> <span class="title">instanceSize</span><span class="params">(<span class="keyword">size_t</span> extraBytes)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (fastpath(cache.hasFastInstanceSize(extraBytes))) &#123;</span><br><span class="line">            <span class="keyword">return</span> cache.fastInstanceSize(extraBytes);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">size_t</span> <span class="built_in">size</span> = alignedInstanceSize() + extraBytes;</span><br><span class="line">        <span class="comment">// CF requires all objects be at least 16 bytes.</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">size</span> &lt; <span class="number">16</span>) <span class="built_in">size</span> = <span class="number">16</span>;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">size</span>;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>这个函数的返回值是一个size_t的数据，在calloc函数中会用到这个返回值。即请求开辟的内存空间大小,并且开辟的空间大小不小于16。而且调用的了alignedInstanceSize函数来进行字节对齐。即开辟的内存空间大小一定是16字节的整数倍。</p>
+<p><code>calloc</code>是C语言的函数，开辟内存空间</p>
+<p><code>initInstanceIsa</code>函数 对象isa的初始化，以及绑定内存空间</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">objc_object::initInstanceIsa(Class cls, <span class="keyword">bool</span> hasCxxDtor)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(!cls-&gt;instancesRequireRawIsa());</span><br><span class="line">    ASSERT(hasCxxDtor == cls-&gt;hasCxxDtor());</span><br><span class="line"></span><br><span class="line">    initIsa(cls, <span class="literal">true</span>, hasCxxDtor);</span><br><span class="line">&#125;</span><br><span class="line">objc_object::initIsa(Class cls, <span class="keyword">bool</span> nonpointer, UNUSED_WITHOUT_INDEXED_ISA_AND_DTOR_BIT <span class="keyword">bool</span> hasCxxDtor)</span><br><span class="line">&#123; </span><br><span class="line">    ASSERT(!isTaggedPointer()); </span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">isa_t</span> <span class="title">newisa</span><span class="params">(<span class="number">0</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!nonpointer) &#123;</span><br><span class="line">        newisa.setClass(cls, <span class="keyword">this</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        ASSERT(!DisableNonpointerIsa);</span><br><span class="line">        ASSERT(!cls-&gt;instancesRequireRawIsa());</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> SUPPORT_INDEXED_ISA</span></span><br><span class="line">        ASSERT(cls-&gt;classArrayIndex() &gt; <span class="number">0</span>);</span><br><span class="line">        newisa.bits = ISA_INDEX_MAGIC_VALUE;</span><br><span class="line">        <span class="comment">// isa.magic is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        <span class="comment">// isa.nonpointer is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        newisa.has_cxx_dtor = hasCxxDtor;</span><br><span class="line">        newisa.indexcls = (<span class="keyword">uintptr_t</span>)cls-&gt;classArrayIndex();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">        newisa.bits = ISA_MAGIC_VALUE;</span><br><span class="line">        <span class="comment">// isa.magic is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        <span class="comment">// isa.nonpointer is part of ISA_MAGIC_VALUE</span></span><br><span class="line"><span class="meta">#   <span class="meta-keyword">if</span> ISA_HAS_CXX_DTOR_BIT</span></span><br><span class="line">        newisa.has_cxx_dtor = hasCxxDtor;</span><br><span class="line"><span class="meta">#   <span class="meta-keyword">endif</span></span></span><br><span class="line">        newisa.setClass(cls, <span class="keyword">this</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">        newisa.extra_rc = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// This write must be performed in a single store in some cases</span></span><br><span class="line">    <span class="comment">// (for example when realizing a class because other threads</span></span><br><span class="line">    <span class="comment">// may simultaneously try to use the class).</span></span><br><span class="line">    <span class="comment">// fixme use atomics here to guarantee single-store and to</span></span><br><span class="line">    <span class="comment">// guarantee memory order w.r.t. the class index table</span></span><br><span class="line">    <span class="comment">// ...but not too atomic because we don't want to hurt instantiation</span></span><br><span class="line">    isa = newisa;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="init"><a href="#init" class="headerlink" title="init"></a><code>init</code></h3><p><code>init</code>做的事情比较简单,直接将生成的对象返回</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">- (id)init &#123;</span><br><span class="line">    <span class="keyword">return</span> _objc_rootInit(self);</span><br><span class="line">&#125;</span><br><span class="line">_objc_rootInit(id obj)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// In practice, it will be hard to rely on this function.</span></span><br><span class="line">    <span class="comment">// Many classes do not properly chain -init calls.</span></span><br><span class="line">    <span class="keyword">return</span> obj;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2020/12/17/%E5%86%92%E6%B3%A1%E6%8E%92%E5%BA%8F%E3%80%81%E6%8F%92%E5%85%A5%E6%8E%92%E5%BA%8F%E3%80%81%E9%80%89%E6%8B%A9%E6%8E%92%E5%BA%8F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/12/17/%E5%86%92%E6%B3%A1%E6%8E%92%E5%BA%8F%E3%80%81%E6%8F%92%E5%85%A5%E6%8E%92%E5%BA%8F%E3%80%81%E9%80%89%E6%8B%A9%E6%8E%92%E5%BA%8F/" class="post-title-link" itemprop="url">冒泡排序、插入排序、选择排序</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-12-17 17:20:41 / 修改时间：20:45:15" itemprop="dateCreated datePublished" datetime="2020-12-17T17:20:41+08:00">2020-12-17</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="原地排序"><a href="#原地排序" class="headerlink" title="原地排序"></a>原地排序</h3><p>原地排序算法，就是指空间复杂度是O(1)的排序算法。</p>
+<h3 id="稳定性"><a href="#稳定性" class="headerlink" title="稳定性"></a>稳定性</h3><p>如果待排序的序列中存在值相等的元素，经过排序之后，相等元素之间原有的先后顺序不变那这个算法就是稳定的排序算法，反之就是不稳定的排序算法。</p>
+<h3 id="冒泡排序"><a href="#冒泡排序" class="headerlink" title="冒泡排序"></a>冒泡排序</h3><p>冒泡排序只会操作相邻的两个数据。每次冒泡操作都会对相邻的两个元素进行比较，看是否满足大小关系要求。如果不满足就让它俩互换。一次冒泡会让至少一个元素移动到它应该在的位置，重复 n 次，就完成了 n 个数据的排序工作。</p>
+<p>最好情况下时间复杂度：O(n)</p>
+<p>最坏情况下时间复杂度:O(n²)</p>
+<p>平均时间复杂度：O(n²)</p>
+<p>算法代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// 冒泡排序，a表示数组，n表示数组大小</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">bubbleSort</span><span class="params">(<span class="keyword">int</span>[] a, <span class="keyword">int</span> n)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (n &lt;= <span class="number">1</span>) <span class="keyword">return</span>;</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; ++i) &#123;</span><br><span class="line">    <span class="comment">// 提前退出冒泡循环的标志位</span></span><br><span class="line">    <span class="keyword">boolean</span> flag = <span class="keyword">false</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> j = <span class="number">0</span>; j &lt; n - i - <span class="number">1</span>; ++j) &#123;</span><br><span class="line">      <span class="keyword">if</span> (a[j] &gt; a[j+<span class="number">1</span>]) &#123; <span class="comment">// 交换</span></span><br><span class="line">        <span class="keyword">int</span> tmp = a[j];</span><br><span class="line">        a[j] = a[j+<span class="number">1</span>];</span><br><span class="line">        a[j+<span class="number">1</span>] = tmp;</span><br><span class="line">        flag = <span class="keyword">true</span>;  <span class="comment">// 表示有数据交换      </span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (!flag) <span class="keyword">break</span>;  <span class="comment">// 没有数据交换，提前退出</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="插入排序"><a href="#插入排序" class="headerlink" title="插入排序"></a>插入排序</h3><p>插入排序的思路是，首先，我们将数组中的数据分为两个区间，已排序区间和未排序区间。初始已排序区间只有一个元素，就是数组的第一个元素。插入算法的核心思想是取未排序区间中的元素，在已排序区间中找到合适的插入位置将其插入，并保证已排序区间数据一直有序。重复这个过程，直到未排序区间中元素为空，算法结束。</p>
+<p>最好情况下时间复杂度：O(n)</p>
+<p>最坏情况下时间复杂度:O(n²)</p>
+<p>平均时间复杂度：O(n²)</p>
+<p>算法代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// 插入排序，a表示数组，n表示数组大小</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">insertionSort</span><span class="params">(<span class="keyword">int</span>[] a, <span class="keyword">int</span> n)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (n &lt;= <span class="number">1</span>) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt; n; ++i) &#123;</span><br><span class="line">    <span class="keyword">int</span> value = a[i];</span><br><span class="line">    <span class="keyword">int</span> j = i - <span class="number">1</span>;</span><br><span class="line">    <span class="comment">// 查找插入的位置</span></span><br><span class="line">    <span class="keyword">for</span> (; j &gt;= <span class="number">0</span>; --j) &#123;</span><br><span class="line">      <span class="keyword">if</span> (a[j] &gt; value) &#123;</span><br><span class="line">        a[j+<span class="number">1</span>] = a[j];  <span class="comment">// 数据移动</span></span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    a[j+<span class="number">1</span>] = value; <span class="comment">// 插入数据</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="选择排序"><a href="#选择排序" class="headerlink" title="选择排序"></a>选择排序</h3><p>选择排序算法的实现思路有点类似插入排序，也分已排序区间和未排序区间。但是选择排序每次会从未排序区间中找到最小的元素，将其放到已排序区间的末尾。</p>
+<p>选择排序的最好情况时间复杂度、最坏情况和平均情况时间复杂度都为 O(n2)。</p>
+<p>选择排序是一种不稳定的排序算法。</p>
+<p>算法代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">int</span>[] selectionSort(<span class="keyword">int</span>[] sourceArray) <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">      <span class="keyword">int</span>[] arr = Arrays.copyOf(sourceArray, sourceArray.length);</span><br><span class="line"></span><br><span class="line">       <span class="comment">// 总共要经过 N-1 轮比较</span></span><br><span class="line">       <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length - <span class="number">1</span>; i++) &#123;</span><br><span class="line">           <span class="keyword">int</span> min = i;</span><br><span class="line">           <span class="comment">// 每轮需要比较的次数 N-i</span></span><br><span class="line">           <span class="keyword">for</span> (<span class="keyword">int</span> j = i + <span class="number">1</span>; j &lt; arr.length; j++) &#123;</span><br><span class="line">               <span class="keyword">if</span> (arr[j] &lt; arr[min]) &#123;</span><br><span class="line">                   <span class="comment">// 记录目前能找到的最小值元素的下标</span></span><br><span class="line">                   min = j;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 将找到的最小值和i位置所在的值进行交换</span></span><br><span class="line">           <span class="keyword">if</span> (i != min) &#123;</span><br><span class="line">               <span class="keyword">int</span> tmp = arr[i];</span><br><span class="line">               arr[i] = arr[min];</span><br><span class="line">               arr[min] = tmp;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">return</span> arr;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2020/09/28/IDFA%E7%9A%84%E6%A3%80%E6%B5%8B%E6%96%B9%E6%B3%95%E5%8F%8A%E4%B8%8A%E7%BA%BF%E5%A6%82%E4%BD%95%E5%8B%BE%E9%80%89/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -647,7 +936,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">35</span>
+          <span class="site-state-item-count">38</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
