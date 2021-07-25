@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yujiusheng.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Flutter程序的入口main()方法会调用runApp()方法，我们本篇探索runApp都做了啥。 概览12345void runApp(Widget app) &amp;#123;  WidgetsFlutterBinding.ensureInitialized()    ..scheduleAttachRootWidget(app)    ..scheduleWarmUpFrame();&amp;#125">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flutter-runApp()方法">
+<meta property="og:url" content="http://yujiusheng.com/2021/07/22/Flutter-runApp-%E6%96%B9%E6%B3%95/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="Flutter程序的入口main()方法会调用runApp()方法，我们本篇探索runApp都做了啥。 概览12345void runApp(Widget app) &amp;#123;  WidgetsFlutterBinding.ensureInitialized()    ..scheduleAttachRootWidget(app)    ..scheduleWarmUpFrame();&amp;#125">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-07-22T06:46:42.000Z">
+<meta property="article:modified_time" content="2021-07-23T09:05:06.071Z">
+<meta property="article:author" content="Jason">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yujiusheng.com/2021/07/22/Flutter-runApp-%E6%96%B9%E6%B3%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Flutter-runApp()方法 | Jason的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Jason的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/22/Flutter-runApp-%E6%96%B9%E6%B3%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Flutter-runApp()方法
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-07-22 14:46:42" itemprop="dateCreated datePublished" datetime="2021-07-22T14:46:42+08:00">2021-07-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-23 17:05:06" itemprop="dateModified" datetime="2021-07-23T17:05:06+08:00">2021-07-23</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><code>Flutter</code>程序的入口<code>main()</code>方法会调用<code>runApp()</code>方法，我们本篇探索<code>runApp</code>都做了啥。</p>
+<h3 id="概览"><a href="#概览" class="headerlink" title="概览"></a>概览</h3><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> runApp(Widget app) &#123;</span><br><span class="line">  WidgetsFlutterBinding.ensureInitialized()</span><br><span class="line">    ..scheduleAttachRootWidget(app)</span><br><span class="line">    ..scheduleWarmUpFrame();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个方法一看很简洁，一共调用了<code>WidgetsFlutterBinding</code>的三个方法，在看三个方法的实现之前，我们看一下<code>WidgetsFlutterBinding</code>是什么。</p>
+<h3 id="WidgetsFlutterBinding"><a href="#WidgetsFlutterBinding" class="headerlink" title="WidgetsFlutterBinding"></a>WidgetsFlutterBinding</h3><p>我们看一下官方的解释：</p>
+<p><code>A concrete binding for applications based on the Widgets framework.This is the glue that binds the framework to the Flutter engine.</code></p>
+<p>翻译过来就是，一个基于<code>Widgets framework</code>的应用程序的具体绑定，它是绑定<code>framework</code>和<code>Flutter engine</code>的胶水层。</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">WidgetsFlutterBinding</span> <span class="keyword">extends</span> <span class="title">BindingBase</span> <span class="title">with</span> <span class="title">GestureBinding</span>, <span class="title">SchedulerBinding</span>, <span class="title">ServicesBinding</span>, <span class="title">PaintingBinding</span>, <span class="title">SemanticsBinding</span>, <span class="title">RendererBinding</span>, <span class="title">WidgetsBinding</span> </span>&#123;</span><br><span class="line">  <span class="keyword">static</span> WidgetsBinding ensureInitialized() &#123;</span><br><span class="line">    <span class="keyword">if</span> (WidgetsBinding.instance == <span class="keyword">null</span>)</span><br><span class="line">      WidgetsFlutterBinding();</span><br><span class="line">    <span class="keyword">return</span> WidgetsBinding.instance;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>它的父类<code>BindingBase</code>是一个抽象类，<code>with</code>实现了很多<code>mixin</code>,这些<code>mixin</code>只能用于继承自<code>BindingBase</code>的类。<code>mixin</code>的作用是扩展功能，<code>mixin</code>可以类比于<code>iOS</code>的<code>protocol</code>(个人见解，如果不对欢迎指正)。</p>
+<h4 id="BindingBase"><a href="#BindingBase" class="headerlink" title="BindingBase"></a>BindingBase</h4><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">BindingBase</span> </span>&#123;</span><br><span class="line">  <span class="comment">/// <span class="markdown">省略代码</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">However, multiple window support is not yet implemented, so currently this</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">provides access to the one and only window.</span></span></span><br><span class="line">  <span class="comment">// TODO(gspencergoog): remove the preceding note once multi-window support is</span></span><br><span class="line">  <span class="comment">// active.</span></span><br><span class="line">  <span class="comment">// 唯一的window</span></span><br><span class="line">  ui.SingletonFlutterWindow <span class="keyword">get</span> <span class="built_in">window</span> =&gt; ui.<span class="built_in">window</span>;</span><br><span class="line">  <span class="comment">/// <span class="markdown">每一个BindingBase类定义行为 都有一个 platformDispatcher 作为回调(handlers)</span></span></span><br><span class="line">  ui.PlatformDispatcher <span class="keyword">get</span> platformDispatcher =&gt; ui.PlatformDispatcher.instance;</span><br><span class="line">  <span class="comment">/// <span class="markdown">初始化实例</span></span></span><br><span class="line">  <span class="keyword">void</span> initInstances() &#123;</span><br><span class="line">    <span class="keyword">assert</span>(!_debugInitialized);</span><br><span class="line">    <span class="keyword">assert</span>(() &#123;</span><br><span class="line">      _debugInitialized = <span class="keyword">true</span>;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;());</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">/// <span class="markdown">The current [WidgetsBinding], if one has been created.</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">ensureInitialized方法返回的实例</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">If you need the binding to be constructed before calling [runApp],</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">you can ensure a Widget binding has been constructed by calling the</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown"><span class="code">`WidgetsFlutterBinding.ensureInitialized()`</span> function.</span></span></span><br><span class="line">  <span class="keyword">static</span> WidgetsBinding? <span class="keyword">get</span> instance =&gt; _instance;</span><br><span class="line">  <span class="keyword">static</span> WidgetsBinding? _instance;</span><br><span class="line">  <span class="comment">/// <span class="markdown">注册 service extensions 初始化之后调用</span></span></span><br><span class="line">  <span class="keyword">void</span> initServiceExtensions() &#123;</span><br><span class="line">    <span class="comment">///<span class="markdown">省略代码</span></span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>ui.window</code>：是<code>Flutter App</code>显示的窗口，它继承自<code>FlutterView</code>,位于<code>Flutter engine</code>层。</li>
+<li><code>ui.PlatformDispatcher.instance</code>：platformDispatcher是Flutter 的一个事件分发器，负责Flutter分发engine的事件，和传递事件给engine层。</li>
+<li><code>initInstances</code>：初始化实例的方法。</li>
+<li><code>initServiceExtensions()</code>：注册 <code>service extensions</code>,比如<code>platformOverride</code>、<code>activeDevToolsServerAddress</code>等。</li>
+</ul>
+<h3 id="ensureInitialized（）方法"><a href="#ensureInitialized（）方法" class="headerlink" title="ensureInitialized（）方法"></a>ensureInitialized（）方法</h3><p>该方法的作用是返回一个<code>WidgetsBinding</code>类型实例，如果未创建就新创建一个。</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> WidgetsBinding ensureInitialized() &#123;</span><br><span class="line">  <span class="keyword">if</span> (WidgetsBinding.instance == <span class="keyword">null</span>)</span><br><span class="line">    WidgetsFlutterBinding();</span><br><span class="line">  <span class="keyword">return</span> WidgetsBinding.instance!;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>就是返回一个<code>WidgetsBinding.instance</code>实例，因为<code>WidgetsFlutterBinding</code>实现了<code>GestureBinding, SchedulerBinding, ServicesBinding, PaintingBinding, SemanticsBinding, RendererBinding, WidgetsBinding</code>mixin，mixin的<code>initInstances</code>和<code>initServiceExtensions</code>方法也会调用，每个mixin的功能：</p>
+<ul>
+<li><code>GestureBinding</code>：处理手势。</li>
+<li><code>SchedulerBinding</code>: 处理系统调度。</li>
+<li><code>ServicesBinding</code>：处理与原生的交互。</li>
+<li><code>PaintingBinding</code>：处理绘制。</li>
+<li><code>SemanticsBinding</code>：处理语义化。</li>
+<li><code>RendererBinding</code>：处理渲染。</li>
+<li><code>WidgetsBinding</code>：<code>Widgets</code>相关。</li>
+</ul>
+<p>我们下面主要看<code>WidgetsBinding</code>和<code>RendererBinding</code>。</p>
+<h4 id="WidgetsBinding"><a href="#WidgetsBinding" class="headerlink" title="WidgetsBinding"></a>WidgetsBinding</h4><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">mixin</span> WidgetsBinding <span class="keyword">on</span> BindingBase, ServicesBinding, SchedulerBinding, GestureBinding, RendererBinding, SemanticsBinding &#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> initInstances() &#123;</span><br><span class="line">    <span class="keyword">super</span>.initInstances();</span><br><span class="line">    _instance = <span class="keyword">this</span>;</span><br><span class="line">    <span class="keyword">assert</span>(() &#123;</span><br><span class="line">      _debugAddStackFilters();</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;());</span><br><span class="line">    <span class="comment">// Initialization of [_buildOwner] has to be done after</span></span><br><span class="line">    <span class="comment">// [super.initInstances] is called, as it requires [ServicesBinding] to</span></span><br><span class="line">    <span class="comment">// properly setup the [defaultBinaryMessenger] instance.</span></span><br><span class="line">    _buildOwner = BuildOwner();</span><br><span class="line">    buildOwner!.onBuildScheduled = _handleBuildScheduled;</span><br><span class="line">    <span class="built_in">window</span>.onLocaleChanged = handleLocaleChanged;</span><br><span class="line">    <span class="built_in">window</span>.onAccessibilityFeaturesChanged = handleAccessibilityFeaturesChanged;</span><br><span class="line">    SystemChannels.navigation.setMethodCallHandler(_handleNavigationInvocation);</span><br><span class="line">    FlutterErrorDetails.propertiesTransformers.add(transformDebugCreator);</span><br><span class="line"> &#125;</span><br><span class="line">  <span class="comment">///<span class="markdown">省略代码</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>WidgetsBinding</code>初始化会创建一个<code>BuildOwner</code>对象，它的作用是管理<code>Widget</code>树和<code>Element</code>树。</p>
+<h4 id="RendererBinding"><a href="#RendererBinding" class="headerlink" title="RendererBinding"></a>RendererBinding</h4><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">mixin</span> RendererBinding <span class="keyword">on</span> BindingBase, ServicesBinding, SchedulerBinding, GestureBinding, SemanticsBinding, HitTestable &#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> initInstances() &#123;</span><br><span class="line">    <span class="keyword">super</span>.initInstances();</span><br><span class="line">    _instance = <span class="keyword">this</span>;</span><br><span class="line">    _pipelineOwner = PipelineOwner(</span><br><span class="line">      onNeedVisualUpdate: ensureVisualUpdate,</span><br><span class="line">      onSemanticsOwnerCreated: _handleSemanticsOwnerCreated,</span><br><span class="line">      onSemanticsOwnerDisposed: _handleSemanticsOwnerDisposed,</span><br><span class="line">    );</span><br><span class="line">    <span class="built_in">window</span></span><br><span class="line">      ..onMetricsChanged = handleMetricsChanged</span><br><span class="line">      ..onTextScaleFactorChanged = handleTextScaleFactorChanged</span><br><span class="line">      ..onPlatformBrightnessChanged = handlePlatformBrightnessChanged</span><br><span class="line">      ..onSemanticsEnabledChanged = _handleSemanticsEnabledChanged</span><br><span class="line">      ..onSemanticsAction = _handleSemanticsAction;</span><br><span class="line">    initRenderView();</span><br><span class="line">    _handleSemanticsEnabledChanged();</span><br><span class="line">    <span class="keyword">assert</span>(renderView != <span class="keyword">null</span>);</span><br><span class="line">    addPersistentFrameCallback(_handlePersistentFrameCallback);</span><br><span class="line">    initMouseTracker();</span><br><span class="line">    <span class="keyword">if</span> (kIsWeb) &#123;</span><br><span class="line">      addPostFrameCallback(_handleWebFirstFrame);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/// <span class="markdown">The current [RendererBinding], if one has been created.</span></span></span><br><span class="line">  <span class="keyword">static</span> RendererBinding? <span class="keyword">get</span> instance =&gt; _instance;</span><br><span class="line">  <span class="keyword">static</span> RendererBinding? _instance;</span><br><span class="line">  <span class="comment">///<span class="markdown">省略代码</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>RendererBinding</code>初始化会创建一个<code>PipelineOwner</code>对象，用于管理<code>RenderObject</code>树。<code>PipelineOwner</code>和<code>BuildOwner</code>都位于<code>framework</code>层，它们通过<code>Bingding</code>(胶水层)与<code>engine</code>交互。</p>
+<ul>
+<li>初始化了一个PipelineOwner用于管理RenderObject.</li>
+<li>将<code>_handlePersistentFrameCallback</code>这个callback传入<code>SchedulerBinding</code>中的<code>_postFrameCallbacks</code>中，这样在硬件每次发出<code>VSync</code>信号的时候都会调用<code>RenderBinding</code>中的<code>_handlePersistentFrameCallback</code>方法.<code>_handlePersistentFrameCallback</code>方法中直接调用了<code>drawFrame</code>方法。</li>
+</ul>
+<h3 id="scheduleAttachRootWidget"><a href="#scheduleAttachRootWidget" class="headerlink" title="scheduleAttachRootWidget"></a>scheduleAttachRootWidget</h3><p>实例化之后会调用<code>scheduleAttachRootWidget</code>方法。</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@protected</span></span><br><span class="line"><span class="keyword">void</span> scheduleAttachRootWidget(Widget rootWidget) &#123;</span><br><span class="line">  Timer.run(() &#123;</span><br><span class="line">    attachRootWidget(rootWidget);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>调用了<code>attachRootWidget</code>方法：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> attachRootWidget(Widget rootWidget) &#123;</span><br><span class="line">  <span class="keyword">final</span> <span class="built_in">bool</span> isBootstrapFrame = renderViewElement == <span class="keyword">null</span>;</span><br><span class="line">  _readyToProduceFrames = <span class="keyword">true</span>;</span><br><span class="line">  _renderViewElement = RenderObjectToWidgetAdapter&lt;RenderBox&gt;(</span><br><span class="line">    container: renderView,</span><br><span class="line">    debugShortDescription: <span class="string">'[root]'</span>,</span><br><span class="line">    child: rootWidget,</span><br><span class="line">  ).attachToRenderTree(buildOwner!, renderViewElement <span class="keyword">as</span> RenderObjectToWidgetElement&lt;RenderBox&gt;?);</span><br><span class="line">  <span class="keyword">if</span> (isBootstrapFrame) &#123;</span><br><span class="line">    SchedulerBinding.instance!.ensureVisualUpdate();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>attachRootWidget方法用于是为根Widget生成一个根Element。生成Element调用了attachToRenderTree方法并传入了BuildOwner和Element。</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">RenderObjectToWidgetElement&lt;T&gt; attachToRenderTree(BuildOwner owner, [ RenderObjectToWidgetElement&lt;T&gt;? element ]) &#123;</span><br><span class="line">    <span class="keyword">if</span> (element == <span class="keyword">null</span>) &#123;</span><br><span class="line">      <span class="comment">///<span class="markdown">新创建一个 element</span></span></span><br><span class="line">      owner.lockState(() &#123;</span><br><span class="line">        element = createElement();</span><br><span class="line">        <span class="keyword">assert</span>(element != <span class="keyword">null</span>);</span><br><span class="line">        element!.assignOwner(owner);</span><br><span class="line">      &#125;);</span><br><span class="line">      <span class="comment">// 建立能更新widget 树的能力，可以回调 callback，构建所有标记为dirty的elment</span></span><br><span class="line">      owner.buildScope(element!, () &#123;</span><br><span class="line">        element!.mount(<span class="keyword">null</span>, <span class="keyword">null</span>);</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      element._newWidget = <span class="keyword">this</span>;</span><br><span class="line">      element.markNeedsBuild();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> element!;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个方法主要是<code>element</code>为空的时候新建一个<code>element</code>，新建后会调用<code>BuildOwner</code>的<code>buildScope</code>主要作用是建立能更新<code>widget</code> 树的能力，可以回调 <code>callback</code>，构建所有标记为<code>dirty</code>的<code>element</code>。</p>
+<p><code>attachRootWidget</code>方法，最后会执行<code>SchedulerBinding.instance!.ensureVisualUpdate()</code>，</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> ensureVisualUpdate() &#123;</span><br><span class="line">  <span class="keyword">switch</span> (schedulerPhase) &#123;</span><br><span class="line">    <span class="keyword">case</span> SchedulerPhase.idle:</span><br><span class="line">    <span class="keyword">case</span> SchedulerPhase.postFrameCallbacks:</span><br><span class="line">      scheduleFrame();</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    <span class="keyword">case</span> SchedulerPhase.transientCallbacks:</span><br><span class="line">    <span class="keyword">case</span> SchedulerPhase.midFrameMicrotasks:</span><br><span class="line">    <span class="keyword">case</span> SchedulerPhase.persistentCallbacks:</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>它主要是调用新的帧的调度管理。它会调用<code>scheduleFrame</code>方法</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> scheduleFrame() &#123;</span><br><span class="line">  <span class="keyword">if</span> (_hasScheduledFrame || !framesEnabled)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">assert</span>(() &#123;</span><br><span class="line">    <span class="keyword">if</span> (debugPrintScheduleFrameStacks)</span><br><span class="line">      debugPrintStack(label: <span class="string">'scheduleFrame() called. Current phase is <span class="subst">$schedulerPhase</span>.'</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">  &#125;());</span><br><span class="line">  <span class="comment">///<span class="markdown">给window设置回调</span></span></span><br><span class="line">  ensureFrameCallbacksRegistered();</span><br><span class="line">  <span class="comment">///<span class="markdown">调度更新</span></span></span><br><span class="line">  <span class="built_in">window</span>.scheduleFrame();</span><br><span class="line">  _hasScheduledFrame = <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里会给<code>window</code>设置<code>onBeginFrame</code>和<code>onDrawFrame</code>的回调，<code>window</code>会把回调传给<code>platformDispatcher</code>。</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@override</span></span><br><span class="line"><span class="keyword">set</span> onBeginFrame(ui.FrameCallback? callback) &#123;</span><br><span class="line">  platformDispatcher.onBeginFrame = callback;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">@override</span></span><br><span class="line">ui.VoidCallback? <span class="keyword">get</span> onDrawFrame =&gt; platformDispatcher.onDrawFrame;</span><br><span class="line"><span class="meta">@override</span></span><br><span class="line"><span class="keyword">set</span> onDrawFrame(ui.VoidCallback? callback) &#123;</span><br><span class="line">  platformDispatcher.onDrawFrame = callback;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>也就是说<code>scheduleAttachRootWidget</code>经过一系列调用之后，会把<code>SchedulerBinding</code>的<code>_handleBeginFrame</code>和<code>_handleDrawFrame</code>传给<code>platformDispatcher</code>。<code>platformDispatcher</code>分发来自enginee的事件。而在这里<code>SingletonFlutterWindow</code>把<code>platformDispatcher</code>的<code>onBeginFrame</code>和<code>onDrawFrame</code>这两个事件交给<code>SchedulerBinding</code>处理。</p>
+<p>当硬件发出<code>VSync</code>信号时，会调用<code>platformDispatcher的onDrawFrame</code>。实际上会调用<code>SchedulerBinding</code>中的<code>_handleDrawFrame</code>方法。<code>_handleDrawFrame</code>会调用<code>handleDrawFrame</code>方法:</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> handleDrawFrame() &#123;</span><br><span class="line">  <span class="keyword">assert</span>(_schedulerPhase == SchedulerPhase.midFrameMicrotasks);</span><br><span class="line">  Timeline.finishSync(); <span class="comment">// end the "Animate" phase</span></span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// PERSISTENT FRAME CALLBACKS</span></span><br><span class="line">    _schedulerPhase = SchedulerPhase.persistentCallbacks;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">final</span> FrameCallback callback <span class="keyword">in</span> _persistentCallbacks)</span><br><span class="line">      _invokeFrameCallback(callback, _currentFrameTimeStamp!);</span><br><span class="line">    <span class="comment">// POST-FRAME CALLBACKS</span></span><br><span class="line">    _schedulerPhase = SchedulerPhase.postFrameCallbacks;</span><br><span class="line">    <span class="keyword">final</span> <span class="built_in">List</span>&lt;FrameCallback&gt; localPostFrameCallbacks =</span><br><span class="line">        <span class="built_in">List</span>&lt;FrameCallback&gt;.from(_postFrameCallbacks);</span><br><span class="line">    _postFrameCallbacks.clear();</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">final</span> FrameCallback callback <span class="keyword">in</span> localPostFrameCallbacks)</span><br><span class="line">      _invokeFrameCallback(callback, _currentFrameTimeStamp!);</span><br><span class="line">  &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    <span class="comment">///<span class="markdown">省略代码</span></span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>_postFrameCallbacks</code>里面存储的是<code>callback</code>，作用是硬件每次发出<code>VSync</code>信号的时候都会调用。这里的<code>_postFrameCallbacks</code>是在<code>RenderBinding</code>这个<code>mixin</code>的<code>initInstances</code>方法中传入的</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">addPersistentFrameCallback(_handlePersistentFrameCallback);</span><br></pre></td></tr></table></figure>
+
+<h3 id="scheduleWarmUpFrame"><a href="#scheduleWarmUpFrame" class="headerlink" title="scheduleWarmUpFrame"></a>scheduleWarmUpFrame</h3><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> scheduleWarmUpFrame() &#123;</span><br><span class="line">    <span class="keyword">if</span> (_warmUpFrame || schedulerPhase != SchedulerPhase.idle)</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    _warmUpFrame = <span class="keyword">true</span>;</span><br><span class="line">    Timeline.startSync(<span class="string">'Warm-up frame'</span>);</span><br><span class="line">    <span class="keyword">final</span> <span class="built_in">bool</span> hadScheduledFrame = _hasScheduledFrame;</span><br><span class="line">    <span class="comment">// We use timers here to ensure that microtasks flush in between.</span></span><br><span class="line">    Timer.run(() &#123;</span><br><span class="line">      <span class="keyword">assert</span>(_warmUpFrame);</span><br><span class="line">      handleBeginFrame(<span class="keyword">null</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">    Timer.run(() &#123;</span><br><span class="line">      <span class="keyword">assert</span>(_warmUpFrame);</span><br><span class="line">      handleDrawFrame();</span><br><span class="line">      <span class="comment">// We call resetEpoch after this frame so that, in the hot reload case,</span></span><br><span class="line">      <span class="comment">// the very next frame pretends to have occurred immediately after this</span></span><br><span class="line">      <span class="comment">// warm-up frame. The warm-up frame's timestamp will typically be far in</span></span><br><span class="line">      <span class="comment">// the past (the time of the last real frame), so if we didn't reset the</span></span><br><span class="line">      <span class="comment">// epoch we would see a sudden jump from the old time in the warm-up frame</span></span><br><span class="line">      <span class="comment">// to the new time in the "real" frame. The biggest problem with this is</span></span><br><span class="line">      <span class="comment">// that implicit animations end up being triggered at the old time and</span></span><br><span class="line">      <span class="comment">// then skipping every frame and finishing in the new time.</span></span><br><span class="line">      resetEpoch();</span><br><span class="line">      _warmUpFrame = <span class="keyword">false</span>;</span><br><span class="line">      <span class="keyword">if</span> (hadScheduledFrame)</span><br><span class="line">        scheduleFrame();</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="comment">// Lock events so touch events etc don't insert themselves until the</span></span><br><span class="line">    <span class="comment">// scheduled frame has finished.</span></span><br><span class="line">    lockEvents(() <span class="keyword">async</span> &#123;</span><br><span class="line">      <span class="keyword">await</span> endOfFrame;</span><br><span class="line">      Timeline.finishSync();</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个方法主要调用是<code>scheduleFrame</code>，跟进代码实际是调用的<code>window.scheduleFrame()</code>,</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@override</span></span><br><span class="line"><span class="keyword">void</span> scheduleFrame() &#123;</span><br><span class="line">  platformDispatcher.scheduleFrame();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>window.scheduleFrame()</code>调用了<code>platformDispatcher.scheduleFrame()</code>,通知<code>engine</code>层需要绘制。engine会根据情况尽快地调用platformDispatcher的onDrawFrame方法。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>runApp方法主要做了以下事情：</p>
+<ul>
+<li>创建<code>WidgetsFlutterBinding</code>它是连接<code>framework</code>和<code>engine</code>的胶水层。注册<code>Vsync</code>回调，后面每一帧的调用会出发<code>WidgetsFlutterBinding</code>的回调，最后传递到<code>framework</code>层处理逻辑。</li>
+<li><code>attachRootWidget</code>：遍历挂载整个视图树，建立<code>widget</code>、<code>element</code>、<code>renderObjcect</code>的连接关系。</li>
+<li><code>scheduleWarmUpFrame</code>：调度帧预热(warmUp)。执行帧绘制<code>handleBeginFrame</code>和<code>handleDrawFrame</code>方法。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/07/20/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E7%B1%BB%E7%9A%84%E6%89%A9%E5%B1%95%E5%92%8C%E5%85%B3%E8%81%94%E5%AF%B9%E8%B1%A1/" rel="prev" title="iOS底层探索-类的扩展和关联对象">
+      <i class="fa fa-chevron-left"></i> iOS底层探索-类的扩展和关联对象
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/07/22/Objective-c%E5%BA%95%E5%B1%82%E9%9D%A2%E8%AF%95%E9%A2%98/" rel="next" title="Objective-C底层面试题">
+      Objective-C底层面试题 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#概览"><span class="nav-number">1.</span> <span class="nav-text">概览</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#WidgetsFlutterBinding"><span class="nav-number">2.</span> <span class="nav-text">WidgetsFlutterBinding</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#BindingBase"><span class="nav-number">2.1.</span> <span class="nav-text">BindingBase</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ensureInitialized（）方法"><span class="nav-number">3.</span> <span class="nav-text">ensureInitialized（）方法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#WidgetsBinding"><span class="nav-number">3.1.</span> <span class="nav-text">WidgetsBinding</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#RendererBinding"><span class="nav-number">3.2.</span> <span class="nav-text">RendererBinding</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scheduleAttachRootWidget"><span class="nav-number">4.</span> <span class="nav-text">scheduleAttachRootWidget</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scheduleWarmUpFrame"><span class="nav-number">5.</span> <span class="nav-text">scheduleWarmUpFrame</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Jason</p>
+  <div class="site-description" itemprop="description">个人技术博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yujiusheng.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="oc底层探索了很多了，今天主要总结一下一些相关的面试题。 load方法什么时候调用。这个问题很多同学应该都知道，就是main函数之前，但是main之前的哪一步执行的，可能有些同学就疑惑了，，同时还有一个方法的调用时机也会被经常问到就是initialize,我们分别讨论。 load方法 load方法是在应用程序加载过程中调用的，确实是在main函数之前调用。 具体是_dyld_objc_notify">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Objective-C底层面试题">
+<meta property="og:url" content="http://yujiusheng.com/2021/07/22/Objective-c%E5%BA%95%E5%B1%82%E9%9D%A2%E8%AF%95%E9%A2%98/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="oc底层探索了很多了，今天主要总结一下一些相关的面试题。 load方法什么时候调用。这个问题很多同学应该都知道，就是main函数之前，但是main之前的哪一步执行的，可能有些同学就疑惑了，，同时还有一个方法的调用时机也会被经常问到就是initialize,我们分别讨论。 load方法 load方法是在应用程序加载过程中调用的，确实是在main函数之前调用。 具体是_dyld_objc_notify">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/32b236096024497cb3c8e4345f302f03~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/900abebd0f814bdb9251b1f21cefaf32~tplv-k3u1fbpfcp-watermark.image">
+<meta property="article:published_time" content="2021-07-22T12:15:48.000Z">
+<meta property="article:modified_time" content="2021-07-25T03:04:14.000Z">
+<meta property="article:author" content="Jason">
+<meta property="article:tag" content="面试">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/32b236096024497cb3c8e4345f302f03~tplv-k3u1fbpfcp-watermark.image">
+
+<link rel="canonical" href="http://yujiusheng.com/2021/07/22/Objective-c%E5%BA%95%E5%B1%82%E9%9D%A2%E8%AF%95%E9%A2%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Objective-C底层面试题 | Jason的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Jason的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/22/Objective-c%E5%BA%95%E5%B1%82%E9%9D%A2%E8%AF%95%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Objective-C底层面试题
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-07-22 20:15:48" itemprop="dateCreated datePublished" datetime="2021-07-22T20:15:48+08:00">2021-07-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-25 11:04:14" itemprop="dateModified" datetime="2021-07-25T11:04:14+08:00">2021-07-25</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><code>oc</code>底层探索了很多了，今天主要总结一下一些相关的面试题。</p>
+<h3 id="load方法什么时候调用。"><a href="#load方法什么时候调用。" class="headerlink" title="load方法什么时候调用。"></a><code>load</code>方法什么时候调用。</h3><p>这个问题很多同学应该都知道，就是<code>main</code>函数之前，但是<code>main</code>之前的哪一步执行的，可能有些同学就疑惑了，，同时还有一个方法的调用时机也会被经常问到就是<code>initialize</code>,我们分别讨论。</p>
+<h4 id="load方法"><a href="#load方法" class="headerlink" title="load方法"></a><code>load</code>方法</h4><ul>
+<li><code>load</code>方法是在应用程序加载过程中调用的，确实是在<code>main</code>函数之前调用。</li>
+<li>具体是<code>_dyld_objc_notify_register</code>方法的第二个参数<code>load_images</code>回调的。</li>
+<li>通过<code>prepare_load_methods</code>递归查找<code>load</code>方法添加到一个<code>load</code>方法的加载表<code>loadable_classes</code>里，注意父类会比子类先加入到表中，查找完类的<code>load</code>方法之后，查找分类的<code>load</code>也会添加到一个<code>loadable_categories</code>表中。</li>
+<li>最后是<code>call_load_methods</code>调用<code>load</code>方法，先从<code>loadable_classes</code>表里循环调用类的<code>load</code>方法，然后从<code>loadable_categories</code>表里循环调用分类的<code>load</code>方法。</li>
+<li>因为是顺序遍历表调用<code>load</code>方法的。所以<code>load</code>方法的调用次序是<code>父类</code>&gt;<code>本类</code>&gt;<code>分类</code>。</li>
+<li>如果有多个分类都有<code>load</code>方法，其调用顺序会根据编译的顺序调用。编译顺序可以在<code>Compiles Sources</code>里调整。</li>
+<li><code>load</code>方法过多会影响到应用的启动速度。</li>
+</ul>
+<h4 id="initialize方法。"><a href="#initialize方法。" class="headerlink" title="initialize方法。"></a><code>initialize</code>方法。</h4><ul>
+<li><code>initialize</code>方法是在第一次<code>objc_msgSend</code>的时候调用的，它的调用时机晚于<code>load</code>。</li>
+<li>分类的方法是在类<code>realize</code>之后<code>attachCategorys</code>进去的，会在类的方法前面。如果分类实现了<code>initialize</code>方法，会优先调用分类的方法。</li>
+</ul>
+<h3 id="Runtime是什么"><a href="#Runtime是什么" class="headerlink" title="Runtime是什么"></a><code>Runtime</code>是什么</h3><ul>
+<li><code>runtime</code>是由<code>c</code>、<code>c++</code>、<code>汇编</code>实现的一套<code>API</code>,为<code>oc</code>语言加入面向对象运行时功能。</li>
+<li><code>运行时</code>是指讲数据类型的确定有<code>编译时</code>推迟到了<code>运行时</code>。</li>
+<li>我们写的<code>oc</code>代码，在程序运行过程中，最终都会转换成<code>runtime</code>的<code>c</code>语言代码。</li>
+</ul>
+<h3 id="⽅法的本质，sel是什么？IMP是什么？两者之间的关系是什么"><a href="#⽅法的本质，sel是什么？IMP是什么？两者之间的关系是什么" class="headerlink" title="⽅法的本质，sel是什么？IMP是什么？两者之间的关系是什么"></a>⽅法的本质，<code>sel</code>是什么？<code>IMP</code>是什么？两者之间的关系是什么</h3><h4 id="⽅法的本质"><a href="#⽅法的本质" class="headerlink" title="⽅法的本质"></a>⽅法的本质</h4><p>⽅法的本质是消息发送，即<code>objc_msgSend</code>,它的流程是：</p>
+<ul>
+<li>快速查找 （<code>objc_msgSend</code>）~ <code>cache_t</code> 缓存消息</li>
+<li>慢速查找~ 递归⾃⼰或⽗类 ~ <code>lookUpImpOrForward</code></li>
+<li>查找不到消息: 动态⽅法解析 ~ <code>resolveInstanceMethod</code></li>
+<li>消息快速转发 ~ <code>forwardingTargetForSelector</code></li>
+<li>消息慢速转发 ~ <code>methodSignatureForSelector</code> 和 <code>forwardInvocation</code></li>
+</ul>
+<h4 id="sel是什么"><a href="#sel是什么" class="headerlink" title="sel是什么"></a><code>sel</code>是什么</h4><p><code>sel</code>是⽅法编号，在<code>read_images</code>期间就加载进⼊了内存。它实际是<code>objc_selector</code>结构体。</p>
+<h4 id="IMP是什么"><a href="#IMP是什么" class="headerlink" title="IMP是什么"></a><code>IMP</code>是什么</h4><p><code>imp</code>就是我们函数实现指针，找<code>imp</code>就是找函数实现的过程。</p>
+<h4 id="sel与IMP的关系"><a href="#sel与IMP的关系" class="headerlink" title="sel与IMP的关系"></a><code>sel</code>与<code>IMP</code>的关系</h4><ul>
+<li><code>sel</code>就相当于书本的⽬录<code>title</code></li>
+<li><code>imp</code>就是书本的⻚码</li>
+<li>方法调用的时候首先根据<code>sel</code>找到<code>imp</code>最后到具体函数的实现，完成调用。</li>
+</ul>
+<h3 id="能否向编译后的类中增加实例变量？能否向运⾏时创建的类中添加实例变量？"><a href="#能否向编译后的类中增加实例变量？能否向运⾏时创建的类中添加实例变量？" class="headerlink" title="能否向编译后的类中增加实例变量？能否向运⾏时创建的类中添加实例变量？"></a>能否向编译后的类中增加实例变量？能否向运⾏时创建的类中添加实例变量？</h3><ul>
+<li><p>不能向编译后的得到的类中增加实例变量：</p>
+<ul>
+<li>我们编译好的实例变量存储的位置在<code>ro</code>（read only），⼀旦编译完成，内存结构就完全确定。</li>
+<li>我们可以通过<code>分类</code>向类中添加<code>方法</code>和<code>属性</code>(通过关联对象)。</li>
+</ul>
+</li>
+<li><p>可以向运行时创建的类中添加实例变量，只要类没有注册到内存还是可以添加。</p>
+<p>这里<code>运行时创建的类</code>指的是通过<code>objc_allocateClassPair</code>方法，创建的<code>类</code>,在调用<code>objc_registerClassPair</code>方法之前是可以添加<code>实例变量</code>的。</p>
+</li>
+</ul>
+<h3 id="self-class-和-super-class-区别"><a href="#self-class-和-super-class-区别" class="headerlink" title="[self class]和[super class]区别"></a>[self class]和[super class]区别</h3><p>先定义两个类<code>JSPerson</code>和<code>JSStudent</code>,其中<code>JSStudent</code>继承于<code>JSPerson</code>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">#import &quot;JSPerson.h&quot;</span><br><span class="line"></span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@interface JSStudent : JSPerson</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation JSStudent</span><br><span class="line"></span><br><span class="line">- (instancetype)init&#123;</span><br><span class="line">    self &#x3D; [super init];</span><br><span class="line">    if (self) &#123;</span><br><span class="line">        NSLog(@&quot;%@ - %@&quot;,[self class],[super class]);</span><br><span class="line">    &#125;</span><br><span class="line">    return self;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>在<code>main</code>函数里实例化一个<code>JSStudent</code>对象。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSStudent *student &#x3D; [[JSStudent alloc] init];;</span><br><span class="line">        NSLog(@&quot;%@&quot;,student);</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>发现打印结果为<code>JSStudent - JSStudent</code>。这是为什么呢，我们下面分析一下。</p>
+<p>首先，<code>JSPerson</code>和<code>JSStudent</code>类都没有实现<code>class</code>方法，根据消息发送查找流程，会调用<code>NSObject</code>类的<code>class</code>方法，它的实现为</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">- (Class)<span class="class"><span class="keyword">class</span> &#123;</span></span><br><span class="line">    <span class="keyword">return</span> object_getClass(self);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//根据isa找到类</span></span><br><span class="line"><span class="function">Class <span class="title">object_getClass</span><span class="params">(id obj)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (obj) <span class="keyword">return</span> obj-&gt;getIsa();</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">return</span> Nil;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>class</code>方法的作用是返回当前的类，<code>self</code>是调用的对象也就是<code>student</code>实例。</p>
+<ul>
+<li><p><code>[self class]</code>打印的是<code>JSStudent</code>很好理解，因为消息接受者就是<code>JSStudent</code>的实例对象，通过<code>isa</code>找到的就是<code>JSStudent</code>类。</p>
+</li>
+<li><p><code>[super class]</code>打印的也是<code>JSStudent</code>就让人困惑了，我们打开<code>汇编调试</code>看一下<code>[super class]</code>的底层调用了什么</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/32b236096024497cb3c8e4345f302f03~tplv-k3u1fbpfcp-watermark.image" alt="WechatIMG1246"></p>
+<p><code>[super class]</code>实际调用的是<code>objc_msgSendSuper2</code>方法，我们在源码看一下这个方法的定义：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// objc_msgSendSuper2() takes the current search class, not its superclass.</span></span><br><span class="line">OBJC_EXPORT id _Nullable</span><br><span class="line">objc_msgSendSuper2(struct objc_super * _Nonnull super, SEL _Nonnull op, ...)</span><br><span class="line">    OBJC_AVAILABLE(<span class="number">10.6</span>, <span class="number">2.0</span>, <span class="number">9.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>);</span><br></pre></td></tr></table></figure>
+
+<p>其实看<code>objc_msgSendSuper2</code>的注释就可以看出来，方法查找的是<code>本类</code>而不是它的<code>父类</code>。</p>
+<p>继续看，<code>super</code>是方法的第一个参数，也就是<code>objc_super *</code>它的结构是：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">objc_super</span> &#123;</span></span><br><span class="line">    <span class="comment">/// Specifies an instance of a class.</span></span><br><span class="line">    __unsafe_unretained _Nonnull id receiver;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/// Specifies the particular superclass of the instance to message. </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> !defined(__cplusplus)  &amp;&amp;  !__OBJC2__</span></span><br><span class="line">    <span class="comment">/* For compatibility with old objc-runtime.h header */</span></span><br><span class="line">  	<span class="comment">///old结构，我们可以忽略 !__OBJC2__使用</span></span><br><span class="line">    __unsafe_unretained _Nonnull Class <span class="class"><span class="keyword">class</span>;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    __unsafe_unretained _Nonnull Class super_class;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="comment">/* super_class is the first class to search */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>objc_super</code>的成员变量有<code>receiver</code>它是当前的调用的实例也就是<code>student</code>,<code>super_class</code>是当前实例对象的类的<code>父类</code>。所以说<code>[super class]</code>的消息接受者<code>self</code>还是<code>student</code>,所以打印的是<code>JSStudent</code>，<code>super</code>是一个关键字。</p>
+<h3 id="内存平移问题"><a href="#内存平移问题" class="headerlink" title="内存平移问题"></a>内存平移问题</h3><p>案例说明:<code>JSPerson</code>类中有一个<code>saySomething</code>方法，在<code>ViewController</code>类的<code>viewDidLoad</code>通过两种方式调用，详细看代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">@implementation JSPerson</span><br><span class="line">- (void)saySomething&#123;</span><br><span class="line"></span><br><span class="line">    NSLog(@&quot;%s&quot;,__func__);</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">@implementation ViewController</span><br><span class="line"></span><br><span class="line">- (void)viewDidLoad &#123;</span><br><span class="line">    [super viewDidLoad];</span><br><span class="line">    &#x2F;&#x2F; Do any additional setup after loading the view.</span><br><span class="line">    JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">    [person saySomething];</span><br><span class="line">    </span><br><span class="line">    Class cls &#x3D; [JSPerson class];</span><br><span class="line">    void  *js &#x3D; &amp;cls;</span><br><span class="line">    [(__bridge id)js saySomething];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>问题是这两个调用<code>saySomething</code>的语句是否有问题。</p>
+<ul>
+<li><p><code>[person saySomething]</code>：这种方式没什么疑问，正常的方法调用。它的流程是通过<code>person</code>对象的<code>isa</code>指针找到类<code>JSPerson</code>,首先通过内存平移找到<code>cache</code>里查找，如果找不到，继续平移找到<code>bits</code>查找方法列表查找，最后找到<code>imp</code>调用。</p>
+</li>
+<li><p><code>[(__bridge id)js saySomething]</code>:运行代码，我们这一行代码也正常执行了，原因是什么呢</p>
+<p><code>void  *js = &amp;cls;</code>说明<code>js</code>是一个指向<code>JSPerson</code>类首地址的指针，它和对象的<code>isa</code>指向的是同一个地址，通过内存平移也可以找到对应的方法。</p>
+</li>
+</ul>
+<h4 id="拓展"><a href="#拓展" class="headerlink" title="拓展"></a>拓展</h4><p>在<code>saySomething</code>方法里增加属性<code>self.js_name</code> 的打印,其他不变</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">@property (nonatomic, strong) NSString *js_name;</span><br><span class="line"></span><br><span class="line">- (void)saySomething;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation JSPerson</span><br><span class="line">- (void)saySomething&#123;</span><br><span class="line"></span><br><span class="line">    NSLog(@&quot;%s - %@&quot;,__func__,self.js_name);</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>再次运行程序发现打印结果为：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-[JSPerson saySomething] - (null)</span><br><span class="line">-[JSPerson saySomething] - &lt;JSPerson: <span class="number">0x600003a00380</span>&gt;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p><code>[person saySomething]</code>：因为我们没有对<code>js_name</code>赋值，<code>[person saySomething]</code>打印<code>(null)</code>正常。</p>
+</li>
+<li><p><code>[(__bridge id)js saySomething]</code>：这里打印了<code>&lt;JSPerson: 0x600003a00380&gt;</code>很困惑。</p>
+<p>我们首先要清楚<code>self.js_name</code>是怎么找到<code>js_name</code>并打印的，它是从<code>person</code>内存地址中平移8位(<code>isa</code>是8位)找到第一个属性<code>js_name</code>。</p>
+<p>类比<code>js</code>也需要平移8位找<code>js_name</code>,由于<code>js</code>是一个指针，存在<code>栈</code>上的，栈是一个<code>先进后出</code>的数据结构，每次参数传入就会压栈。</p>
+<ul>
+<li><p>其中<code>隐藏参数会压入栈</code>，且每个函数都会有两个隐藏参数<code>(id self，sel _cmd)</code>，这个我们前面探索过，可以通过<code>clang</code>将<code>oc</code>代码转成<code>c++</code>代码查看。</p>
+</li>
+<li><p><code>隐藏参数压栈</code>的过程，其地址是<code>递减</code>的，而<code>栈是从高地址-&gt;低地址 分配</code>的，即<code>在栈中，参数会从前往后一直压</code></p>
+</li>
+<li><p>前面还有一行<code>[super viewDidLoad];</code>,<code>super</code>调用的压栈我们也需要研究一下，其实上一题我们研究过它实际调用的是<code>objc_msgSendSuper2</code>,有两个参数<code>_objc_super</code>和<code>sel</code>。结构体的属性的压栈我们通过自定义一个结构体探索</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">struct js_struct&#123;</span><br><span class="line">    NSNumber *num1;</span><br><span class="line">    NSNumber *num2;</span><br><span class="line">&#125; js_struct;</span><br><span class="line">- (void)viewDidLoad &#123;</span><br><span class="line">    [super viewDidLoad];</span><br><span class="line">    &#x2F;&#x2F; Do any additional setup after loading the view.</span><br><span class="line">    JSPerson *person1 &#x3D; [JSPerson alloc];</span><br><span class="line">    struct js_struct jst &#x3D; &#123;@(1),@(3)&#125;;</span><br><span class="line">    JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">    [person saySomething];</span><br><span class="line">    </span><br><span class="line">    Class cls &#x3D; [JSPerson class];</span><br><span class="line">    void  *js &#x3D; &amp;cls;</span><br><span class="line">    [(__bridge id)js saySomething];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们在图示位置添加断点调试</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/900abebd0f814bdb9251b1f21cefaf32~tplv-k3u1fbpfcp-watermark.image" alt="1627138804130"></p>
+<p>使用<code>lldb</code>调试</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">(lldb) p &amp;person1</span><br><span class="line">(JSPerson **) $<span class="number">0</span> = <span class="number">0x00007ffeed1d8118</span></span><br><span class="line">(lldb) p &amp;jst</span><br><span class="line">(js_struct *) $<span class="number">1</span> = <span class="number">0x00007ffeed1d8108</span></span><br><span class="line">(lldb) p &amp;person</span><br><span class="line">(JSPerson **) $<span class="number">2</span> = <span class="number">0x00007ffeed1d8100</span></span><br><span class="line">(lldb) p jst.num1</span><br><span class="line">(__NSCFNumber *) $<span class="number">3</span> = <span class="number">0xbab63c269bab4904</span> (<span class="keyword">int</span>)<span class="number">1</span></span><br><span class="line">(lldb) p &amp;$<span class="number">3</span></span><br><span class="line">(NSNumber **) $<span class="number">4</span> = <span class="number">0x00007ffeed1d8108</span></span><br><span class="line">(lldb) p jst.num2</span><br><span class="line">(__NSCFNumber *) $<span class="number">5</span> = <span class="number">0xbab63c269bab4924</span> (<span class="keyword">int</span>)<span class="number">3</span></span><br><span class="line">(lldb) p &amp;$<span class="number">5</span></span><br><span class="line">(NSNumber **) $<span class="number">6</span> = <span class="number">0x00007ffeed1d8110</span></span><br></pre></td></tr></table></figure>
+
+<p>发现<code>num1</code>的地址&lt;<code>num2</code>的地址，说明<code>num2</code>先入栈。也就是<code>结构体是从后向前入栈的</code>。</p>
+</li>
+<li><p>总结来说题中压栈的顺序是<code>self</code>-&gt;<code>_cmd</code>-&gt;<code>superClass</code>-&gt;<code>self</code>-&gt;<code>person</code>-&gt;<code>cls</code>-&gt;<code>js</code>。地址空间是由高到低。所以这个地方<code>js</code>向高地址平移8字节找到的是<code>person</code>也就是打印是<code>&lt;JSPerson: 0x600003a00380&gt;</code>的原因。</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E9%9D%A2%E8%AF%95/" rel="tag"># 面试</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/07/22/Flutter-runApp-%E6%96%B9%E6%B3%95/" rel="prev" title="Flutter-runApp()方法">
+      <i class="fa fa-chevron-left"></i> Flutter-runApp()方法
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/07/25/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-KVC/" rel="next" title="iOS底层探索-KVC">
+      iOS底层探索-KVC <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#load方法什么时候调用。"><span class="nav-number">1.</span> <span class="nav-text">load方法什么时候调用。</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#load方法"><span class="nav-number">1.1.</span> <span class="nav-text">load方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#initialize方法。"><span class="nav-number">1.2.</span> <span class="nav-text">initialize方法。</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Runtime是什么"><span class="nav-number">2.</span> <span class="nav-text">Runtime是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#⽅法的本质，sel是什么？IMP是什么？两者之间的关系是什么"><span class="nav-number">3.</span> <span class="nav-text">⽅法的本质，sel是什么？IMP是什么？两者之间的关系是什么</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#⽅法的本质"><span class="nav-number">3.1.</span> <span class="nav-text">⽅法的本质</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#sel是什么"><span class="nav-number">3.2.</span> <span class="nav-text">sel是什么</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#IMP是什么"><span class="nav-number">3.3.</span> <span class="nav-text">IMP是什么</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#sel与IMP的关系"><span class="nav-number">3.4.</span> <span class="nav-text">sel与IMP的关系</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#能否向编译后的类中增加实例变量？能否向运⾏时创建的类中添加实例变量？"><span class="nav-number">4.</span> <span class="nav-text">能否向编译后的类中增加实例变量？能否向运⾏时创建的类中添加实例变量？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#self-class-和-super-class-区别"><span class="nav-number">5.</span> <span class="nav-text">[self class]和[super class]区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存平移问题"><span class="nav-number">6.</span> <span class="nav-text">内存平移问题</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#拓展"><span class="nav-number">6.1.</span> <span class="nav-text">拓展</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Jason</p>
+  <div class="site-description" itemprop="description">个人技术博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
