@@ -147,6 +147,457 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/08/iOS%E5%BA%95%E5%B1%82%EF%BC%9Aalloc%E5%92%8Cinit/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/05/08/iOS%E5%BA%95%E5%B1%82%EF%BC%9Aalloc%E5%92%8Cinit/" class="post-title-link" itemprop="url">iOS底层：alloc和init</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-05-08 16:55:16 / 修改时间：22:17:18" itemprop="dateCreated datePublished" datetime="2021-05-08T16:55:16+08:00">2021-05-08</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>NSObject是OC中大部分类的基类，了解NSObject对象的初始化对于我们进一步理解对象内存的管理有一定帮助，本文主要探索<code>alloc</code>和<code>init</code>底层实现。</p>
+<h3 id="如何debug源码"><a href="#如何debug源码" class="headerlink" title="如何debug源码"></a>如何debug源码</h3><p>可以参考 <a href="https://juejin.cn/post/6844903959161733133" target="_blank" rel="noopener">https://juejin.cn/post/6844903959161733133</a></p>
+<h3 id="alloc"><a href="#alloc" class="headerlink" title="alloc"></a>alloc</h3><p>新建一个工程，在main方法里添加代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">NSObject *objc &#x3D; [NSObject alloc];</span><br></pre></td></tr></table></figure>
+
+<p>添加一个断点符号 objc_alloc</p>
+<p>运行工程，现在项目就会断点到<code>objc_alloc</code>方法</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">objc_alloc(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> callAlloc(cls, <span class="literal">true</span><span class="comment">/*checkNil*/</span>, <span class="literal">false</span><span class="comment">/*allocWithZone*/</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里会调用 <code>callAlloc</code>方法，参数<code>checkNil = true</code>,<code>allocWithZone = false</code>，下面具体看<code>callAlloc</code>方法</p>
+<h4 id="callAlloc方法"><a href="#callAlloc方法" class="headerlink" title="callAlloc方法"></a><code>callAlloc</code>方法</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">callAlloc(Class cls, <span class="keyword">bool</span> checkNil, <span class="keyword">bool</span> allocWithZone=<span class="literal">false</span>)</span><br><span class="line">&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __OBJC2__</span></span><br><span class="line">  	<span class="comment">//判断是否为空</span></span><br><span class="line">    <span class="keyword">if</span> (slowpath(checkNil &amp;&amp; !cls)) <span class="keyword">return</span> nil;</span><br><span class="line">  	<span class="comment">//判断是否有allocWithZone方法</span></span><br><span class="line">    <span class="keyword">if</span> (fastpath(!cls-&gt;ISA()-&gt;hasCustomAWZ())) &#123;</span><br><span class="line">        <span class="keyword">return</span> _objc_rootAllocWithZone(cls, nil);</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// No shortcuts available.</span></span><br><span class="line">    <span class="keyword">if</span> (allocWithZone) &#123;</span><br><span class="line">        <span class="keyword">return</span> ((id(*)(id, SEL, struct _NSZone *))objc_msgSend)(cls, @selector(allocWithZone:), nil);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ((id(*)(id, SEL))objc_msgSend)(cls, @selector(alloc));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看出如果有自定义的<code>allocWithZone</code>方法就会调用<code>_objc_rootAllocWithZone</code>方法，后面会根据<code>allocWithZone</code>是否为true选择执行<code>allocWithZone</code>还是<code>alloc</code>方法。这里我们一步步走断点，最后调用的是<code>alloc</code>方法。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">+ (id)alloc &#123;</span><br><span class="line">    return _objc_rootAlloc(self);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p><code>alloc</code>的方法调用了<code>_objc_rootAlloc</code></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">_objc_rootAlloc(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> callAlloc(cls, <span class="literal">false</span><span class="comment">/*checkNil*/</span>, <span class="literal">true</span><span class="comment">/*allocWithZone*/</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到<code>_objc_rootAlloc</code>调用的也是<code>callAlloc</code>方法，和上一次调用不同的是参数<code>checkNil = true</code> <code>allocWithZone = true</code></p>
+<h4 id="第二次调用callAlloc方法"><a href="#第二次调用callAlloc方法" class="headerlink" title="第二次调用callAlloc方法"></a>第二次调用<code>callAlloc</code>方法</h4><p>一步步执行断点看到这次执行到<code>allocWithZone</code>方法</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+ (id)allocWithZone:(struct _NSZone *)zone &#123;</span><br><span class="line">    <span class="keyword">return</span> _objc_rootAllocWithZone(self, (<span class="keyword">malloc_zone_t</span> *)zone);</span><br><span class="line">&#125;</span><br><span class="line">_objc_rootAllocWithZone(Class cls, <span class="keyword">malloc_zone_t</span> *zone __unused)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// allocWithZone under __OBJC2__ ignores the zone parameter</span></span><br><span class="line">    <span class="keyword">return</span> _class_createInstanceFromZone(cls, <span class="number">0</span>, nil,</span><br><span class="line">                                         OBJECT_CONSTRUCT_CALL_BADALLOC);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到核心代码在<code>_class_createInstanceFromZone</code>方法里</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line">_class_createInstanceFromZone(Class cls, <span class="keyword">size_t</span> extraBytes, <span class="keyword">void</span> *zone,</span><br><span class="line">                              <span class="keyword">int</span> construct_flags = OBJECT_CONSTRUCT_NONE,</span><br><span class="line">                              <span class="keyword">bool</span> cxxConstruct = <span class="literal">true</span>,</span><br><span class="line">                              <span class="keyword">size_t</span> *outAllocatedSize = nil)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Read class's info bits all at once for performance</span></span><br><span class="line">    <span class="keyword">bool</span> hasCxxCtor = cxxConstruct &amp;&amp; cls-&gt;hasCxxCtor();</span><br><span class="line">    <span class="keyword">bool</span> hasCxxDtor = cls-&gt;hasCxxDtor();</span><br><span class="line">    <span class="keyword">bool</span> fast = cls-&gt;canAllocNonpointer();</span><br><span class="line">    <span class="keyword">size_t</span> <span class="built_in">size</span>;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">size</span> = cls-&gt;instanceSize(extraBytes);</span><br><span class="line">    <span class="keyword">if</span> (outAllocatedSize) *outAllocatedSize = <span class="built_in">size</span>;</span><br><span class="line"></span><br><span class="line">    id obj;</span><br><span class="line">    <span class="keyword">if</span> (zone) &#123;</span><br><span class="line">        <span class="comment">// 根据给定的 zone 和 size 开辟内存</span></span><br><span class="line">        obj = (id)malloc_zone_calloc((<span class="keyword">malloc_zone_t</span> *)zone, <span class="number">1</span>, <span class="built_in">size</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 根据 size 开辟内存</span></span><br><span class="line">        obj = (id)<span class="built_in">calloc</span>(<span class="number">1</span>, <span class="built_in">size</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (slowpath(!obj)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (construct_flags &amp; OBJECT_CONSTRUCT_CALL_BADALLOC) &#123;</span><br><span class="line">            <span class="keyword">return</span> _objc_callBadAllocHandler(cls);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> nil;</span><br><span class="line">    &#125;</span><br><span class="line">		<span class="comment">// 这里 zone 传入的也是nil，而 fast 拿到的是 true，所以会进入这里的逻辑</span></span><br><span class="line">    <span class="keyword">if</span> (!zone &amp;&amp; fast) &#123;</span><br><span class="line">        obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// Use raw pointer isa on the assumption that they might be</span></span><br><span class="line">        <span class="comment">// doing something weird with the zone or RR.</span></span><br><span class="line">        obj-&gt;initIsa(cls);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (fastpath(!hasCxxCtor)) &#123;</span><br><span class="line">        <span class="keyword">return</span> obj;</span><br><span class="line">    &#125;</span><br><span class="line">		<span class="comment">// 如果有 C++ 初始化构造器和析构器，进行优化加速整个流程</span></span><br><span class="line">    construct_flags |= OBJECT_CONSTRUCT_FREE_ONFAILURE;</span><br><span class="line">    <span class="keyword">return</span> object_cxxConstructFromClass(obj, cls, construct_flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>_class_createInstanceFromZone</code>方法主要调用了三个函数 <code>instanceSize</code>、<code>calloc</code>、<code>initInstanceIsa</code></p>
+<p>先看<code>instanceSize</code>函数</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">size_t</span> <span class="title">instanceSize</span><span class="params">(<span class="keyword">size_t</span> extraBytes)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (fastpath(cache.hasFastInstanceSize(extraBytes))) &#123;</span><br><span class="line">            <span class="keyword">return</span> cache.fastInstanceSize(extraBytes);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">size_t</span> <span class="built_in">size</span> = alignedInstanceSize() + extraBytes;</span><br><span class="line">        <span class="comment">// CF requires all objects be at least 16 bytes.</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">size</span> &lt; <span class="number">16</span>) <span class="built_in">size</span> = <span class="number">16</span>;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">size</span>;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>这个函数的返回值是一个size_t的数据，在calloc函数中会用到这个返回值。即请求开辟的内存空间大小,并且开辟的空间大小不小于16。而且调用的了alignedInstanceSize函数来进行字节对齐。即开辟的内存空间大小一定是16字节的整数倍。</p>
+<p><code>calloc</code>是C语言的函数，开辟内存空间</p>
+<p><code>initInstanceIsa</code>函数 对象isa的初始化，以及绑定内存空间</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">objc_object::initInstanceIsa(Class cls, <span class="keyword">bool</span> hasCxxDtor)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(!cls-&gt;instancesRequireRawIsa());</span><br><span class="line">    ASSERT(hasCxxDtor == cls-&gt;hasCxxDtor());</span><br><span class="line"></span><br><span class="line">    initIsa(cls, <span class="literal">true</span>, hasCxxDtor);</span><br><span class="line">&#125;</span><br><span class="line">objc_object::initIsa(Class cls, <span class="keyword">bool</span> nonpointer, UNUSED_WITHOUT_INDEXED_ISA_AND_DTOR_BIT <span class="keyword">bool</span> hasCxxDtor)</span><br><span class="line">&#123; </span><br><span class="line">    ASSERT(!isTaggedPointer()); </span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">isa_t</span> <span class="title">newisa</span><span class="params">(<span class="number">0</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!nonpointer) &#123;</span><br><span class="line">        newisa.setClass(cls, <span class="keyword">this</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        ASSERT(!DisableNonpointerIsa);</span><br><span class="line">        ASSERT(!cls-&gt;instancesRequireRawIsa());</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> SUPPORT_INDEXED_ISA</span></span><br><span class="line">        ASSERT(cls-&gt;classArrayIndex() &gt; <span class="number">0</span>);</span><br><span class="line">        newisa.bits = ISA_INDEX_MAGIC_VALUE;</span><br><span class="line">        <span class="comment">// isa.magic is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        <span class="comment">// isa.nonpointer is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        newisa.has_cxx_dtor = hasCxxDtor;</span><br><span class="line">        newisa.indexcls = (<span class="keyword">uintptr_t</span>)cls-&gt;classArrayIndex();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">        newisa.bits = ISA_MAGIC_VALUE;</span><br><span class="line">        <span class="comment">// isa.magic is part of ISA_MAGIC_VALUE</span></span><br><span class="line">        <span class="comment">// isa.nonpointer is part of ISA_MAGIC_VALUE</span></span><br><span class="line"><span class="meta">#   <span class="meta-keyword">if</span> ISA_HAS_CXX_DTOR_BIT</span></span><br><span class="line">        newisa.has_cxx_dtor = hasCxxDtor;</span><br><span class="line"><span class="meta">#   <span class="meta-keyword">endif</span></span></span><br><span class="line">        newisa.setClass(cls, <span class="keyword">this</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">        newisa.extra_rc = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// This write must be performed in a single store in some cases</span></span><br><span class="line">    <span class="comment">// (for example when realizing a class because other threads</span></span><br><span class="line">    <span class="comment">// may simultaneously try to use the class).</span></span><br><span class="line">    <span class="comment">// fixme use atomics here to guarantee single-store and to</span></span><br><span class="line">    <span class="comment">// guarantee memory order w.r.t. the class index table</span></span><br><span class="line">    <span class="comment">// ...but not too atomic because we don't want to hurt instantiation</span></span><br><span class="line">    isa = newisa;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="init"><a href="#init" class="headerlink" title="init"></a><code>init</code></h3><p><code>init</code>做的事情比较简单,直接将生成的对象返回</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">- (id)init &#123;</span><br><span class="line">    <span class="keyword">return</span> _objc_rootInit(self);</span><br><span class="line">&#125;</span><br><span class="line">_objc_rootInit(id obj)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// In practice, it will be hard to rely on this function.</span></span><br><span class="line">    <span class="comment">// Many classes do not properly chain -init calls.</span></span><br><span class="line">    <span class="keyword">return</span> obj;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2020/12/17/%E5%86%92%E6%B3%A1%E6%8E%92%E5%BA%8F%E3%80%81%E6%8F%92%E5%85%A5%E6%8E%92%E5%BA%8F%E3%80%81%E9%80%89%E6%8B%A9%E6%8E%92%E5%BA%8F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/12/17/%E5%86%92%E6%B3%A1%E6%8E%92%E5%BA%8F%E3%80%81%E6%8F%92%E5%85%A5%E6%8E%92%E5%BA%8F%E3%80%81%E9%80%89%E6%8B%A9%E6%8E%92%E5%BA%8F/" class="post-title-link" itemprop="url">冒泡排序、插入排序、选择排序</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-12-17 17:20:41 / 修改时间：20:45:15" itemprop="dateCreated datePublished" datetime="2020-12-17T17:20:41+08:00">2020-12-17</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="原地排序"><a href="#原地排序" class="headerlink" title="原地排序"></a>原地排序</h3><p>原地排序算法，就是指空间复杂度是O(1)的排序算法。</p>
+<h3 id="稳定性"><a href="#稳定性" class="headerlink" title="稳定性"></a>稳定性</h3><p>如果待排序的序列中存在值相等的元素，经过排序之后，相等元素之间原有的先后顺序不变那这个算法就是稳定的排序算法，反之就是不稳定的排序算法。</p>
+<h3 id="冒泡排序"><a href="#冒泡排序" class="headerlink" title="冒泡排序"></a>冒泡排序</h3><p>冒泡排序只会操作相邻的两个数据。每次冒泡操作都会对相邻的两个元素进行比较，看是否满足大小关系要求。如果不满足就让它俩互换。一次冒泡会让至少一个元素移动到它应该在的位置，重复 n 次，就完成了 n 个数据的排序工作。</p>
+<p>最好情况下时间复杂度：O(n)</p>
+<p>最坏情况下时间复杂度:O(n²)</p>
+<p>平均时间复杂度：O(n²)</p>
+<p>算法代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// 冒泡排序，a表示数组，n表示数组大小</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">bubbleSort</span><span class="params">(<span class="keyword">int</span>[] a, <span class="keyword">int</span> n)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (n &lt;= <span class="number">1</span>) <span class="keyword">return</span>;</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; ++i) &#123;</span><br><span class="line">    <span class="comment">// 提前退出冒泡循环的标志位</span></span><br><span class="line">    <span class="keyword">boolean</span> flag = <span class="keyword">false</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> j = <span class="number">0</span>; j &lt; n - i - <span class="number">1</span>; ++j) &#123;</span><br><span class="line">      <span class="keyword">if</span> (a[j] &gt; a[j+<span class="number">1</span>]) &#123; <span class="comment">// 交换</span></span><br><span class="line">        <span class="keyword">int</span> tmp = a[j];</span><br><span class="line">        a[j] = a[j+<span class="number">1</span>];</span><br><span class="line">        a[j+<span class="number">1</span>] = tmp;</span><br><span class="line">        flag = <span class="keyword">true</span>;  <span class="comment">// 表示有数据交换      </span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (!flag) <span class="keyword">break</span>;  <span class="comment">// 没有数据交换，提前退出</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="插入排序"><a href="#插入排序" class="headerlink" title="插入排序"></a>插入排序</h3><p>插入排序的思路是，首先，我们将数组中的数据分为两个区间，已排序区间和未排序区间。初始已排序区间只有一个元素，就是数组的第一个元素。插入算法的核心思想是取未排序区间中的元素，在已排序区间中找到合适的插入位置将其插入，并保证已排序区间数据一直有序。重复这个过程，直到未排序区间中元素为空，算法结束。</p>
+<p>最好情况下时间复杂度：O(n)</p>
+<p>最坏情况下时间复杂度:O(n²)</p>
+<p>平均时间复杂度：O(n²)</p>
+<p>算法代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// 插入排序，a表示数组，n表示数组大小</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">insertionSort</span><span class="params">(<span class="keyword">int</span>[] a, <span class="keyword">int</span> n)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (n &lt;= <span class="number">1</span>) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt; n; ++i) &#123;</span><br><span class="line">    <span class="keyword">int</span> value = a[i];</span><br><span class="line">    <span class="keyword">int</span> j = i - <span class="number">1</span>;</span><br><span class="line">    <span class="comment">// 查找插入的位置</span></span><br><span class="line">    <span class="keyword">for</span> (; j &gt;= <span class="number">0</span>; --j) &#123;</span><br><span class="line">      <span class="keyword">if</span> (a[j] &gt; value) &#123;</span><br><span class="line">        a[j+<span class="number">1</span>] = a[j];  <span class="comment">// 数据移动</span></span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    a[j+<span class="number">1</span>] = value; <span class="comment">// 插入数据</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="选择排序"><a href="#选择排序" class="headerlink" title="选择排序"></a>选择排序</h3><p>选择排序算法的实现思路有点类似插入排序，也分已排序区间和未排序区间。但是选择排序每次会从未排序区间中找到最小的元素，将其放到已排序区间的末尾。</p>
+<p>选择排序的最好情况时间复杂度、最坏情况和平均情况时间复杂度都为 O(n2)。</p>
+<p>选择排序是一种不稳定的排序算法。</p>
+<p>算法代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">int</span>[] selectionSort(<span class="keyword">int</span>[] sourceArray) <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">      <span class="keyword">int</span>[] arr = Arrays.copyOf(sourceArray, sourceArray.length);</span><br><span class="line"></span><br><span class="line">       <span class="comment">// 总共要经过 N-1 轮比较</span></span><br><span class="line">       <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length - <span class="number">1</span>; i++) &#123;</span><br><span class="line">           <span class="keyword">int</span> min = i;</span><br><span class="line">           <span class="comment">// 每轮需要比较的次数 N-i</span></span><br><span class="line">           <span class="keyword">for</span> (<span class="keyword">int</span> j = i + <span class="number">1</span>; j &lt; arr.length; j++) &#123;</span><br><span class="line">               <span class="keyword">if</span> (arr[j] &lt; arr[min]) &#123;</span><br><span class="line">                   <span class="comment">// 记录目前能找到的最小值元素的下标</span></span><br><span class="line">                   min = j;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 将找到的最小值和i位置所在的值进行交换</span></span><br><span class="line">           <span class="keyword">if</span> (i != min) &#123;</span><br><span class="line">               <span class="keyword">int</span> tmp = arr[i];</span><br><span class="line">               arr[i] = arr[min];</span><br><span class="line">               arr[min] = tmp;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">return</span> arr;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2020/09/28/IDFA%E7%9A%84%E6%A3%80%E6%B5%8B%E6%96%B9%E6%B3%95%E5%8F%8A%E4%B8%8A%E7%BA%BF%E5%A6%82%E4%BD%95%E5%8B%BE%E9%80%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/09/28/IDFA%E7%9A%84%E6%A3%80%E6%B5%8B%E6%96%B9%E6%B3%95%E5%8F%8A%E4%B8%8A%E7%BA%BF%E5%A6%82%E4%BD%95%E5%8B%BE%E9%80%89/" class="post-title-link" itemprop="url">IDFA的检测方法及上线如何勾选</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-09-28 16:10:04 / 修改时间：16:34:52" itemprop="dateCreated datePublished" datetime="2020-09-28T16:10:04+08:00">2020-09-28</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="检测方法"><a href="#检测方法" class="headerlink" title="检测方法"></a>检测方法</h3><p>工程根目录执行命令 <code>grep -r advertisingIdentifier .</code></p>
+<p>如果输出有”matches”标识项目中有使用</p>
+<h3 id="上线选择"><a href="#上线选择" class="headerlink" title="上线选择"></a>上线选择</h3><ul>
+<li>1、在 App 内投放广告 服务应用中的广告。如果你的应用中集成了广告的时候，你需要勾选这一项。</li>
+<li>2、将此 App 安装归因于先前投放的特定广告 跟踪广告带来的安装。如果你使用了第三方的工具来跟踪广告带来的激活以及一些其他事件，但是应用里并没有展示广告你需要勾选这一项。</li>
+<li>3、将此 App 中发生的操作归因于先前投放的特定广告 跟踪广告带来的用户的后续行为。如果你使用了第三方的工具来跟踪广告带来的激活以及一些其他事件。</li>
+<li>4、iOS 中的“限制广告跟踪”设置 这一项下的内容其实就是对你的应用使用 IDFA 的目的做下确认，只要你选择了采集 IDFA，那么这一项都是需要勾选的。</li>
+</ul>
+<h3 id="选择总结"><a href="#选择总结" class="headerlink" title="选择总结"></a>选择总结</h3><ol>
+<li>如果你的应用里只是集成了广告,不追踪广告带来的激活行为,那么选择1和4；</li>
+<li>如果你的应用没有广告，而又获取了IDFA。建议选择2和4;</li>
+</ol>
+<p>转载于 <a href="https://blog.csdn.net/weixin_34392906/article/details/92404376" target="_blank" rel="noopener">https://blog.csdn.net/weixin_34392906/article/details/92404376</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2019/01/30/macOS%E4%B8%8B%E6%90%AD%E5%BB%BAiOS%E7%AB%AF%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9FSentry/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2019/01/30/macOS%E4%B8%8B%E6%90%AD%E5%BB%BAiOS%E7%AB%AF%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9FSentry/" class="post-title-link" itemprop="url">macOS下搭建iOS端监控系统Sentry</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-01-30 23:08:25" itemprop="dateCreated datePublished" datetime="2019-01-30T23:08:25+08:00">2019-01-30</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h4 id="什么是sentry"><a href="#什么是sentry" class="headerlink" title="什么是sentry"></a>什么是sentry</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sentry是一个强大的分布式报错信息收集平台，图形化程度很高，可以帮助我们直观的发现当前部署的系统存在哪些问题。</span><br></pre></td></tr></table></figure>
+
+<h4 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h4><p>官方提供了两种部署方案</p>
+<ul>
+<li>Docker <a href="https://baike.baidu.com/item/Docker/13344470?fr=aladdin" target="_blank" rel="noopener">什么是docker</a></li>
+<li>Python</li>
+</ul>
+<p>出于方便考虑，这里选择了docker</p>
+<h4 id="安装docker-只是Mac"><a href="#安装docker-只是Mac" class="headerlink" title="安装docker(只是Mac)"></a>安装docker(只是Mac)</h4><p>mac版docker 下载地址: <a href="https://download.docker.com/mac/stable/Docker.dmg" target="_blank" rel="noopener">https://download.docker.com/mac/stable/Docker.dmg</a></p>
+<p>安装完成后终端执行 <code>docker --version</code>来查看版本号，确认是否安装成功。</p>
+<h4 id="搭建sentry-linux和Mac通用"><a href="#搭建sentry-linux和Mac通用" class="headerlink" title="搭建sentry(linux和Mac通用)"></a>搭建sentry(linux和Mac通用)</h4><ol>
+<li><p>获取sentry</p>
+<p>从GitHub上获取最新的sentry</p>
+<p><code>git clone https://github.com/getsentry/onpremise.git</code></p>
+</li>
+<li><p>搭建sentry</p>
+<p>sentry的readme文件里有步骤</p>
+<ol>
+<li><p>创建本地数据库和sentry容器</p>
+<p><code>docker volume create --name=sentry-data &amp;&amp; docker volume create --name=sentry-postgres</code></p>
+<p>Docker volumes have to be created manually, as they are declared as external to be more durable.</p>
+</li>
+<li><p>创建配置文件.env</p>
+<p><code>cp -n .env.example .env</code></p>
+</li>
+<li><p>编译docker服务</p>
+<p><code>docker-compose build</code></p>
+</li>
+<li><p>生成secret key</p>
+<p><code>docker-compose run --rm web config generate-secret-key</code></p>
+<p>将key配置到.env文件里，SENTRY_SECRET_KEY: ‘<strong><strong><strong><strong>***</strong></strong></strong></strong>‘</p>
+</li>
+<li><p>构建数据库，创建一个超级用户</p>
+<p><code>docker-compose run --rm web upgrade</code></p>
+<p>这步会提示创建超级用户，用户名是邮箱，记住用户名和密码后面要用到。</p>
+</li>
+<li><p>启动所有服务</p>
+<p><code>docker-compose up -d</code></p>
+</li>
+<li><p>浏览器中输入localhost:9000，即可访问sentry服务了，用户名和密码用第5步设置的。</p>
+</li>
+</ol>
+</li>
+</ol>
+<h4 id="iOS项目接入sentry"><a href="#iOS项目接入sentry" class="headerlink" title="iOS项目接入sentry"></a>iOS项目接入sentry</h4><p>可以参考sentry官方文档<a href="https://docs.sentry.io/clients/cocoa/" target="_blank" rel="noopener">https://docs.sentry.io/clients/cocoa/</a></p>
+<ol>
+<li><p>导入sentry</p>
+<p>podfile文件加入</p>
+<p><code>pod &#39;Sentry&#39;, :git =&gt; &#39;https://github.com/getsentry/sentry-cocoa.git&#39;, :tag =&gt; &#39;4.1.0&#39;</code></p>
+<p>terminal执行<code>pod install</code></p>
+</li>
+<li><p>项目配置</p>
+<p>appdelegate文件didfinishLaunch方法中，dsn登录sentry后在新建Objective-C项目里查看。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">NSError *error &#x3D; nil;</span><br><span class="line">SentryClient *client &#x3D; [[SentryClient alloc] initWithDsn:@&quot;https:&#x2F;&#x2F;&lt;key&gt;@sentry.io&#x2F;&lt;project&gt;&quot; didFailWithError:&amp;error];</span><br><span class="line">SentryClient.sharedClient &#x3D; client;</span><br><span class="line">[SentryClient.sharedClient startCrashHandlerWithError:&amp;error];</span><br><span class="line">if (nil !&#x3D; error) &#123;</span><br><span class="line">    NSLog(@&quot;%@&quot;, error);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>以上两步之后，就可以正常上传crash日志了</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2019/01/30/iOS%E6%8D%95%E8%8E%B7%E5%BC%82%E5%B8%B8%E5%B4%A9%E6%BA%83%E5%8F%91%E9%80%81%E9%92%89%E9%92%89%E6%96%B9%E6%B3%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2019/01/30/iOS%E6%8D%95%E8%8E%B7%E5%BC%82%E5%B8%B8%E5%B4%A9%E6%BA%83%E5%8F%91%E9%80%81%E9%92%89%E9%92%89%E6%96%B9%E6%B3%95/" class="post-title-link" itemprop="url">iOS捕获异常崩溃发送钉钉方法</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-01-30 23:06:09" itemprop="dateCreated datePublished" datetime="2019-01-30T23:06:09+08:00">2019-01-30</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>由于项目最近crash率比较高，为了更好地监控线上程序包的crash，所以开发将异常崩溃捕获发送钉钉消息的功能。</p>
+<h3 id="异常的捕获"><a href="#异常的捕获" class="headerlink" title="异常的捕获"></a>异常的捕获</h3><p>通过使用NSSetUncaughtExceptionHandler方法将异常捕获然后进行处理。</p>
+<p>在Appdelegate中定义如下函数，用来处理捕获到的异常。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">void uncaughtExceptionHandler(NSException *exception)</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">    &#x2F;&#x2F; 异常的堆栈信息</span><br><span class="line">    NSArray *stackArray &#x3D; [exception callStackSymbols];</span><br><span class="line">    &#x2F;&#x2F; 出现异常的原因</span><br><span class="line">    NSString *reason &#x3D; [exception reason];</span><br><span class="line">    &#x2F;&#x2F; 异常名称</span><br><span class="line">    NSString *name &#x3D; [exception name];</span><br><span class="line">    &#x2F;&#x2F;TODO 发送钉钉消息</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>下面是捕获异常的代码，didFinishLaunchingWithOptions方法中写入:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">NSSetUncaughtExceptionHandler(&amp;uncaughtExceptionHandler);</span><br></pre></td></tr></table></figure>
+
+<p>到这里就可以进行异常捕获了，下面我们写一段让程序崩溃的代码进行测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">- (void)crashMethod&#123;</span><br><span class="line">    [self performSelector:@selector(thisMthodDoesNotExist) withObject:nil];&#x2F;&#x2F;调用一个不存在的方法。</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>到这里uncaughtExceptionHandler就可以捕获到应用的崩溃Exception了。</p>
+<h3 id="第三方冲突"><a href="#第三方冲突" class="headerlink" title="第三方冲突"></a>第三方冲突</h3><p>如果项目里使用了友盟等第三方异常监控分析工具，会和我们NSSetUncaughtExceptionHandler方法冲突，导致第三方不会上传异常信息，解决方案是使用NSGetUncaughtExceptionHandler()获取到第三方捕获异常的Handler，当我们处理完异常将NSException对象传给第三方的Handler。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">static NSUncaughtExceptionHandler *_previousHandler;&#x2F;&#x2F;Appdelegate定义一个全局静态变量用来保存第三方的异常Handler</span><br></pre></td></tr></table></figure>
+
+<p>didFinishLaunchingWithOptions方法中在NSSetUncaughtExceptionHandler之前先保存之前的Handler:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; 保存第三方处理异常的handler</span><br><span class="line">_previousHandler &#x3D; NSGetUncaughtExceptionHandler();</span><br><span class="line">NSSetUncaughtExceptionHandler(&amp;uncaughtExceptionHandler);</span><br></pre></td></tr></table></figure>
+
+<p>最后在uncaughtExceptionHandler函数最后(即我们自定义的异常处理之后)，将exception回传给第三方Handler。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;将exception回传给第三方Handler</span><br><span class="line">if (_previousHandler) &#123;</span><br><span class="line">	_previousHandler(exception);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="给钉钉群发送消息"><a href="#给钉钉群发送消息" class="headerlink" title="给钉钉群发送消息"></a>给钉钉群发送消息</h3><p>#####1、首先是在钉钉群里新建一个自定义机器人，获取到机器人的webhook。详细的步骤可以看钉钉API文档：</p>
+<p><a href="https://open-doc.dingtalk.com/docs/doc.htm?spm=a219a.7629140.0.0.Uf9uaN&amp;treeId=257&amp;articleId=105735&amp;docType=1#s1" target="_blank" rel="noopener">https://open-doc.dingtalk.com/docs/doc.htm?spm=a219a.7629140.0.0.Uf9uaN&amp;treeId=257&amp;articleId=105735&amp;docType=1#s1</a></p>
+<p>#####2、向机器人的webhook发送post消息。</p>
+<p>下面是用AFNetworking发送post请求的代码，注意请求参数的格式</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">   NSDictionary *dict &#x3D; @&#123;</span><br><span class="line">                          @&quot;msgtype&quot;:@&quot;text&quot;,</span><br><span class="line">                          @&quot;text&quot;:@&#123;@&quot;content&quot;:self.errorMessage?self.errorMessage:@&quot;&quot;&#125;,</span><br><span class="line">                          @&quot;at&quot;:@&#123;</span><br><span class="line">                                  @&quot;atMobiles&quot;:self.arrayAtPhones?self.arrayAtPhones:@[],</span><br><span class="line">                                  @&quot;isAtAll&quot;:@NO</span><br><span class="line">                                  &#125;</span><br><span class="line">                          &#125;;</span><br><span class="line">   NSError *error;</span><br><span class="line">   NSData *jsonData &#x3D; [NSJSONSerialization dataWithJSONObject:dict options:NSJSONWritingPrettyPrinted error:&amp;error];</span><br><span class="line">   AFURLSessionManager *sessionManager &#x3D; [[AFURLSessionManager alloc] init];</span><br><span class="line">   AFJSONResponseSerializer *responseSerializer &#x3D; [AFJSONResponseSerializer serializer];</span><br><span class="line">   responseSerializer.acceptableContentTypes &#x3D; [NSSet setWithObjects:@&quot;application&#x2F;json&quot;, @&quot;text&#x2F;json&quot;, @&quot;text&#x2F;javascript&quot;,@&quot;text&#x2F;html&quot;, @&quot;text&#x2F;plain&quot;, @&quot;image&#x2F;jpeg&quot;,  nil];</span><br><span class="line">   sessionManager.responseSerializer &#x3D; responseSerializer;</span><br><span class="line">   NSMutableURLRequest *req &#x3D; [[NSMutableURLRequest alloc] initWithURL:[NSURL URLWithString:self.dingdingUploadUrl]];</span><br><span class="line">   [req setHTTPMethod:@&quot;POST&quot;];</span><br><span class="line">   [req setHTTPBody:jsonData];</span><br><span class="line">&#x2F;&#x2F;不设置会返回参数错误</span><br><span class="line">   [req setValue:@&quot;application&#x2F;json&quot; forHTTPHeaderField:@&quot;Content-Type&quot;];</span><br><span class="line">   [[sessionManager dataTaskWithRequest:req uploadProgress:nil downloadProgress:nil completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) &#123;</span><br><span class="line">       </span><br><span class="line">   &#125;]resume];</span><br></pre></td></tr></table></figure>
+
+<p>到这里就可以正常给钉钉发送消息了。纯手敲难免有手误，哪里不准确的地方请指出。</p>
+<p>demo工程地址：<a href="https://github.com/CoderJasons/-CatchCrashTest" target="_blank" rel="noopener">https://github.com/CoderJasons/-CatchCrashTest</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2018/02/24/%E7%BB%93%E6%9E%84%E4%BD%93%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90%E8%A7%84%E5%88%99%E5%8F%8A%E4%BD%9C%E7%94%A8/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -375,7 +826,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-count">47</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -385,7 +836,7 @@
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
-        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-count">8</span>
         <span class="site-state-item-name">标签</span>
       </div>
   </nav>

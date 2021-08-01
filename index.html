@@ -147,6 +147,469 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/08/01/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%8E%9F%E7%90%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/08/01/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%8E%9F%E7%90%86/" class="post-title-link" itemprop="url">iOS多线程-多线程原理</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-08-01 17:05:50 / 修改时间：21:23:57" itemprop="dateCreated datePublished" datetime="2021-08-01T17:05:50+08:00">2021-08-01</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>本节我们主要了解一些多线程的理论知识。</p>
+<h3 id="进程和线程"><a href="#进程和线程" class="headerlink" title="进程和线程"></a>进程和线程</h3><h4 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h4><h5 id="进程"><a href="#进程" class="headerlink" title="进程"></a>进程</h5><ul>
+<li>进程是指在系统中正在运行的一个应用程序。</li>
+<li>每个进程之间是独立的，每个进程均运行在其专用的且受保护的内存空间内。</li>
+<li>通过“活动监视器”可以查看 Mac 系统中所开启的进程。</li>
+</ul>
+<h5 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h5><ul>
+<li>线程是进程的基本执行单元，一个进程的所有任务都在线程中执行。</li>
+<li>进程要想执行任务，必须得有线程，进程至少要有一条线程。</li>
+<li>程序启动会默认开启一条线程，这条线程被称为主线程或 UI 线程。</li>
+</ul>
+<h4 id="关系"><a href="#关系" class="headerlink" title="关系"></a>关系</h4><ul>
+<li>地址空间:同一进程的线程共享本进程的地址空间，而进程之间则是独立的地址空间。</li>
+<li>资源拥有:同一进程内的线程共享本进程的资源如内存、I/O、cpu等，但是进程之间的 资源是独立的。</li>
+</ul>
+<h4 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h4><ol>
+<li>一个进程崩溃后，在保护模式下不会对其他进程产生影响，但是一个线程崩溃整个进程都死掉。所以多进程要比多线程健壮。</li>
+<li>进程切换时，消耗的资源大，效率高。所以涉及到频繁的切换时，使用线程要好于进 程。同样如果要求同时进行并且又要共享某些变量的并发操作，只能用线程不能用进程 </li>
+<li>执行过程:每个独立的进程有一个程序运行的入口、顺序执行序列和程序入口。但是 线程不能独立执行，必须依存在应用程序中，由应用程序提供多个线程执行控制。</li>
+<li>线程是处理器调度的基本单位，但是进程不是。</li>
+<li>线程没有地址空间,线程包含在进程地址空间中。</li>
+</ol>
+<h3 id="多线程原理"><a href="#多线程原理" class="headerlink" title="多线程原理"></a>多线程原理</h3><ul>
+<li>对于<code>单核CPU</code>，<code>同一时间，CPU只能处理一条线程</code>，即只有一条线程在工作，</li>
+<li>iOS中的<code>多线程同时执行</code>的本质是CPU在多个任务直接进行快速的切换，由于CPU调度线程的时间足够快，就造成了多线程的“同时”执行的效果。其中切换的时间间隔就是<code>时间片</code>。</li>
+</ul>
+<h4 id="多线程的优点"><a href="#多线程的优点" class="headerlink" title="多线程的优点"></a>多线程的优点</h4><ul>
+<li>能适当提高程序的执行效率</li>
+<li>能适当提高资源的利用率(CPU，内存)</li>
+<li>线程上的任务执行完成后，线程会自动销毁</li>
+</ul>
+<h4 id="多线程的缺点"><a href="#多线程的缺点" class="headerlink" title="多线程的缺点"></a>多线程的缺点</h4><ul>
+<li>开启线程需要占用一定的内存空间(默认情况下，每一个线程都占 512 KB，90ms的时间)。</li>
+<li>如果开启大量的线程，会占用大量的内存空间，降低程序的性能。</li>
+<li>线程越多，CPU 在调用线程上的开销就越大。</li>
+<li>程序设计更加复杂，比如线程间的通信，多线程的数据共享。</li>
+</ul>
+<h3 id="多线程生命周期"><a href="#多线程生命周期" class="headerlink" title="多线程生命周期"></a>多线程生命周期</h3><p>多线程的生命周期主要分为5部分：新建 - 就绪 - 运行 - 阻塞 - 死亡，如下图所示</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/c5c1d80cb9754ab98612a71b7f3ea3ec~tplv-k3u1fbpfcp-watermark.image" alt="多线程生命周期"></p>
+<ul>
+<li><code>新建</code>：主要是实例化线程对象</li>
+<li><code>就绪</code>：线程对象调用start方法，将线程对象加入可调度线程池，等待CPU的调用，即调用start方法，并不会立即执行，进入<code>就绪状态</code>，需要等待一段时间，经CPU时间片调度后再执行，也就是从就绪状态进入<code>运行状态</code>。</li>
+<li><code>阻塞</code>：当满足某个预定条件时，可以<code>使用休眠，即sleep，或者同步锁</code>，阻塞线程执行。当进入sleep时，会重新将<code>线程加入就绪</code>中。</li>
+<li><code>死亡</code>：分为两种情况，<ol>
+<li><code>正常死亡</code>，即线程执行完毕</li>
+<li><code>非正常死亡</code>，即当满足某个条件后，在线程内部（或者主线程中）终止执行（调用exit方法等退出）</li>
+</ol>
+</li>
+<li><code>运行</code>：就是线程执行，处于<code>运行中的线程</code>拥有一段可以执行的时间(<code>时间片</code>)。<ol>
+<li>如果<code>时间片用尽</code>，线程就会进入<code>就绪状态队列</code></li>
+<li>如果<code>时间片没有用尽</code>，且需要开始<code>等待某事件</code>，就会进入<code>阻塞状态队列</code></li>
+<li>等待事件发生后，线程又会重新进入<code>就绪状态队列</code></li>
+<li>每当一个<code>线程离开运行</code>，即执行完毕或者强制退出后，会重新从就绪状态队列中选择一个线程继续执行</li>
+</ol>
+</li>
+</ul>
+<h3 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h3><p>线程池流程图如下：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/86ba007efda84d878b9551594a95d4b4~tplv-k3u1fbpfcp-watermark.image" alt="线程池"></p>
+<ol>
+<li>判断核心线程池是否都正在执行任务<ul>
+<li>返回NO，创建新的工作线程去执行</li>
+<li>返回YES，进入2</li>
+</ul>
+</li>
+<li>判断线程池工作队列是否已经饱满<ul>
+<li>返回NO，将任务存储到工作队列，等待CPU调度</li>
+<li>返回YES，进入3</li>
+</ul>
+</li>
+<li>判断线程池中的线程是否都处于执行状态<ul>
+<li>返回NO，安排可调度线程池中空闲的线程去执行任务</li>
+<li>返回YES，进入4</li>
+</ul>
+</li>
+<li>交给饱和策略去执行。饱和策略有一下四种：<ul>
+<li><code>AbortPolicy</code>：直接抛出RejectedExecutionExeception异常来阻止系统正常运行</li>
+<li><code>CallerRunsPolicy</code>：将任务回退到调用者</li>
+<li><code>DisOldestPolicy</code>：丢掉等待最久的任务</li>
+<li><code>DisCardPolicy</code>：直接丢弃任务</li>
+<li>这四种拒绝策略均实现的RejectedExecutionHandler接口</li>
+</ul>
+</li>
+</ol>
+<h3 id="互斥锁与自旋锁"><a href="#互斥锁与自旋锁" class="headerlink" title="互斥锁与自旋锁"></a>互斥锁与自旋锁</h3><p>锁是用户保护临界区，确保同一时间，只有一条线程能够访问临界区。</p>
+<h4 id="自旋锁"><a href="#自旋锁" class="headerlink" title="自旋锁"></a>自旋锁</h4><ul>
+<li>自旋锁在获取到资源之前一直处于忙等。</li>
+<li>自旋锁的使用场景：锁持有时间短，且线程不希望在重新调用上花太多成本。<code>OC</code>属性的关键字<code>atomic</code>就是使用了自旋锁。</li>
+<li>使用自旋锁，当心线程访问代码时，如果发现其他线程转给你在锁定代码，新线程会用死循环的方法，一直等待锁定的代码执行完成，比较消耗性能。</li>
+</ul>
+<h4 id="互斥锁"><a href="#互斥锁" class="headerlink" title="互斥锁"></a>互斥锁</h4><ul>
+<li><p>互斥锁在获取到资源之前是休眠状态，释放资源后会被唤醒。</p>
+</li>
+<li><p>如果代码中<code>只有一个地方需要加锁，大多都使用 self</code>，这样可以避免单独再创建一个锁对象</p>
+</li>
+<li><p>互斥锁的<code>锁定范围，应该尽量小</code>，锁定范围越大，效率越差</p>
+</li>
+<li><p>能够<code>加锁的任意 NSObject 对象</code></p>
+</li>
+<li><p>锁对象一定要保证所有的线程都能够访问</p>
+<h3 id="几个多线程题目"><a href="#几个多线程题目" class="headerlink" title="几个多线程题目"></a>几个多线程题目</h3></li>
+</ul>
+<h4 id="任务执行的影响因素"><a href="#任务执行的影响因素" class="headerlink" title="任务执行的影响因素"></a>任务执行的影响因素</h4><ul>
+<li>cpu的调度</li>
+<li>执行任务的复杂度</li>
+<li>任务的优先级</li>
+<li>线程的状态</li>
+</ul>
+<h4 id="优先级反转"><a href="#优先级反转" class="headerlink" title="优先级反转"></a>优先级反转</h4><p>两种线程：IO密集型、CPU密集型</p>
+<ul>
+<li>IO密集型，频繁等待的线程。更容易得到优先级提升。</li>
+<li>CPU密集型，很少等待的线程。</li>
+<li>IO密集型线程容易饿死。</li>
+<li>cpu调度来提升等待线程的优先级</li>
+</ul>
+<h4 id="优先级的影响因素"><a href="#优先级的影响因素" class="headerlink" title="优先级的影响因素"></a>优先级的影响因素</h4><ul>
+<li>用户指定。</li>
+<li>等待的频繁度。</li>
+<li>长时间不执行。</li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-KVO/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/07/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-KVO/" class="post-title-link" itemprop="url">iOS底层探索-KVO</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-07-27 20:30:04" itemprop="dateCreated datePublished" datetime="2021-07-27T20:30:04+08:00">2021-07-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-31 15:58:49" itemprop="dateModified" datetime="2021-07-31T15:58:49+08:00">2021-07-31</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><code>KVO</code>是一种机制，它允许对象在其他对象的指定属性发生更改时收到通知。它最常用的一个场景就是<code>viewconroller</code>中监听<code>model</code>属性的变化从而刷新页面展示。</p>
+<h3 id="KVO使用过程的细节"><a href="#KVO使用过程的细节" class="headerlink" title="KVO使用过程的细节"></a><code>KVO</code>使用过程的细节</h3><h4 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h4><p><code>KVO</code>的基本使用就是三部曲：</p>
+<ul>
+<li><p>注册观察者 <code>addObserver:forKeyPath:options:context</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[self.person addObserver:self forKeyPath:@&quot;nickname&quot; options:NSKeyValueObservingOptionNew context:NULL];</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>实现<code>KVO</code>的回调<code>observeValueForKeyPath:ofObject:change:context</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary&lt;NSKeyValueChangeKey,id&gt; *)change context:(void *)context&#123;</span><br><span class="line">    if ([keyPath isEqualToString:@&quot;nickname&quot;]) &#123;</span><br><span class="line">        NSLog(@&quot;%@&quot;,change);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>移除观察者<code>removeObserver:forKeyPath:context</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[self.person removeObserver:self forKeyPath:@&quot;nickname&quot; context:NULL];</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="context参数的使用"><a href="#context参数的使用" class="headerlink" title="context参数的使用"></a>context参数的使用</h4><p>基本使用的过程中我们经常会给<code>context</code>传<code>NULL</code>作为实参，<code>context</code>参数的作用很容易被我们忽略。苹果官方文档对<code>context</code>有详细的说明</p>
+<blockquote>
+<p>The context pointer in the <code>addObserver:forKeyPath:options:context:</code> message contains arbitrary data that will be passed back to the observer in the corresponding change notifications. You may specify <code>NULL</code> and rely entirely on the key path string to determine the origin of a change notification, but this approach may cause problems for an object whose superclass is also observing the same key path for different reasons.</p>
+<p>A safer and more extensible approach is to use the context to ensure notifications you receive are destined for your observer and not a superclass.</p>
+</blockquote>
+<p>大体意思就是：<code>addObserver：forKeyPath：options：context：</code>方法中的<code>context</code>指针包含任意数据，这些数据将在相应的更改通知中传递回观察者。可以通过<code>指定context为NULL</code>，从而<code>依靠keyPath</code>即<code>键路径字符串</code>传来确定更改通知的来源，但是这种方法可能会导致对象的父类由于不同的原因也观察到相同的键路径而导致问题。所以可以为每个观察到的keyPath创建一个不同的context，从而<code>完全不需要进行字符串比较</code>，从而可以更有效地进行通知解析。</p>
+<p><code>context</code>主要是用于区分不同对象的同名属性，从而在KVO回调方法中可以直接使用<code>context</code>进行区分，可以大大提升性能，以及代码的可读性。</p>
+<ul>
+<li><p>不使用context时，我们通过字符串判断：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[self.person addObserver:self forKeyPath:@&quot;nickname&quot; options:NSKeyValueObservingOptionNew context:NULL];</span><br><span class="line">- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary&lt;NSKeyValueChangeKey,id&gt; *)change context:(void *)context&#123;</span><br><span class="line">    if ([keyPath isEqualToString:@&quot;nickname&quot;]) &#123;</span><br><span class="line">        NSLog(@&quot;%@&quot;,change);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用context时，我们通过<code>context</code>判断：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;context定义</span><br><span class="line">static void *PersonNickNameContext &#x3D; &amp;PersonNickNameContext;</span><br><span class="line">static void *PersonNameContext &#x3D; &amp;PersonNameContext;</span><br><span class="line">&#x2F;&#x2F;注册观察者</span><br><span class="line">[self.person addObserver:self forKeyPath:@&quot;nick&quot; options:NSKeyValueObservingOptionNew context:PersonNickNameContext];</span><br><span class="line">[self.person addObserver:self forKeyPath:@&quot;name&quot; options:NSKeyValueObservingOptionNew context:PersonNameContext];</span><br><span class="line">&#x2F;&#x2F;KVO的回调</span><br><span class="line">- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary&lt;NSKeyValueChangeKey,id&gt; *)change context:(void *)context&#123;</span><br><span class="line">    if (context &#x3D;&#x3D; PersonNickNameContext) &#123;</span><br><span class="line">        NSLog(@&quot;%@&quot;,change);</span><br><span class="line">    &#125;else if (context &#x3D;&#x3D; PersonNameContext)&#123;</span><br><span class="line">        NSLog(@&quot;%@&quot;,change);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="是否有必要移除KVOobserver"><a href="#是否有必要移除KVOobserver" class="headerlink" title="是否有必要移除KVOobserver"></a>是否有必要移除<code>KVO</code>observer</h4><p>官方文档对<code>removeObserver</code>也有说明：</p>
+<blockquote>
+<p>When removing an observer, keep several points in mind:</p>
+<ul>
+<li>Asking to be removed as an observer if not already registered as one results in an <code>NSRangeException</code>. You either call <code>removeObserver:forKeyPath:context:</code> exactly once for the corresponding call to <code>addObserver:forKeyPath:options:context:</code>, or if that is not feasible in your app, place the <code>removeObserver:forKeyPath:context:</code> call inside a try/catch block to process the potential exception.</li>
+<li>An observer does not automatically remove itself when deallocated. The observed object continues to send notifications, oblivious to the state of the observer. However, a change notification, like any other message, sent to a released object, triggers a memory access exception. You therefore ensure that observers remove themselves before disappearing from memory.</li>
+<li>The protocol offers no way to ask an object if it is an observer or being observed. Construct your code to avoid release related errors. A typical pattern is to register as an observer during the observer’s initialization (for example in <code>init</code> or <code>viewDidLoad</code>) and unregister during deallocation (usually in <code>dealloc</code>), ensuring properly paired and ordered add and remove messages, and that the observer is unregistered before it is freed from memory.</li>
+</ul>
+</blockquote>
+<p>翻译过来就是，移除观察者时，注意以下几点：</p>
+<ul>
+<li>如果未注册为观察者，在移除观察者的时候会导致<code>NSRangeException</code>异常。<code>removeObserver</code>必须和<code>addObserver</code>对应，且只能调用一次。如果项目中不能保证，就需要在使用的时候使用<code>try/catch</code>来处理异常。</li>
+<li>观察者在对象销毁的时候不会自动移除观察者。被观察者会继续发送通知，对观察者来说这个状态是感知不到的。但是，向一个已经释放的对象发送通知会引起内存访问异常。所以，我们要保证观察者在内存释放之前移除观察。</li>
+<li>这个协议没有方法可以判断他是一个观察者还是被观察者，写代码是要避免释放内存相关的错误。一个典型的规范就是在观察者初始画的时候注册观察，在<code>dealloc</code>的时候移除观察，以确保成对和有序地添加和删除消息，并确保观察者在注册之前被取消注册，从内存中释放出来。</li>
+</ul>
+<p>所以，总的来说，<code>KVO注册观察者 和移除观察者是需要成对出现的</code>，如果只注册，不移除，会出现<code>野指针的崩溃</code>。</p>
+<h4 id="自动触发与手动触发"><a href="#自动触发与手动触发" class="headerlink" title="自动触发与手动触发"></a>自动触发与手动触发</h4><p>KVO观察的自动和手动两种方式</p>
+<ul>
+<li><p>自动开关，<code>automaticallyNotifiesObserversForKey</code>返回<code>YES</code>的时候标示自动监听，如果是<code>NO</code>表示我们需要手动监听</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; 自动开关</span><br><span class="line">+ (BOOL) automaticallyNotifiesObserversForKey:(NSString *)key&#123;</span><br><span class="line">    return YES;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>如果是手动，我们需要通过<code>手动开关</code>监听</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">- (void)setNickName:(NSString *)nickName&#123;</span><br><span class="line">    &#x2F;&#x2F;手动开关</span><br><span class="line">    [self willChangeValueForKey:@&quot;nickName&quot;];</span><br><span class="line">    _nickName &#x3D; namenickName</span><br><span class="line">    [self didChangeValueForKey:@&quot;nickName&quot;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="观察多个属性变化"><a href="#观察多个属性变化" class="headerlink" title="观察多个属性变化"></a>观察多个属性变化</h4><p>我们以观察两个属性为例，例如我们需要根据速度<code>speed</code>和时间<code>time</code>，取得当前的路程<code>distance</code>。我们用两种方式。</p>
+<ul>
+<li><p>第一种就是分别观察速度<code>speed</code>和时间<code>time</code>两个属性，当其中一个发生变化计算 当前路程<code>distance</code>。</p>
+</li>
+<li><p>第二种方式就是，通过<code>keyPathsForValuesAffectingValueForKey</code>方法，将两个观察合为一个观察，即观察当前路程<code>distance</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;1、合二为一的观察方法</span><br><span class="line">+ (NSSet&lt;NSString *&gt; *)keyPathsForValuesAffectingValueForKey:(NSString *)key&#123;</span><br><span class="line">    NSSet *keyPaths &#x3D; [super keyPathsForValuesAffectingValueForKey:key];</span><br><span class="line">    if ([key isEqualToString:@&quot;distance&quot;]) &#123;</span><br><span class="line">        NSArray *affectingKeys &#x3D; @[@&quot;speed&quot;, @&quot;time&quot;];</span><br><span class="line">        keyPaths &#x3D; [keyPaths setByAddingObjectsFromArray:affectingKeys];</span><br><span class="line">    &#125;</span><br><span class="line">    return keyPaths;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;2、注册KVO观察</span><br><span class="line">[self.person addObserver:self forKeyPath:@&quot;distance&quot; options:(NSKeyValueObservingOptionNew) context:NULL];</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;3、触发属性值变化</span><br><span class="line">- (void)touchesBegan:(NSSet&lt;UITouch *&gt; *)touches withEvent:(UIEvent *)event&#123;</span><br><span class="line">    self.person.speed +&#x3D; 10;</span><br><span class="line">    self.person.time  +&#x3D; 1;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;4、移除观察者</span><br><span class="line">- (void)dealloc&#123;</span><br><span class="line">    [self.person removeObserver:self forKeyPath:@&quot;distance&quot;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="可变数组的观察"><a href="#可变数组的观察" class="headerlink" title="可变数组的观察"></a>可变数组的观察</h4><p>KVO是基于KVC基础之上的，所以可变数组如果直接添加数据，是不会调用setter方法的，所有对<code>可变数组</code>的KVO观察下面这种方式<code>不生效</code>的,即直接通过<code>[self.person.dateArray addObject:@&quot;1&quot;];</code>向数组添加元素，是不会触发kvo通知回调的，代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;1、注册可变数组KVO观察者</span><br><span class="line">self.person.dateArray &#x3D; [NSMutableArray arrayWithCapacity:1];</span><br><span class="line">    [self.person addObserver:self forKeyPath:@&quot;dateArray&quot; options:(NSKeyValueObservingOptionNew) context:NULL];</span><br><span class="line">    </span><br><span class="line">&#x2F;&#x2F;2、KVO回调</span><br><span class="line">- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary&lt;NSKeyValueChangeKey,id&gt; *)change context:(void *)context&#123;</span><br><span class="line">    NSLog(@&quot;%@&quot;,change);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;3、移除观察者</span><br><span class="line">- (void)dealloc&#123;</span><br><span class="line"> [self.person removeObserver:self forKeyPath:@&quot;dateArray&quot;];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;4、触发数组添加数据</span><br><span class="line">- (void)touchesBegan:(NSSet&lt;UITouch *&gt; *)touches withEvent:(UIEvent *)event&#123;</span><br><span class="line">    [self.person.dateArray addObject:@&quot;1&quot;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在KVC官方文档中，针对<code>可变数组的集合</code>类型，有如下说明，即访问集合对象需要需要通过<code>mutableArrayValueForKey</code>方法，这样才能<code>将元素添加到可变数组</code>中</p>
+<blockquote>
+<p>The protocol defines three different proxy methods for collection object access, each with a key and a key path variant:</p>
+<ul>
+<li><p><code>mutableArrayValueForKey:</code> and <code>mutableArrayValueForKeyPath:</code></p>
+<p>These return a proxy object that behaves like an <code>NSMutableArray</code> object.</p>
+</li>
+<li><p><code>mutableSetValueForKey:</code> and <code>mutableSetValueForKeyPath:</code></p>
+<p>These return a proxy object that behaves like an <code>NSMutableSet</code> object.</p>
+</li>
+<li><p><code>mutableOrderedSetValueForKey:</code> and <code>mutableOrderedSetValueForKeyPath:</code></p>
+<p>These return a proxy object that behaves like an <code>NSMutableOrderedSet</code> object.</p>
+</li>
+</ul>
+</blockquote>
+<p>我们代码这样修改：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">- (void)touchesBegan:(NSSet&lt;UITouch *&gt; *)touches withEvent:(UIEvent *)event&#123;</span><br><span class="line">    &#x2F;&#x2F; KVC 集合 array</span><br><span class="line">    [[self.person mutableArrayValueForKey:@&quot;dateArray&quot;] addObject:@&quot;1&quot;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>现在可变数组就可以监听到了。</p>
+<h3 id="KVO底层探索"><a href="#KVO底层探索" class="headerlink" title="KVO底层探索"></a>KVO底层探索</h3><p>苹果官方文档在<code>Key-Value Observing Implementation Details</code>里有提到<code>KVO</code>的实现：</p>
+<blockquote>
+<p>Automatic key-value observing is implemented using a technique called <em>isa-swizzling</em>.</p>
+<p>The <code>isa</code> pointer, as the name suggests, points to the object’s class which maintains a dispatch table. This dispatch table essentially contains pointers to the methods the class implements, among other data.</p>
+<p>When an observer is registered for an attribute of an object the isa pointer of the observed object is modified, pointing to an intermediate class rather than at the true class. As a result the value of the isa pointer does not necessarily reflect the actual class of the instance.</p>
+<p>You should never rely on the <code>isa</code> pointer to determine class membership. Instead, you should use the <code>class</code> method to determine the class of an object instance.</p>
+</blockquote>
+<p>大概意思就是<code>KVO</code>的实现使用了<code>isa</code>的交换。当我们添加一个<code>observer</code>的时候<code>isa</code>的指向会发生改变，是一个<code>中间类</code>而不是<code>真正的类</code>。我们不能根据<code>isa</code>指针确定类的成员身份，而是用哪个<code>class</code>方法确定。</p>
+<h4 id="中间类是什么"><a href="#中间类是什么" class="headerlink" title="中间类是什么"></a><code>中间类</code>是什么</h4><p>看苹果官网文档我们了解了，<code>KVO</code>的实现时通过修改<code>isa</code>指针指向了一个<code>中间类</code>实现的，我们使用<code>lldb</code>探究一下<code>中间类</code>是什么。</p>
+<ul>
+<li><p>添加观察者之前，我们打印实例对象<code>person</code>的方法是<code>JSPerson</code>。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(lldb) <span class="function">po <span class="title">object_getClassName</span><span class="params">(self.person)</span></span></span><br><span class="line">"JSPerson"</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>添加观察者之后，我们打印实例对象<code>person</code>的方法是<code>NSKVONotifying_JSPerson</code>。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(lldb) <span class="function">po <span class="title">object_getClassName</span><span class="params">(self.person)</span></span></span><br><span class="line">"NSKVONotifying_JSPerson"</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>通过上面的调试，我们看到添加观察者值<code>isa</code>指向了一个名为<code>&quot;NSKVONotifying_JSPerson</code>的中间类。关于这个<code>中间类</code>我们有几个点需要研究一下。</p>
+<ol>
+<li><p><code>中间类</code>和之前的类是父子类关系吗</p>
+<p>我们通过一个方法来判断</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">#pragma mark - 遍历类以及子类</span><br><span class="line">- (void)printClasses:(Class)cls&#123;</span><br><span class="line">    &#x2F;&#x2F; 注册类的总数</span><br><span class="line">    int count &#x3D; objc_getClassList(NULL, 0);</span><br><span class="line">    &#x2F;&#x2F; 创建一个数组， 其中包含给定对象</span><br><span class="line">    NSMutableArray *mArray &#x3D; [NSMutableArray arrayWithObject:cls];</span><br><span class="line">    &#x2F;&#x2F; 获取所有已注册的类</span><br><span class="line">    Class* classes &#x3D; (Class*)malloc(sizeof(Class)*count);</span><br><span class="line">    objc_getClassList(classes, count);</span><br><span class="line">    for (int i &#x3D; 0; i&lt;count; i++) &#123;</span><br><span class="line">        if (cls &#x3D;&#x3D; class_getSuperclass(classes[i])) &#123;</span><br><span class="line">            [mArray addObject:classes[i]];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    free(classes);</span><br><span class="line">    NSLog(@&quot;classes &#x3D; %@&quot;, mArray);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;********以下为调用********</span><br><span class="line">[self printClasses:[JSPerson class]];</span><br></pre></td></tr></table></figure>
+
+<p>打印结果为</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">classes = (</span><br><span class="line">    JSPerson,</span><br><span class="line">    <span class="string">"NSKVONotifying_JSPerson"</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>通过打印结果我们可以判断中间类<code>NSKVONotifying_JSPerson</code>是<code>JSPerson</code>的子类。</p>
+</li>
+<li><p>中间类里有什么方法。</p>
+<p>同样，我们定义一个方法获取<code>NSKVONotifying_JSPerson</code>的所有方法</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">#pragma mark - 遍历方法-ivar-property</span><br><span class="line">- (void)printClassAllMethod:(Class)cls&#123;</span><br><span class="line">    unsigned int count &#x3D; 0;</span><br><span class="line">    Method *methodList &#x3D; class_copyMethodList(cls, &amp;count);</span><br><span class="line">    for (int i &#x3D; 0; i&lt;count; i++) &#123;</span><br><span class="line">        Method method &#x3D; methodList[i];</span><br><span class="line">        SEL sel &#x3D; method_getName(method);</span><br><span class="line">        IMP imp &#x3D; class_getMethodImplementation(cls, sel);</span><br><span class="line">        NSLog(@&quot;%@-%p&quot;,NSStringFromSelector(sel),imp);</span><br><span class="line">    &#125;</span><br><span class="line">    free(methodList);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;********以下为调用********</span><br><span class="line">[self printClassAllMethod:objc_getClass(&quot;NSKVONotifying_JSPerson&quot;)];</span><br></pre></td></tr></table></figure>
+
+<p>打印结果</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">setNickName:<span class="number">-0x7fff207bbb57</span></span><br><span class="line"><span class="class"><span class="keyword">class</span>-0<span class="title">x7fff207ba662</span></span></span><br><span class="line"><span class="class"><span class="title">dealloc</span>-0<span class="title">x7fff207ba40b</span></span></span><br><span class="line"><span class="class">_<span class="title">isKVOA</span>-0<span class="title">x7fff207ba403</span></span></span><br></pre></td></tr></table></figure>
+
+<p>我们看到一共有四个方法</p>
+<ul>
+<li>重写了父类的<code>setNickName</code>方法</li>
+<li>重写了根类的<code>class</code>、<code>dealloc</code>方法</li>
+<li><code>_isKVO</code>方法，用来判断是否是<code>kvo</code>类</li>
+</ul>
+</li>
+<li><p>dealloc中移除观察者后，isa会指回来吗</p>
+<ul>
+<li><p>移除观察者之前，我们用<code>lldb</code>打印</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(lldb) <span class="function">po <span class="title">object_getClassName</span><span class="params">(self.person)</span></span></span><br><span class="line">"NSKVONotifying_JSPerson"</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>移除观察者之后，我们重新打印</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(lldb) <span class="function">po <span class="title">object_getClassName</span><span class="params">(self.person)</span></span></span><br><span class="line">"JSPerson"</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>说明的确是在移除观察的时候将<code>isa</code>指回来的。</p>
+</li>
+<li><p>移除观察后中间类会销毁吗</p>
+<p>我们返回前一个页面，此时添加观察者的VC已经销毁，我们打印<code>JSPerson</code>的子类</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[self printClasses:[JSPerson class]];</span><br></pre></td></tr></table></figure>
+
+<p>打印结果</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">classes = (</span><br><span class="line">    JSPerson,</span><br><span class="line">    <span class="string">"NSKVONotifying_JSPerson"</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>发现子类并不会被销毁。</p>
+</li>
+</ol>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><ul>
+<li>实例对象<code>isa</code>的指向<code>在添加KVO观察者之后</code>，由<code>原有类</code>更改为<code>指向中间类</code></li>
+<li><code>中间类</code>重写了观察<code>属性的setter方法</code>、<code>class</code>、<code>dealloc</code>、<code>_isKVOA</code>方法</li>
+<li><code>dealloc</code>方法中，移除KVO观察者之后，实例对象<code>isa</code>指向由<code>中间类</code>更改为<code>原有类</code></li>
+<li><code>中间类</code>从创建后，就一直<code>存在内存中，不会被销毁</code></li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/26/Flutter-IneritedWidget/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/07/26/Flutter-IneritedWidget/" class="post-title-link" itemprop="url">Flutter-InheritedWidget</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-07-26 10:41:49" itemprop="dateCreated datePublished" datetime="2021-07-26T10:41:49+08:00">2021-07-26</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-30 15:06:34" itemprop="dateModified" datetime="2021-07-30T15:06:34+08:00">2021-07-30</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/25/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-KVC/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1305,548 +1768,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/08/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-dyld%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="个人技术博客">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/07/08/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-dyld%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/" class="post-title-link" itemprop="url">iOS底层探索 - dyld加载流程</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-07-08 21:00:24" itemprop="dateCreated datePublished" datetime="2021-07-08T21:00:24+08:00">2021-07-08</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-07-11 00:43:08" itemprop="dateModified" datetime="2021-07-11T00:43:08+08:00">2021-07-11</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>本文我们主要探索应用程序的加载流程，也就是<code>main</code>方法之前，链接器都做了什么。了解这些对我们项目的<code>启动优化</code>有很大帮助。</p>
-<h3 id="编译过程和库"><a href="#编译过程和库" class="headerlink" title="编译过程和库"></a>编译过程和库</h3><h4 id="编译的过程"><a href="#编译的过程" class="headerlink" title="编译的过程"></a>编译的过程</h4><p>我们知道库是一种<code>可执行文件</code>,从源代码到可执行文件工经历了下面几个步骤：</p>
-<ul>
-<li><code>源文件</code>：主要就是我们写的代码，.h、.m、.cpp等文件。</li>
-<li><code>预编译</code>：主要处理哪些源代码文件中以<code>#</code>开始的预编译指令，比如<code>#include</code>、<code>#define</code>、删除所有的注释<code>//</code>和<code>/* */</code>、添加行号和文件名标识、保留所有的<code>#pragma</code>编译期指令、产生<code>.i</code>文件。</li>
-<li><code>编译</code>：将<code>预处理</code>完的文件进行<code>词法分析</code>、<code>语义分析</code>及优化后输出汇编代码文件即<code>.s</code>文件。</li>
-<li><code>汇编</code>：将<code>汇编代码</code>转变成机器可以执行的指令即<code>.o</code>文件。</li>
-<li><code>链接</code>：对.o文件中引用其他库的地方进行引用，生成最后的可执行文件</li>
-</ul>
-<h4 id="动态库和静态库"><a href="#动态库和静态库" class="headerlink" title="动态库和静态库"></a>动态库和静态库</h4><p>我们项目中经常会使用到<code>动态库</code>和<code>静态库</code>,它们的区别是：</p>
-<ul>
-<li>静态库：在链接阶段会将汇编生成的目标文件和引用的库一起链接打包到可执行文件中。即静态库在<code>链接</code>阶段就被载入了。<ul>
-<li>优点：编译完成之后的目标程序没有<code>外部依赖</code>,可以直接运行。</li>
-<li>缺点：静态库可以会有多份，会导致<code>目标程序</code>体积增加，对内存、性能、速度消耗较大。</li>
-</ul>
-</li>
-<li>动态库：程序编译并不会链接到目标代码中，在程序可执行文件里面会保留对动态库的引用，在程序<code>运行时</code>才被载入，苹果大部分官方的库都是<code>动态库</code>。<ul>
-<li>优点：<ol>
-<li>可以减少<code>App</code>包体积大小：因为不需要拷贝到<code>目标程序</code>中，所以不会影响<code>目标程序</code>的体积.</li>
-<li>共享内存，节约资源：同一份库可以被多个程序使用。</li>
-<li>可以更新动态库，而目标程序不需要重新编译：这是因为动态库<code>运行时</code>才载入，可以随时对库进行替换，而·不需要重新编译代码。</li>
-</ol>
-</li>
-<li>缺点：由于是<code>运行时</code>载入会带来一部分性能损失，使用动态库使得程序依赖于外部环境，如果环境缺少了动态库程序就无法运行。</li>
-</ul>
-</li>
-</ul>
-<h3 id="dyld是什么"><a href="#dyld是什么" class="headerlink" title="dyld是什么"></a>dyld是什么</h3><p><code>dyld</code>是<code>动态链接器</code>,目前最新的版本是<code>dyld3</code>,我们首先看一下<code>dyld</code>的版本演变。在<code>dyld</code>之前，<code>NeXT</code>使用的是<code>静态二进制</code>数据。</p>
-<h4 id="dyld版本演变"><a href="#dyld版本演变" class="headerlink" title="dyld版本演变"></a><code>dyld</code>版本演变</h4><ul>
-<li><code>dyld1.0</code>(1996-2004)<ul>
-<li>包含在<code>NeXTStep 3.3</code>中</li>
-<li>历史早于标准化<code>POSIX dlopen()</code>的调用</li>
-<li><code>macOS 10</code>之前编写第三方包装器用来以支持标准<code>Unix</code>软件，但是这些包装器并不能完美的支持相同的语义，在边界情况不能正常工作。</li>
-<li>在大多数使用<code>C++</code>动态库的系统之前编写的。</li>
-<li>在<code>mac OS 10.0</code>增加了<code>预绑定</code>。使用<code>预绑定</code>技术为系统中所有的<code>dylib</code>和我们的程序找到<code>固定地址</code>,<code>动态加载器</code>将会加载这些地址的所有内容。</li>
-</ul>
-</li>
-<li><code>dyld2.0</code>(2004-2007)<ul>
-<li>包含在<code>macOS Tiger</code>中</li>
-<li>相比<code>1.0</code>版本是完全重写(Complete rewrite)的。</li>
-<li>支持了<code>C++</code>初始化语义，扩展了<code>mach-o</code>格式。</li>
-<li>有完整的本地(native)<code>dlopen</code>和<code>dlsym</code>的实现。</li>
-<li><code>2.0</code>版本设计的目标是<code>提高速度</code>，仅进行有限的及安全性检查。</li>
-<li>提高了安全性。</li>
-<li>减少<code>预编译</code>的工作量(时长)</li>
-</ul>
-</li>
-<li><code>dyld2.x</code>(2007-2017)<ul>
-<li>增加了更多的基础架构和平台，比如<code>x86</code>、<code>x86_64</code>、<code>arm</code>、<code>arm64</code>、<code>iOS</code>、<code>tvOS</code>、<code>watchOS</code>。</li>
-<li>增强了安全性。增加<code>代码签名</code>和<code>ASLR</code>(地址空间配置随机加载)，增加了<code>mach-o</code>头文件中的项目<code>边界检查</code>功能它可以避免恶意二进制数据的加入。</li>
-<li>增强了性能：用<code>共享缓存</code>代替了<code>预绑定</code>。<code>共享缓存</code>是一个包含大部分<code>系统dylib</code>的单文件(Single file)，可以节省大量内存，它实际是<code>预链接</code>库。</li>
-</ul>
-</li>
-<li><code>dyld3</code>（2017-至今）<ul>
-<li>完全改变<code>动态链接器</code>的概念</li>
-<li>默认适用于大部分<code>Apple OS</code>系统应用。</li>
-<li>完全替代了<code>dyld2.x</code>。</li>
-<li>提高了性能，尽量提高启动速度和运行速度。</li>
-<li>提高安全性：将大多数<code>dyld</code>移出进程，允许部分<code>dyld</code>驻留在进程之中，驻留部分尽可能小，从而减少受攻击的面积。</li>
-<li>可测试性和可靠性</li>
-</ul>
-</li>
-</ul>
-<h4 id="dyld-2和dyld-3加载过程的区别"><a href="#dyld-2和dyld-3加载过程的区别" class="headerlink" title="dyld 2和dyld 3加载过程的区别"></a><code>dyld 2</code>和<code>dyld 3</code>加载过程的区别</h4><ul>
-<li><p><code>dyld 2</code>的加载过程</p>
-<ol>
-<li><code>Parse mach-o headers</code>:分析<code>mach-o</code>文件，通过分析<code>mach-o</code>文件弄清楚需要那些库，这些库可能需要其他库，所以会进行递归分析，直到获得所有<code>dylib</code>的完整图。一般普通<code>iOS</code>程序需要3-600个<code>dylib</code>，数据庞大，需要进行大量的处理。</li>
-<li><code>Map mach-o files</code>:映射所有<code>mach-o</code>文件，将它们放入地址空间</li>
-<li><code>Perform symbol lookups</code>：执行符号查找，例如程序使用了<code>printf</code>函数，将会查找<code>printf</code>是否在库系统中，然后找到它的地址，将它复制到你的程序中的函数指针。</li>
-<li><code>Bind and rebase</code>:绑定和基址重置，复制<code>3</code>步的指针，由于使用随机地址，所有指针必须使用基址。</li>
-<li><code>Run initializers</code>:运行初始化器，接下来准备执行<code>main</code>函数。</li>
-</ol>
-<p>流程图如下图，其中红色表示影响性能和安全性的步骤：</p>
-</li>
-</ul>
-<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/073f41507a9245fca094630f0fceb1e3~tplv-k3u1fbpfcp-watermark.image" alt="dyld2process"></p>
-<ul>
-<li><p><code>dyld3</code>加载过程</p>
-<p><code>dyld3</code>包括三个部分：</p>
-<ul>
-<li><p><code>An out of process MachO parser/compiler</code>：进程外<code>mach-o</code>分析器和编译器。</p>
-<ol>
-<li><code>Resolves all search paths, @rpaths, environment variables</code>:解析所有搜索路径、<code>rpaths</code>、环境变量。</li>
-<li><code>Parses the mach-o binaries</code>:分析<code>mach-o</code>二进制数据</li>
-<li><code>Perform symbol lookups</code>：执行符号查找，例如程序使用了<code>printf</code>函数，将会查找<code>printf</code>是否在库系统中，然后找到它的地址，将它复制到你的程序中的函数指针。</li>
-<li><code>Creates a launch closure with results</code>：创建收尾处理</li>
-</ol>
-</li>
-<li><p><code>An in-process engine that runs launch</code>：进程内引擎执行启动收尾处理，进驻在内存中。</p>
-<ol start="5">
-<li><code>Validates launch closure</code>：检查启动收尾处理是否正确。</li>
-<li><code>Maps in all dylibs</code>：映射到所有的<code>dylib</code>中</li>
-<li><code>Applies fixups</code>：应用修正</li>
-<li><code>Run initializers</code>:运行初始化器，接下来准备执行<code>main</code>函数。</li>
-</ol>
-</li>
-<li><p><code>A launch closure caching service</code>：启动收尾缓存服务。大部分程序启动会使用缓存但始终不需要调用进程外<code>mach-o</code>分析器和编译器，启动收尾比<code>mach-o</code>更简单，启动收尾文件是内存映射文件，不需要用复杂的方法进行分析从而提高速度。</p>
-<p>流程图(来源WWDC ppt)如下：</p>
-<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e8aecf047e2548d9b1940488215457e1~tplv-k3u1fbpfcp-watermark.image" alt="dyld3"></p>
-</li>
-</ul>
-</li>
-</ul>
-<p>注：本小节内容来源于<a href="https://developer.apple.com/videos/play/wwdc2017/413" target="_blank" rel="noopener">WWDC2017 App Startup Time: Past, Present, and Future</a>感兴趣的童鞋可以查看视频。</p>
-<h3 id="dyld加载流程分析"><a href="#dyld加载流程分析" class="headerlink" title="dyld加载流程分析"></a>dyld加载流程分析</h3><p>通过上一小节我们其实对<code>dyld</code>的加载有一个初步的了解了，本小节主要通过看源码来探索一下加载流程。本小节需要的源码有：</p>
-<ul>
-<li><code>dyld</code></li>
-<li><code>libobjc</code></li>
-<li><code>libSystem</code></li>
-<li><code>libdispatch</code></li>
-</ul>
-<p>源码可直接去<a href="https://opensource.apple.com/tarballs/" target="_blank" rel="noopener">苹果<code>Source Browser</code></a>下载</p>
-<h4 id="dyldstart探索"><a href="#dyldstart探索" class="headerlink" title="dyldstart探索"></a><code>dyld</code>start探索</h4><ul>
-<li><p>通过<code>main</code>函数</p>
-<p>因为我们程序的入口是<code>main</code>函数，<code>dyld</code>是在<code>main</code>之前执行的，我们很容易想到在<code>main</code>函数打一个断点，然后查看调用堆栈信息来查看<code>dyld</code>的具体调用方法：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">(lldb) bt</span><br><span class="line">* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1</span><br><span class="line">  * frame #<span class="number">0</span>: <span class="number">0x000000010000339b</span> DyldTest`main(argc=<span class="number">3</span>, argv=<span class="number">0x00007ffeefbff500</span>) at main.m:<span class="number">13</span>:<span class="number">5</span></span><br><span class="line">    frame #<span class="number">1</span>: <span class="number">0x00007fff6e7d3cc9</span> libdyld.dylib`start + <span class="number">1</span></span><br></pre></td></tr></table></figure>
-
-<p>通过这个方式我们看到了<code>start</code>,但是通过打符号断点并没有找到<code>start</code>方法，所以这种方式无效。</p>
-</li>
-<li><p>通过<code>load</code>方法</p>
-<p>根据我们的经验，我们知道<code>load</code>方法是在<code>main</code>函数之前执行的，我们通过<code>load</code>方法能不能找到<code>dyld</code>的入口呢，心动不如行动，我们试一下，在<code>ViewController</code>类加入<code>load</code>方法，打上断点：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">(lldb) bt</span><br><span class="line">* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1</span><br><span class="line">  * frame #<span class="number">0</span>: <span class="number">0x00000001000032d7</span> DyldTest`+[ViewController load](self=ViewController, _cmd=<span class="string">"load"</span>) at ViewController.m:<span class="number">19</span>:<span class="number">5</span></span><br><span class="line">    frame #<span class="number">1</span>: <span class="number">0x00007fff6d61e560</span> libobjc.A.dylib`load_images + <span class="number">1529</span></span><br><span class="line">    frame #<span class="number">2</span>: <span class="number">0x000000010001626c</span> dyld`dyld::notifySingle(dyld_image_states, ImageLoader <span class="keyword">const</span>*, ImageLoader::InitializerTimingList*) + <span class="number">418</span></span><br><span class="line">    frame #<span class="number">3</span>: <span class="number">0x0000000100029fe9</span> dyld`ImageLoader::recursiveInitialization(ImageLoader::LinkContext <span class="keyword">const</span>&amp;, <span class="keyword">unsigned</span> <span class="keyword">int</span>, <span class="keyword">char</span> <span class="keyword">const</span>*, ImageLoader::InitializerTimingList&amp;, ImageLoader::UninitedUpwards&amp;) + <span class="number">475</span></span><br><span class="line">    frame #<span class="number">4</span>: <span class="number">0x00000001000280b4</span> dyld`ImageLoader::processInitializers(ImageLoader::LinkContext <span class="keyword">const</span>&amp;, <span class="keyword">unsigned</span> <span class="keyword">int</span>, ImageLoader::InitializerTimingList&amp;, ImageLoader::UninitedUpwards&amp;) + <span class="number">188</span></span><br><span class="line">    frame #<span class="number">5</span>: <span class="number">0x0000000100028154</span> dyld`ImageLoader::runInitializers(ImageLoader::LinkContext <span class="keyword">const</span>&amp;, ImageLoader::InitializerTimingList&amp;) + <span class="number">82</span></span><br><span class="line">    frame #<span class="number">6</span>: <span class="number">0x00000001000166a8</span> dyld`dyld::initializeMainExecutable() + <span class="number">199</span></span><br><span class="line">    frame #<span class="number">7</span>: <span class="number">0x000000010001bbba</span> dyld`dyld::_main(macho_header <span class="keyword">const</span>*, <span class="keyword">unsigned</span> <span class="keyword">long</span>, <span class="keyword">int</span>, <span class="keyword">char</span> <span class="keyword">const</span>**, <span class="keyword">char</span> <span class="keyword">const</span>**, <span class="keyword">char</span> <span class="keyword">const</span>**, <span class="keyword">unsigned</span> <span class="keyword">long</span>*) + <span class="number">6667</span></span><br><span class="line">    frame #<span class="number">8</span>: <span class="number">0x0000000100015227</span> dyld`dyldbootstrap::start(dyld3::MachOLoaded <span class="keyword">const</span>*, <span class="keyword">int</span>, <span class="keyword">char</span> <span class="keyword">const</span>**, dyld3::MachOLoaded <span class="keyword">const</span>*, <span class="keyword">unsigned</span> <span class="keyword">long</span>*) + <span class="number">453</span></span><br><span class="line">    frame #<span class="number">9</span>: <span class="number">0x0000000100015025</span> dyld`_dyld_start + <span class="number">37</span></span><br></pre></td></tr></table></figure>
-
-<p>通过这个堆栈我们看到了<code>_dyld_start</code>就是<code>dyld</code>开始的函数，我们依次探讨堆栈里的方法。</p>
-</li>
-</ul>
-<h4 id="dyld-start"><a href="#dyld-start" class="headerlink" title="_dyld_start"></a>_dyld_start</h4><p>我们首先在<code>dyld</code>源码中搜索<code>_dyld_start</code>,发现是一段汇编代码</p>
-<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8bfcb961c63f48f781b22bf363917866~tplv-k3u1fbpfcp-watermark.image" alt="dyld_start汇编"></p>
-<p>通过注释我们可以看到，调用的是<code>dyldbootstrap</code>的<code>start</code>函数。</p>
-<h4 id="dyldbootstrap-start"><a href="#dyldbootstrap-start" class="headerlink" title="dyldbootstrap::start"></a>dyldbootstrap::start</h4><p>我们在源码中搜索<code>dyldbootstrap</code>找到<code>命名空间</code>，继续查找<code>start</code>函数</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  This is code to bootstrap dyld.  This work in normally done for a program by dyld and crt.</span></span><br><span class="line"><span class="comment">//  In dyld we have to do this manually.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="function"><span class="keyword">uintptr_t</span> <span class="title">start</span><span class="params">(<span class="keyword">const</span> dyld3::MachOLoaded* appsMachHeader, <span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span>* argv[],</span></span></span><br><span class="line"><span class="function"><span class="params">				<span class="keyword">const</span> dyld3::MachOLoaded* dyldsMachHeader, <span class="keyword">uintptr_t</span>* startGlue)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">///省略代码</span></span><br><span class="line">	<span class="comment">// now that we are done bootstrapping dyld, call dyld's main</span></span><br><span class="line">	<span class="keyword">uintptr_t</span> appsSlide = appsMachHeader-&gt;getSlide();</span><br><span class="line">	<span class="keyword">return</span> dyld::_main((macho_header*)appsMachHeader, appsSlide, argc, argv, envp, apple, startGlue);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这个函数关键是最后一行，调用了<code>dyld::_main</code>。</p>
-<h4 id="dyld-main"><a href="#dyld-main" class="headerlink" title="dyld::_main"></a><code>dyld::_main</code></h4><p>这个方法很长(900+行)，可以从返回值倒退看这个方法都做了什么。方法太长我们省略大部分代码(因为返回值和<code>mainExecutable</code>相关，所以截取的代码基本都和<code>mainExecutable</code>相关)：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">uintptr_t</span></span><br><span class="line">_main(<span class="keyword">const</span> macho_header* mainExecutableMH, <span class="keyword">uintptr_t</span> mainExecutableSlide, </span><br><span class="line">		<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span>* argv[], <span class="keyword">const</span> <span class="keyword">char</span>* envp[], <span class="keyword">const</span> <span class="keyword">char</span>* apple[], </span><br><span class="line">		<span class="keyword">uintptr_t</span>* startGlue)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">///省略代码</span></span><br><span class="line">  <span class="comment">// Grab the cdHash of the main executable from the environment</span></span><br><span class="line">  <span class="comment">// 创建主程序cdHash的空间</span></span><br><span class="line">	<span class="keyword">uint8_t</span> mainExecutableCDHashBuffer[<span class="number">20</span>];</span><br><span class="line">	<span class="keyword">const</span> <span class="keyword">uint8_t</span>* mainExecutableCDHash = <span class="literal">nullptr</span>;</span><br><span class="line">	<span class="keyword">if</span> ( <span class="keyword">const</span> <span class="keyword">char</span>* mainExeCdHashStr = _simple_getenv(apple, <span class="string">"executable_cdhash"</span>) ) &#123;</span><br><span class="line">		<span class="keyword">unsigned</span> bufferLenUsed;</span><br><span class="line">		<span class="keyword">if</span> ( hexStringToBytes(mainExeCdHashStr, mainExecutableCDHashBuffer, <span class="keyword">sizeof</span>(mainExecutableCDHashBuffer), bufferLenUsed) )</span><br><span class="line">			mainExecutableCDHash = mainExecutableCDHashBuffer;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">/////配置信息，获取主程序的mach-o header、silder（ASLR的偏移值）</span></span><br><span class="line">	getHostInfo(mainExecutableMH, mainExecutableSlide);</span><br><span class="line">  <span class="comment">///通过silder+ASLR可以找到信息</span></span><br><span class="line">	<span class="keyword">uintptr_t</span> result = <span class="number">0</span>;</span><br><span class="line">	sMainExecutableMachHeader = mainExecutableMH;</span><br><span class="line">	sMainExecutableSlide = mainExecutableSlide;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">///省略代码</span></span><br><span class="line">  <span class="comment">//设置上下文，将这里所有的变量放到了gLinkContext中了，保存起来</span></span><br><span class="line">  setContext(mainExecutableMH, argc, argv, envp, apple);</span><br><span class="line">  <span class="comment">//配置进程是否受限，envp是环境变量</span></span><br><span class="line">  configureProcessRestrictions(mainExecutableMH, envp);</span><br><span class="line">      configureProcessRestrictions(mainExecutableMH, envp);</span><br><span class="line">	<span class="comment">///检测是否强制dyld3</span></span><br><span class="line">	<span class="comment">// Check if we should force dyld3.  Note we have to do this outside of the regular env parsing due to AMFI</span></span><br><span class="line">	<span class="keyword">if</span> ( dyld3::internalInstall() ) &#123;</span><br><span class="line">		<span class="keyword">if</span> (<span class="keyword">const</span> <span class="keyword">char</span>* useClosures = _simple_getenv(envp, <span class="string">"DYLD_USE_CLOSURES"</span>)) &#123;</span><br><span class="line">			<span class="keyword">if</span> ( <span class="built_in">strcmp</span>(useClosures, <span class="string">"0"</span>) == <span class="number">0</span> ) &#123;</span><br><span class="line">				sClosureMode = ClosureMode::Off;</span><br><span class="line">			&#125; <span class="keyword">else</span> <span class="keyword">if</span> ( <span class="built_in">strcmp</span>(useClosures, <span class="string">"1"</span>) == <span class="number">0</span> ) &#123;</span><br><span class="line">	#<span class="keyword">if</span> !__i386__ <span class="comment">// don't support dyld3 for 32-bit macOS</span></span><br><span class="line">				sClosureMode = ClosureMode::On;</span><br><span class="line">				sClosureKind = ClosureKind::full;</span><br><span class="line">	<span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">			&#125; <span class="keyword">else</span> <span class="keyword">if</span> ( <span class="built_in">strcmp</span>(useClosures, <span class="string">"2"</span>) == <span class="number">0</span> ) &#123;</span><br><span class="line">				sClosureMode = ClosureMode::On;</span><br><span class="line">				sClosureKind = ClosureKind::minimal;</span><br><span class="line">			&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">				dyld::warn(<span class="string">"unknown option to DYLD_USE_CLOSURES.  Valid options are: 0 and 1\n"</span>);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">  <span class="meta">#<span class="meta-keyword">if</span> TARGET_OS_OSX</span></span><br><span class="line">    <span class="comment">///受限制的进程，环境变量可能会变化，需要重新设置</span></span><br><span class="line">    <span class="keyword">if</span> ( !gLinkContext.allowEnvVarsPrint &amp;&amp; !gLinkContext.allowEnvVarsPath &amp;&amp; !gLinkContext.allowEnvVarsSharedCache ) &#123;</span><br><span class="line">		pruneEnvironmentVariables(envp, &amp;apple);</span><br><span class="line">		<span class="comment">// set again because envp and apple may have changed or moved</span></span><br><span class="line">		setContext(mainExecutableMH, argc, argv, envp, apple);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">#endif</span><br><span class="line">	&#123;</span><br><span class="line">    <span class="comment">///检查环境变量</span></span><br><span class="line">		checkEnvironmentVariables(envp);</span><br><span class="line">    <span class="comment">///default value for DYLD_FALLBACK_FRAMEWORK_PATH, if not set in environment</span></span><br><span class="line">    <span class="comment">///如果没有环境变量 设置默认值</span></span><br><span class="line">		defaultUninitializedFallbackPaths(envp);</span><br><span class="line">	&#125;</span><br><span class="line">  <span class="comment">// load shared cache 加载共享缓存</span></span><br><span class="line">	checkSharedRegionDisable((dyld3::MachOLoaded*)mainExecutableMH, mainExecutableSlide)</span><br><span class="line">	<span class="meta">#<span class="meta-keyword">if</span> !TARGET_OS_SIMULATOR</span></span><br><span class="line">  <span class="comment">///是否有启动闭包 dyld3有闭包</span></span><br><span class="line">	<span class="keyword">if</span> ( sClosureMode == ClosureMode::Off ) &#123;</span><br><span class="line">		<span class="keyword">if</span> ( gLinkContext.verboseWarnings )</span><br><span class="line">			dyld::<span class="built_in">log</span>(<span class="string">"dyld: not using closures\n"</span>);</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">///dyld3有闭包</span></span><br><span class="line">    <span class="comment">///设置加载启动模式</span></span><br><span class="line">		sLaunchModeUsed = DYLD_LAUNCH_MODE_USING_CLOSURE;</span><br><span class="line">    <span class="comment">///配置闭包</span></span><br><span class="line">		<span class="keyword">const</span> dyld3::closure::LaunchClosure* mainClosure = <span class="literal">nullptr</span>;</span><br><span class="line">		dyld3::closure::LoadedFileInfo mainFileInfo;</span><br><span class="line">		mainFileInfo.fileContent = mainExecutableMH;</span><br><span class="line">		mainFileInfo.path = sExecPath;</span><br><span class="line">    <span class="comment">// check for closure in cache first</span></span><br><span class="line">    <span class="comment">// 判断缓存中是否已经有闭包</span></span><br><span class="line">		<span class="keyword">if</span> ( sSharedCacheLoadInfo.loadAddress != <span class="literal">nullptr</span> ) &#123;</span><br><span class="line">			mainClosure = sSharedCacheLoadInfo.loadAddress-&gt;findClosure(sExecPath);</span><br><span class="line">			<span class="keyword">if</span> ( gLinkContext.verboseWarnings &amp;&amp; (mainClosure != <span class="literal">nullptr</span>) )</span><br><span class="line">				dyld::<span class="built_in">log</span>(<span class="string">"dyld: found closure %p (size=%lu) in dyld shared cache\n"</span>, mainClosure, mainClosure-&gt;<span class="built_in">size</span>());</span><br><span class="line">			<span class="keyword">if</span> ( mainClosure != <span class="literal">nullptr</span> )</span><br><span class="line">				sLaunchModeUsed |= DYLD_LAUNCH_MODE_CLOSURE_FROM_OS;</span><br><span class="line">		&#125;</span><br><span class="line">    <span class="comment">///如果闭包已失效</span></span><br><span class="line">    <span class="keyword">if</span> ( (mainClosure != <span class="literal">nullptr</span>) &amp;&amp; !closureValid(mainClosure, mainFileInfo, mainExecutableCDHash, <span class="literal">true</span>, envp) ) &#123;</span><br><span class="line">			mainClosure = <span class="literal">nullptr</span>;</span><br><span class="line">			sLaunchModeUsed &amp;= ~DYLD_LAUNCH_MODE_CLOSURE_FROM_OS;</span><br><span class="line">		&#125;</span><br><span class="line">    <span class="comment">///没有闭包创建一个</span></span><br><span class="line">    <span class="keyword">if</span> ( (mainClosure == <span class="literal">nullptr</span>) &amp;&amp; allowClosureRebuilds ) &#123;</span><br><span class="line">			<span class="comment">// if forcing closures, and no closure in cache, or it is invalid, check for cached closure</span></span><br><span class="line">			<span class="keyword">if</span> ( !sForceInvalidSharedCacheClosureFormat )</span><br><span class="line">				mainClosure = findCachedLaunchClosure(mainExecutableCDHash, mainFileInfo, envp, bootToken);</span><br><span class="line">			<span class="keyword">if</span> ( mainClosure == <span class="literal">nullptr</span> ) &#123;</span><br><span class="line">				<span class="comment">// if  no cached closure found, build new one</span></span><br><span class="line">				mainClosure = buildLaunchClosure(mainExecutableCDHash, mainFileInfo, envp, bootToken);</span><br><span class="line">				<span class="keyword">if</span> ( mainClosure != <span class="literal">nullptr</span> )</span><br><span class="line">					sLaunchModeUsed |= DYLD_LAUNCH_MODE_BUILT_CLOSURE_AT_LAUNCH;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="comment">// try using launch closure 使用启动闭包</span></span><br><span class="line">		<span class="keyword">if</span> ( mainClosure != <span class="literal">nullptr</span> ) &#123;</span><br><span class="line">			CRSetCrashLogMessage(<span class="string">"dyld3: launch started"</span>);</span><br><span class="line">			<span class="keyword">if</span> ( mainClosure-&gt;topImage()-&gt;fixupsNotEncoded() )</span><br><span class="line">				sLaunchModeUsed |= DYLD_LAUNCH_MODE_MINIMAL_CLOSURE;</span><br><span class="line">      <span class="keyword">bool</span> closureOutOfDate;</span><br><span class="line">			<span class="keyword">bool</span> recoverable;</span><br><span class="line">      <span class="comment">///启动闭包</span></span><br><span class="line">			<span class="keyword">bool</span> launched = launchWithClosure(mainClosure, sSharedCacheLoadInfo.loadAddress, (dyld3::MachOLoaded*)mainExecutableMH,</span><br><span class="line">											  mainExecutableSlide, argc, argv, envp, apple, diag, &amp;result, startGlue, &amp;closureOutOfDate, &amp;recoverable);</span><br><span class="line">      <span class="comment">/// 如果启动失败</span></span><br><span class="line">      <span class="keyword">if</span> ( !launched &amp;&amp; closureOutOfDate &amp;&amp; allowClosureRebuilds ) &#123;</span><br><span class="line">				<span class="comment">// closure is out of date, build new one</span></span><br><span class="line">				mainClosure = buildLaunchClosure(mainExecutableCDHash, mainFileInfo, envp, bootToken);</span><br><span class="line">        <span class="comment">///重新启动</span></span><br><span class="line">        launched = launchWithClosure(mainClosure, sSharedCacheLoadInfo.loadAddress, (dyld3::MachOLoaded*)mainExecutableMH,</span><br><span class="line">												 mainExecutableSlide, argc, argv, envp, apple, diag, &amp;result, startGlue, &amp;closureOutOfDate, &amp;recoverable);</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">///启动成功 返回main函数</span></span><br><span class="line">      <span class="keyword">if</span> ( launched ) &#123;</span><br><span class="line">				gLinkContext.startedInitializingMainExecutable = <span class="literal">true</span>;</span><br><span class="line">				<span class="keyword">if</span> (sSkipMain)</span><br><span class="line">					result = (<span class="keyword">uintptr_t</span>)&amp;fake_main;</span><br><span class="line">				<span class="keyword">return</span> result;</span><br><span class="line">			&#125;</span><br><span class="line">      <span class="comment">///不是dyld3的省略代码</span></span><br><span class="line">    &#125;</span><br><span class="line">   <span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">   <span class="comment">///省略代码</span></span><br><span class="line">   <span class="comment">// load any inserted libraries插入动态库</span></span><br><span class="line">		<span class="keyword">if</span>	( sEnv.DYLD_INSERT_LIBRARIES != <span class="literal">NULL</span> ) &#123;</span><br><span class="line">			<span class="keyword">for</span> (<span class="keyword">const</span> <span class="keyword">char</span>* <span class="keyword">const</span>* lib = sEnv.DYLD_INSERT_LIBRARIES; *lib != <span class="literal">NULL</span>; ++lib) </span><br><span class="line">				loadInsertedDylib(*lib);</span><br><span class="line">		&#125;</span><br><span class="line">   <span class="comment">///弱引用绑定主程序</span></span><br><span class="line">   sMainExecutable-&gt;weakBind(gLinkContext);</span><br><span class="line">    <span class="comment">// run all initializers</span></span><br><span class="line">    <span class="comment">// 运行所有initializers</span></span><br><span class="line">		initializeMainExecutable(); </span><br><span class="line">    <span class="comment">// notify any montoring proccesses that this process is about to enter main()</span></span><br><span class="line">    <span class="comment">/// 通知可以进入main函数了</span></span><br><span class="line">		notifyMonitoringDyldMain();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>大体流程就是：</p>
-<ul>
-<li>配置环境变量</li>
-<li>检查共享缓存是否开启，以及共享缓存是否映射到共享区域</li>
-<li>主程序初始化即<code>instantiateFromLoadedImage</code></li>
-<li>插入动态库</li>
-<li>link主程序</li>
-<li>link动态库</li>
-<li>弱符号绑定</li>
-<li>执行初始化方法</li>
-<li>主程序入口</li>
-</ul>
-<h4 id="dyld-initializeMainExecutable"><a href="#dyld-initializeMainExecutable" class="headerlink" title="dyld::initializeMainExecutable"></a>dyld::initializeMainExecutable</h4><p>主要是循环遍历执行<code>runInitializers</code></p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">initializeMainExecutable</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">// record that we've reached this step</span></span><br><span class="line">	gLinkContext.startedInitializingMainExecutable = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// run initialzers for any inserted dylibs</span></span><br><span class="line">	ImageLoader::InitializerTimingList initializerTimes[allImagesCount()];</span><br><span class="line">	initializerTimes[<span class="number">0</span>].count = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">const</span> <span class="keyword">size_t</span> rootCount = sImageRoots.<span class="built_in">size</span>();</span><br><span class="line">	<span class="keyword">if</span> ( rootCount &gt; <span class="number">1</span> ) &#123;</span><br><span class="line">    <span class="comment">///遍历 执行</span></span><br><span class="line">		<span class="keyword">for</span>(<span class="keyword">size_t</span> i=<span class="number">1</span>; i &lt; rootCount; ++i) &#123;</span><br><span class="line">			sImageRoots[i]-&gt;runInitializers(gLinkContext, initializerTimes[<span class="number">0</span>]);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// run initializers for main executable and everything it brings up </span></span><br><span class="line">	sMainExecutable-&gt;runInitializers(gLinkContext, initializerTimes[<span class="number">0</span>]);</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// register cxa_atexit() handler to run static terminators in all loaded images when this process exits</span></span><br><span class="line">	<span class="keyword">if</span> ( gLibSystemHelpers != <span class="literal">NULL</span> ) </span><br><span class="line">		(*gLibSystemHelpers-&gt;cxa_atexit)(&amp;runAllStaticTerminators, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// dump info if requested</span></span><br><span class="line">	<span class="keyword">if</span> ( sEnv.DYLD_PRINT_STATISTICS )</span><br><span class="line">		ImageLoader::printStatistics((<span class="keyword">unsigned</span> <span class="keyword">int</span>)allImagesCount(), initializerTimes[<span class="number">0</span>]);</span><br><span class="line">	<span class="keyword">if</span> ( sEnv.DYLD_PRINT_STATISTICS_DETAILS )</span><br><span class="line">		ImageLoaderMachO::printStatisticsDetails((<span class="keyword">unsigned</span> <span class="keyword">int</span>)allImagesCount(), initializerTimes[<span class="number">0</span>]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="ImageLoader-runInitializers"><a href="#ImageLoader-runInitializers" class="headerlink" title="ImageLoader::runInitializers"></a>ImageLoader::runInitializers</h4><p>核心代码是调用<code>processInitializers</code>方法</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ImageLoader::runInitializers</span><span class="params">(<span class="keyword">const</span> LinkContext&amp; context, InitializerTimingList&amp; timingInfo)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">uint64_t</span> t1 = mach_absolute_time();</span><br><span class="line">	<span class="keyword">mach_port_t</span> thisThread = mach_thread_self();</span><br><span class="line">	ImageLoader::UninitedUpwards up;</span><br><span class="line">	up.count = <span class="number">1</span>;</span><br><span class="line">	up.imagesAndPaths[<span class="number">0</span>] = &#123; <span class="keyword">this</span>, <span class="keyword">this</span>-&gt;getPath() &#125;;</span><br><span class="line">  <span class="comment">///调用</span></span><br><span class="line">	processInitializers(context, thisThread, timingInfo, up);</span><br><span class="line">	context.notifyBatch(dyld_image_state_initialized, <span class="literal">false</span>);</span><br><span class="line">	mach_port_deallocate(mach_task_self(), thisThread);</span><br><span class="line">	<span class="keyword">uint64_t</span> t2 = mach_absolute_time();</span><br><span class="line">	fgTotalInitTime += (t2 - t1);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="ImageLoader-processInitializers"><a href="#ImageLoader-processInitializers" class="headerlink" title="ImageLoader::processInitializers"></a>ImageLoader::processInitializers</h4><p>对镜像列表调用<code>recursiveInitialization</code>函数进行递归实例化</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ImageLoader::processInitializers</span><span class="params">(<span class="keyword">const</span> LinkContext&amp; context, <span class="keyword">mach_port_t</span> thisThread,</span></span></span><br><span class="line"><span class="function"><span class="params">									 InitializerTimingList&amp; timingInfo, ImageLoader::UninitedUpwards&amp; images)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">uint32_t</span> maxImageCount = context.imageCount()+<span class="number">2</span>;</span><br><span class="line">	ImageLoader::UninitedUpwards upsBuffer[maxImageCount];</span><br><span class="line">	ImageLoader::UninitedUpwards&amp; ups = upsBuffer[<span class="number">0</span>];</span><br><span class="line">	ups.count = <span class="number">0</span>;</span><br><span class="line">	<span class="comment">// Calling recursive init on all images in images list, building a new list of</span></span><br><span class="line">	<span class="comment">// uninitialized upward dependencies.</span></span><br><span class="line">  <span class="comment">// 递归实例化</span></span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">uintptr_t</span> i=<span class="number">0</span>; i &lt; images.count; ++i) &#123;</span><br><span class="line">		images.imagesAndPaths[i].first-&gt;recursiveInitialization(context, thisThread, images.imagesAndPaths[i].second, timingInfo, ups);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// If any upward dependencies remain, init them.</span></span><br><span class="line">	<span class="keyword">if</span> ( ups.count &gt; <span class="number">0</span> )</span><br><span class="line">		processInitializers(context, thisThread, timingInfo, ups);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="ImageLoader-recursiveInitialization"><a href="#ImageLoader-recursiveInitialization" class="headerlink" title="ImageLoader::recursiveInitialization"></a>ImageLoader::recursiveInitialization</h4><p>主要是加载完镜像后通知出去</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ImageLoader::recursiveInitialization</span><span class="params">(<span class="keyword">const</span> LinkContext&amp; context, <span class="keyword">mach_port_t</span> this_thread, <span class="keyword">const</span> <span class="keyword">char</span>* pathToInitialize,</span></span></span><br><span class="line"><span class="function"><span class="params">										  InitializerTimingList&amp; timingInfo, UninitedUpwards&amp; uninitUps)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">///递归锁</span></span><br><span class="line">	<span class="function">recursive_lock <span class="title">lock_info</span><span class="params">(this_thread)</span></span>;</span><br><span class="line">	recursiveSpinLock(lock_info);</span><br><span class="line">	<span class="keyword">if</span> ( fState &lt; dyld_image_state_dependents_initialized<span class="number">-1</span> ) &#123;</span><br><span class="line">		<span class="keyword">uint8_t</span> oldState = fState;</span><br><span class="line">		<span class="comment">// break cycles 结束递归</span></span><br><span class="line">		fState = dyld_image_state_dependents_initialized<span class="number">-1</span>;</span><br><span class="line">		<span class="keyword">try</span> &#123;</span><br><span class="line">			<span class="comment">// initialize lower level libraries first</span></span><br><span class="line">			<span class="keyword">for</span>(<span class="keyword">unsigned</span> <span class="keyword">int</span> i=<span class="number">0</span>; i &lt; libraryCount(); ++i) &#123;</span><br><span class="line">				ImageLoader* dependentImage = libImage(i);</span><br><span class="line">				<span class="keyword">if</span> ( dependentImage != <span class="literal">NULL</span> ) &#123;</span><br><span class="line">					<span class="comment">// don't try to initialize stuff "above" me yet</span></span><br><span class="line">					<span class="keyword">if</span> ( libIsUpward(i) ) &#123;</span><br><span class="line">						uninitUps.imagesAndPaths[uninitUps.count] = &#123; dependentImage, libPath(i) &#125;;</span><br><span class="line">						uninitUps.count++;</span><br><span class="line">					&#125;</span><br><span class="line">					<span class="keyword">else</span> <span class="keyword">if</span> ( dependentImage-&gt;fDepth &gt;= fDepth ) &#123;</span><br><span class="line">						dependentImage-&gt;recursiveInitialization(context, this_thread, libPath(i), timingInfo, uninitUps);</span><br><span class="line">					&#125;</span><br><span class="line">                &#125;</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="comment">// record termination order</span></span><br><span class="line">			<span class="keyword">if</span> ( <span class="keyword">this</span>-&gt;needsTermination() )</span><br><span class="line">				context.terminationRecorder(<span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">			<span class="comment">// let objc know we are about to initialize this image</span></span><br><span class="line">      <span class="comment">// 让objc知道我们要初始化此镜像</span></span><br><span class="line">			<span class="keyword">uint64_t</span> t1 = mach_absolute_time();</span><br><span class="line">			fState = dyld_image_state_dependents_initialized;</span><br><span class="line">			oldState = fState;</span><br><span class="line">			context.notifySingle(dyld_image_state_dependents_initialized, <span class="keyword">this</span>, &amp;timingInfo);</span><br><span class="line">			</span><br><span class="line">			<span class="comment">// initialize this image</span></span><br><span class="line">      <span class="comment">/// 初始化镜像</span></span><br><span class="line">			<span class="keyword">bool</span> hasInitializers = <span class="keyword">this</span>-&gt;doInitialization(context);</span><br><span class="line"></span><br><span class="line">			<span class="comment">// let anyone know we finished initializing this image</span></span><br><span class="line">      <span class="comment">/// 让任何人都知道我们完成了这个镜像的初始化</span></span><br><span class="line">			fState = dyld_image_state_initialized;</span><br><span class="line">			oldState = fState;</span><br><span class="line">			context.notifySingle(dyld_image_state_initialized, <span class="keyword">this</span>, <span class="literal">NULL</span>);</span><br><span class="line">			</span><br><span class="line">			<span class="keyword">if</span> ( hasInitializers ) &#123;</span><br><span class="line">				<span class="keyword">uint64_t</span> t2 = mach_absolute_time();</span><br><span class="line">				timingInfo.addTime(<span class="keyword">this</span>-&gt;getShortName(), t2-t1);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">catch</span> (<span class="keyword">const</span> <span class="keyword">char</span>* msg) &#123;</span><br><span class="line">			<span class="comment">// this image is not initialized</span></span><br><span class="line">			fState = oldState;</span><br><span class="line">			recursiveSpinUnLock();</span><br><span class="line">			<span class="keyword">throw</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	recursiveSpinUnLock();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="dyld-notifySingle"><a href="#dyld-notifySingle" class="headerlink" title="dyld::notifySingle"></a>dyld::notifySingle</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">notifySingle</span><span class="params">(dyld_image_states state, <span class="keyword">const</span> ImageLoader* <span class="built_in">image</span>, ImageLoader::InitializerTimingList* timingInfo)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">//dyld::log("notifySingle(state=%d, image=%s)\n", state, image-&gt;getPath());</span></span><br><span class="line">	<span class="built_in">std</span>::<span class="built_in">vector</span>&lt;dyld_image_state_change_handler&gt;* handlers = stateToHandlers(state, sSingleHandlers);</span><br><span class="line">	<span class="keyword">if</span> ( handlers != <span class="literal">NULL</span> ) &#123;</span><br><span class="line">		dyld_image_info info;</span><br><span class="line">		info.imageLoadAddress	= <span class="built_in">image</span>-&gt;machHeader();</span><br><span class="line">		info.imageFilePath		= <span class="built_in">image</span>-&gt;getRealPath();</span><br><span class="line">		info.imageFileModDate	= <span class="built_in">image</span>-&gt;lastModified();</span><br><span class="line">		<span class="keyword">for</span> (<span class="built_in">std</span>::<span class="built_in">vector</span>&lt;dyld_image_state_change_handler&gt;::iterator it = handlers-&gt;<span class="built_in">begin</span>(); it != handlers-&gt;<span class="built_in">end</span>(); ++it) &#123;</span><br><span class="line">			<span class="keyword">const</span> <span class="keyword">char</span>* result = (*it)(state, <span class="number">1</span>, &amp;info);</span><br><span class="line">			<span class="keyword">if</span> ( (result != <span class="literal">NULL</span>) &amp;&amp; (state == dyld_image_state_mapped) ) &#123;</span><br><span class="line">				<span class="comment">//fprintf(stderr, "  image rejected by handler=%p\n", *it);</span></span><br><span class="line">				<span class="comment">// make copy of thrown string so that later catch clauses can free it</span></span><br><span class="line">				<span class="keyword">const</span> <span class="keyword">char</span>* str = strdup(result);</span><br><span class="line">				<span class="keyword">throw</span> str;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> ( state == dyld_image_state_mapped ) &#123;</span><br><span class="line">		<span class="comment">// &lt;rdar://problem/7008875&gt; Save load addr + UUID for images from outside the shared cache</span></span><br><span class="line">		<span class="comment">// &lt;rdar://problem/50432671&gt; Include UUIDs for shared cache dylibs in all image info when using private mapped shared caches</span></span><br><span class="line">		<span class="keyword">if</span> (!<span class="built_in">image</span>-&gt;inSharedCache()</span><br><span class="line">			|| (gLinkContext.sharedRegionMode == ImageLoader::kUsePrivateSharedRegion)) &#123;</span><br><span class="line">			dyld_uuid_info info;</span><br><span class="line">			<span class="keyword">if</span> ( <span class="built_in">image</span>-&gt;getUUID(info.imageUUID) ) &#123;</span><br><span class="line">				info.imageLoadAddress = <span class="built_in">image</span>-&gt;machHeader();</span><br><span class="line">				addNonSharedCacheImageUUID(info);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> ( (state == dyld_image_state_dependents_initialized) &amp;&amp; (sNotifyObjCInit != <span class="literal">NULL</span>) &amp;&amp; <span class="built_in">image</span>-&gt;notifyObjC() ) &#123;</span><br><span class="line">		<span class="keyword">uint64_t</span> t0 = mach_absolute_time();</span><br><span class="line">		<span class="function">dyld3::ScopedTimer <span class="title">timer</span><span class="params">(DBG_DYLD_TIMING_OBJC_INIT, (<span class="keyword">uint64_t</span>)<span class="built_in">image</span>-&gt;machHeader(), <span class="number">0</span>, <span class="number">0</span>)</span></span>;</span><br><span class="line">    <span class="comment">///重点操作</span></span><br><span class="line">		(*sNotifyObjCInit)(<span class="built_in">image</span>-&gt;getRealPath(), <span class="built_in">image</span>-&gt;machHeader());</span><br><span class="line">		<span class="keyword">uint64_t</span> t1 = mach_absolute_time();</span><br><span class="line">		<span class="keyword">uint64_t</span> t2 = mach_absolute_time();</span><br><span class="line">		<span class="keyword">uint64_t</span> timeInObjC = t1-t0;</span><br><span class="line">		<span class="keyword">uint64_t</span> emptyTime = (t2-t1)*<span class="number">100</span>;</span><br><span class="line">		<span class="keyword">if</span> ( (timeInObjC &gt; emptyTime) &amp;&amp; (timingInfo != <span class="literal">NULL</span>) ) &#123;</span><br><span class="line">			timingInfo-&gt;addTime(<span class="built_in">image</span>-&gt;getShortName(), timeInObjC);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">    <span class="comment">// mach message csdlc about dynamically unloaded images</span></span><br><span class="line">	<span class="keyword">if</span> ( <span class="built_in">image</span>-&gt;addFuncNotified() &amp;&amp; (state == dyld_image_state_terminated) ) &#123;</span><br><span class="line">		notifyKernel(*<span class="built_in">image</span>, <span class="literal">false</span>);</span><br><span class="line">		<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">mach_header</span>* <span class="title">loadAddress</span>[] = &#123;</span> <span class="built_in">image</span>-&gt;machHeader() &#125;;</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">char</span>* loadPath[] = &#123; <span class="built_in">image</span>-&gt;getPath() &#125;;</span><br><span class="line">		notifyMonitoringDyld(<span class="literal">true</span>, <span class="number">1</span>, loadAddress, loadPath);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>其重点是<code>(*sNotifyObjCInit)(image-&gt;getRealPath(), image-&gt;machHeader());</code>，我们全局搜索<code>sNotifyObjCInit</code>并没有实现，但是有赋值操作：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">registerObjCNotifiers</span><span class="params">(_dyld_objc_notify_mapped mapped, _dyld_objc_notify_init init, _dyld_objc_notify_unmapped unmapped)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">// record functions to call</span></span><br><span class="line">	sNotifyObjCMapped	= mapped;</span><br><span class="line">  <span class="comment">///赋值操作</span></span><br><span class="line">	sNotifyObjCInit		= init;</span><br><span class="line">	sNotifyObjCUnmapped = unmapped;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// call 'mapped' function with all images mapped so far</span></span><br><span class="line">	<span class="keyword">try</span> &#123;</span><br><span class="line">		notifyBatchPartial(dyld_image_state_bound, <span class="literal">true</span>, <span class="literal">NULL</span>, <span class="literal">false</span>, <span class="literal">true</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">catch</span> (<span class="keyword">const</span> <span class="keyword">char</span>* msg) &#123;</span><br><span class="line">		<span class="comment">// ignore request to abort during registration</span></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// &lt;rdar://problem/32209809&gt; call 'init' function on all images already init'ed (below libSystem)</span></span><br><span class="line">	<span class="keyword">for</span> (<span class="built_in">std</span>::<span class="built_in">vector</span>&lt;ImageLoader*&gt;::iterator it=sAllImages.<span class="built_in">begin</span>(); it != sAllImages.<span class="built_in">end</span>(); it++) &#123;</span><br><span class="line">		ImageLoader* <span class="built_in">image</span> = *it;</span><br><span class="line">		<span class="keyword">if</span> ( (<span class="built_in">image</span>-&gt;getState() == dyld_image_state_initialized) &amp;&amp; <span class="built_in">image</span>-&gt;notifyObjC() ) &#123;</span><br><span class="line">			<span class="function">dyld3::ScopedTimer <span class="title">timer</span><span class="params">(DBG_DYLD_TIMING_OBJC_INIT, (<span class="keyword">uint64_t</span>)<span class="built_in">image</span>-&gt;machHeader(), <span class="number">0</span>, <span class="number">0</span>)</span></span>;</span><br><span class="line">			(*sNotifyObjCInit)(<span class="built_in">image</span>-&gt;getRealPath(), <span class="built_in">image</span>-&gt;machHeader());</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><code>registerObjCNotifiers</code>是在<code>_dyld_objc_notify_register</code>调用，而<code>_dyld_objc_notify_register</code>函数是在<code>libobjc</code>源码<code>_objc_init</code>代用的，所以<code>sNotifyObjCInit</code>的<code>赋值</code>的就是<code>objc</code>中的<code>load_images</code>，而<code>load_images</code>会调用所有的<code>+load</code>方法。所以综上所述，<code>notifySingle</code>是一个<code>回调函数</code>,所以我们继续看<code>load_images</code>方法</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> _objc_init(<span class="keyword">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">bool</span> initialized = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">if</span> (initialized) <span class="keyword">return</span>;</span><br><span class="line">    initialized = <span class="literal">true</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// fixme defer initialization until an objc-using image is found?</span></span><br><span class="line">    environ_init();</span><br><span class="line">    tls_init();</span><br><span class="line">    static_init();</span><br><span class="line">    runtime_init();</span><br><span class="line">    exception_init();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __OBJC2__</span></span><br><span class="line">    <span class="keyword">cache_t</span>::init();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    _imp_implementationWithBlock_init();</span><br><span class="line"></span><br><span class="line">    _dyld_objc_notify_register(&amp;map_images, load_images, unmap_image);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __OBJC2__</span></span><br><span class="line">    didCallDyldNotifyRegister = <span class="literal">true</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="load-images"><a href="#load-images" class="headerlink" title="load_images"></a>load_images</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">load_images(<span class="keyword">const</span> <span class="keyword">char</span> *path __unused, <span class="keyword">const</span> struct mach_header *mh)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (!didInitialAttachCategories &amp;&amp; didCallDyldNotifyRegister) &#123;</span><br><span class="line">        didInitialAttachCategories = <span class="literal">true</span>;</span><br><span class="line">        loadAllCategories();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Return without taking locks if there are no +load methods here.</span></span><br><span class="line">    <span class="keyword">if</span> (!hasLoadMethods((<span class="keyword">const</span> headerType *)mh)) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">recursive_mutex_locker_t</span> <span class="title">lock</span><span class="params">(loadMethodLock)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Discover load methods</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="function"><span class="keyword">mutex_locker_t</span> <span class="title">lock2</span><span class="params">(runtimeLock)</span></span>;</span><br><span class="line">        prepare_load_methods((<span class="keyword">const</span> headerType *)mh);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Call +load methods (without runtimeLock - re-entrant)</span></span><br><span class="line"> 		<span class="comment">// 调用了load方法</span></span><br><span class="line">    call_load_methods();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>方法比较简单，主要调用了<code>call_load_methods</code>方法</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">call_load_methods</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">bool</span> loading = NO;</span><br><span class="line">    <span class="keyword">bool</span> more_categories;</span><br><span class="line"></span><br><span class="line">    loadMethodLock.assertLocked();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Re-entrant calls do nothing; the outermost call will finish the job.</span></span><br><span class="line">    <span class="keyword">if</span> (loading) <span class="keyword">return</span>;</span><br><span class="line">    loading = YES;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">void</span> *pool = objc_autoreleasePoolPush();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="comment">// 1. Repeatedly call class +loads until there aren't any more</span></span><br><span class="line">        <span class="keyword">while</span> (loadable_classes_used &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            call_class_loads();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2. Call category +loads ONCE</span></span><br><span class="line">        more_categories = call_category_loads();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3. Run more +loads if there are classes OR more untried categories</span></span><br><span class="line">    &#125; <span class="keyword">while</span> (loadable_classes_used &gt; <span class="number">0</span>  ||  more_categories);</span><br><span class="line"></span><br><span class="line">    objc_autoreleasePoolPop(pool);</span><br><span class="line"></span><br><span class="line">    loading = NO;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><code>call_load_methods</code>方法的核心就是循环调用<code>load</code>方法。</p>
-<p>###总结</p>
-<p>load的源码链为：<code>_dyld_start</code> –&gt; <code>dyldbootstrap::start</code> –&gt; <code>dyld::_main</code> –&gt; <code>dyld::initializeMainExecutable</code> –&gt; <code>ImageLoader::runInitializers</code> –&gt; <code>ImageLoader::processInitializers</code> –&gt; <code>ImageLoader::recursiveInitialization</code> –&gt; <code>dyld::notifySingle</code>(是一个回调处理) –&gt; <code>sNotifyObjCInit</code> –&gt; <code>load_images(libobjc.A.dylib)</code></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E6%B6%88%E6%81%AF%E8%BD%AC%E5%8F%91/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="个人技术博客">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E6%B6%88%E6%81%AF%E8%BD%AC%E5%8F%91/" class="post-title-link" itemprop="url">iOS底层探索 - 消息转发</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-07-04 17:14:03" itemprop="dateCreated datePublished" datetime="2021-07-04T17:14:03+08:00">2021-07-04</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-07-05 17:22:46" itemprop="dateModified" datetime="2021-07-05T17:22:46+08:00">2021-07-05</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>上一篇中我们探索了消息发送找不到方法的一个流程<code>动态方法决议</code>，本篇探索<code>动态方法决议</code>也找不到<code>imp</code>的下一步，也就是<code>消息转发</code>。</p>
-<p>和前面的流程不同的是，<code>消息转发</code>的源码并不在<code>libobjc</code>库里，而是在<code>CFFoundtion</code>框架里，<code>CFFoundtion</code>框已经开源的代码里没有找到消息转发的内容，所以我们必须找其它方式探索这个流程。</p>
-<h3 id="通过instrumentObjcMessageSends打印消息日志方式"><a href="#通过instrumentObjcMessageSends打印消息日志方式" class="headerlink" title="通过instrumentObjcMessageSends打印消息日志方式"></a>通过instrumentObjcMessageSends打印消息日志方式</h3><h4 id="instrumentObjcMessageSends的由来"><a href="#instrumentObjcMessageSends的由来" class="headerlink" title="instrumentObjcMessageSends的由来"></a>instrumentObjcMessageSends的由来</h4><p>通过方法调用这条链路<code>lookUpImpOrForward --&gt; log_and_fill_cache --&gt; logMessageSend</code>,我们在<code>logMessageSend</code>方法源码下方找到<code>instrumentObjcMessageSends</code>的实现：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">instrumentObjcMessageSends</span><span class="params">(BOOL flag)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">bool</span> enable = flag;</span><br><span class="line">    <span class="comment">// Shortcut NOP</span></span><br><span class="line">    <span class="keyword">if</span> (objcMsgLogEnabled == enable)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// If enabling, flush all method caches so we get some traces</span></span><br><span class="line">    <span class="keyword">if</span> (enable)</span><br><span class="line">        _objc_flush_caches(Nil);</span><br><span class="line">    <span class="comment">// Sync our log file</span></span><br><span class="line">    <span class="keyword">if</span> (objcMsgLogFD != <span class="number">-1</span>)</span><br><span class="line">        fsync (objcMsgLogFD);</span><br><span class="line">  	<span class="comment">//赋值是否需要打印message log</span></span><br><span class="line">    objcMsgLogEnabled = enable;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><code>log</code>文件存储的路径我们从<code>logMessageSend</code>方法里可以看到，为<code>/tmp/msgSends</code>目录：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">logMessageSend</span><span class="params">(<span class="keyword">bool</span> isClassMethod,</span></span></span><br><span class="line"><span class="function"><span class="params">                    <span class="keyword">const</span> <span class="keyword">char</span> *objectsClass,</span></span></span><br><span class="line"><span class="function"><span class="params">                    <span class="keyword">const</span> <span class="keyword">char</span> *implementingClass,</span></span></span><br><span class="line"><span class="function"><span class="params">                    SEL selector)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">char</span>	buf[ <span class="number">1024</span> ];</span><br><span class="line">    <span class="comment">// Create/open the log file</span></span><br><span class="line">    <span class="keyword">if</span> (objcMsgLogFD == (<span class="number">-1</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">///日志文件打印路径</span></span><br><span class="line">        <span class="built_in">snprintf</span> (buf, <span class="keyword">sizeof</span>(buf), <span class="string">"/tmp/msgSends-%d"</span>, (<span class="keyword">int</span>) getpid ());</span><br><span class="line">        objcMsgLogFD = secure_open (buf, O_WRONLY | O_CREAT, geteuid());</span><br><span class="line">        <span class="keyword">if</span> (objcMsgLogFD &lt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// no log file - disable logging</span></span><br><span class="line">            objcMsgLogEnabled = <span class="literal">false</span>;</span><br><span class="line">            objcMsgLogFD = <span class="number">-1</span>;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// Make the log entry</span></span><br><span class="line">    <span class="built_in">snprintf</span>(buf, <span class="keyword">sizeof</span>(buf), <span class="string">"%c %s %s %s\n"</span>,</span><br><span class="line">            isClassMethod ? <span class="string">'+'</span> : <span class="string">'-'</span>,</span><br><span class="line">            objectsClass,</span><br><span class="line">            implementingClass,</span><br><span class="line">            sel_getName(selector));</span><br><span class="line"></span><br><span class="line">    objcMsgLogLock.lock();</span><br><span class="line">    <span class="built_in">write</span> (objcMsgLogFD, buf, <span class="built_in">strlen</span>(buf));</span><br><span class="line">    objcMsgLogLock.unlock();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Tell caller to not cache the method</span></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="instrumentObjcMessageSends的使用"><a href="#instrumentObjcMessageSends的使用" class="headerlink" title="instrumentObjcMessageSends的使用"></a>instrumentObjcMessageSends的使用</h4><ol>
-<li>在<code>main.m</code>文件里，通过<code>extern</code>声明<code>instrumentObjcMessageSends</code>方法。</li>
-<li>在调用方法前打开日志，调用方法后关闭日志。代码如下：</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">extern void instrumentObjcMessageSends(BOOL flag);</span><br><span class="line"></span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        instrumentObjcMessageSends(YES);</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person saySomething];</span><br><span class="line">        instrumentObjcMessageSends(NO);</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ol start="3">
-<li>运行代码，查看日志文件</li>
-</ol>
-<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/131e13fdd8ba4e9c851035e04011c6ce~tplv-k3u1fbpfcp-watermark.image" alt="1625403519834"></p>
-<p>通过日志文件可以清楚的看到都执行了哪些方法：</p>
-<ul>
-<li><code>resolveInstanceMethod</code>方法，即<code>动态方法决议</code></li>
-<li><code>forwardingTargetForSelector</code>方法，即<code>快速消息转发</code></li>
-<li><code>methodSignatureForSelector</code>方法，即<code>慢速消息转发</code></li>
-<li><code>resolveInstanceMethod</code>方法。即第二次<code>动态方法决议</code></li>
-<li>最后执行<code>doesNotRecognizeSelector</code>,抛出异常。</li>
-</ul>
-<p>这种方式我们就可以清楚的看到方法的调用流程，下面我们换一种方式验证一下。</p>
-<h3 id="反编译方式探索"><a href="#反编译方式探索" class="headerlink" title="反编译方式探索"></a>反编译方式探索</h3><p><a href="https://www.hopperapp.com/" target="_blank" rel="noopener">Hopper</a>是一款帮助我们静态分析可执行文件的工具。有了工具后我们还缺少两个东西才能继续探索：</p>
-<ol>
-<li><p>反编译之后，搜索代码的<code>关键字</code></p>
-<p>我们执行运行下面的代码，注意：<code>sayNB</code>方法是没有实现的</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>运行之后会直接崩溃，我们使用<code>bt</code>命令查看调用栈信息</p>
-<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7445c42269564c2b860969ccd4794c70~tplv-k3u1fbpfcp-watermark.image" alt="1625404761976"></p>
-<p>可以看到这里方法调用的起点是<code>CoreFoundation</code>_<em>forwarding_prep_0__</em> + 120`,所以我们搜索反编译代码的关键字就是<strong>forwarding_prep_0</strong></p>
-</li>
-<li><p>怎么获取我们需要反编译的可执行文件</p>
-<p>通过<code>1</code>步，我们知道<code>__forwarding_prep_0___</code>在<code>CoreFoundation</code>框架中,我们通过<code>lldb</code>的<code>image list</code>命令，找到<code>CoreFoundation</code>可执行文件的位置。</p>
-<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8930d06b559e46309e32738c99056d77~tplv-k3u1fbpfcp-watermark.image" alt="1625405481311"></p>
-<p>通过上图中目录我们找到<code>CoreFoundation</code>文件。</p>
-</li>
-<li><p>前面两个必要条件明确之后，我们打开<code>Hooper</code>软件，选择<code>Try The Demo</code>(主要因为软件太贵，土豪请直接购买正版)，然后将上一步的可执行文件拖入<code>Hooper</code>进行反编译，选择<code>x86(64 bit)</code></p>
-<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4999c11756d04c9dae3e524b3e288e5b~tplv-k3u1fbpfcp-watermark.image" alt="1625405841994"></p>
-<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e9d4ad3ee4f94c3999a30b4309cdd2ab~tplv-k3u1fbpfcp-watermark.image" alt="1625406148399"></p>
-<p><code>Hooper</code>软件我们用到的工具栏的示意图如下图：</p>
-<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7921490cdb4c421089f3a83d2c4d1763~tplv-k3u1fbpfcp-watermark.image" alt="Hopperc菜单示意图"></p>
-</li>
-<li><p>在<code>搜索框</code>位置搜索<code>__forwarding_prep_0___</code>,选择<code>伪代码</code>视图，发现和我们打印的堆栈信息一致，调用了<code>____forwarding___</code>方法</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> ___forwarding_prep_0___(<span class="keyword">int</span> arg0, <span class="keyword">int</span> arg1, <span class="keyword">int</span> arg2, <span class="keyword">int</span> arg3, <span class="keyword">int</span> arg4, <span class="keyword">int</span> arg5) &#123;</span><br><span class="line">    var_20 = rax;</span><br><span class="line">    var_30 = zero_extend_64(xmm7);</span><br><span class="line">    var_40 = zero_extend_64(xmm6);</span><br><span class="line">    var_50 = zero_extend_64(xmm5);</span><br><span class="line">    var_60 = zero_extend_64(xmm4);</span><br><span class="line">    var_70 = zero_extend_64(xmm3);</span><br><span class="line">    var_80 = zero_extend_64(xmm2);</span><br><span class="line">    var_90 = zero_extend_64(xmm1);</span><br><span class="line">    var_A0 = zero_extend_64(xmm0);</span><br><span class="line">    var_A8 = arg5;</span><br><span class="line">    var_B0 = arg4;</span><br><span class="line">    var_B8 = arg3;</span><br><span class="line">    var_C0 = arg2;</span><br><span class="line">    var_C8 = arg1;</span><br><span class="line">  	<span class="comment">///和我们打印的调用栈一致 </span></span><br><span class="line">    rax = ____forwarding___(&amp;var_D0, <span class="number">0x0</span>);</span><br><span class="line">    <span class="keyword">if</span> (rax != <span class="number">0x0</span>) &#123;</span><br><span class="line">            rax = *rax;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">            rax = objc_msgSend(var_D0, var_C8);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> rax;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>继续看<code>____forwarding___</code>方法的伪代码，首先是判断是否实现<code>快速转发</code>方法<code>forwardingTargetForSelector</code>,如果没有跳转到<code>loc_64a67</code>走<code>慢速转发流程</code></p>
-<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/40aabbc8d5924e3999abef17c93a76bd~tplv-k3u1fbpfcp-watermark.image" alt="1625407414541"></p>
-</li>
-<li><p>goto <code>loc_64a67</code>查看<code>慢速转发</code></p>
-<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/ef890803c42b4154916182dbd36a3b03~tplv-k3u1fbpfcp-watermark.image" alt="1625407939155"></p>
-</li>
-<li><p>如果没有实现则跳转，直接报错。</p>
-</li>
-</ol>
-<p>通过使用反编译的方式我们也验证了<code>消息转发</code>的流程。</p>
-<h3 id="消息转发实例"><a href="#消息转发实例" class="headerlink" title="消息转发实例"></a>消息转发实例</h3><p>在前面的例子中，我们补充一下<code>消息转发</code>的部分.</p>
-<h4 id="快速消息转发"><a href="#快速消息转发" class="headerlink" title="快速消息转发"></a>快速消息转发</h4><ul>
-<li>我们先定义一个<code>JSProxy</code>类，它实现了<code>sayNB</code>方法</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation JSProxy</span><br><span class="line"></span><br><span class="line">- (void)sayNB&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>在<code>JSPerson</code>类中添加<code>forwardingTargetForSelector</code>方法</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">#import &quot;JSProxy.h&quot;</span><br><span class="line">@implementation JSPerson</span><br><span class="line">- (id)forwardingTargetForSelector:(SEL)aSelector&#123;</span><br><span class="line">    NSLog(@&quot;forwardingTargetForSelector :%@-%@&quot;,self,NSStringFromSelector(aSelector));</span><br><span class="line">    return [JSProxy alloc];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>运行代码程序可以正常运行，打印<code>log</code>如下：</li>
-</ul>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">24</span>:<span class="number">49.089260</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7682</span>:<span class="number">442095</span>] resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">24</span>:<span class="number">49.090863</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7682</span>:<span class="number">442095</span>] resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">24</span>:<span class="number">49.091431</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7682</span>:<span class="number">442095</span>] forwardingTargetForSelector :&lt;JSPerson: <span class="number">0x600000010160</span>&gt;-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">24</span>:<span class="number">49.091571</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7682</span>:<span class="number">442095</span>] &lt;JSProxy: <span class="number">0x6000000080d0</span>&gt; - -[JSProxy sayNB]</span><br></pre></td></tr></table></figure>
-
-<h4 id="慢速消息转发"><a href="#慢速消息转发" class="headerlink" title="慢速消息转发"></a>慢速消息转发</h4><p>我们在上面例子基础上，在<code>JSPerson</code>类里实现<code>methodSignatureForSelector</code>和<code>forwardInvocation</code>,<code>forwardingTargetForSelector</code>方法返回<code>nil</code>标示不进行<code>快速消息转发</code>。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">@implementation JSPerson</span><br><span class="line">- (id)forwardingTargetForSelector:(SEL)aSelector&#123;</span><br><span class="line">    NSLog(@&quot;forwardingTargetForSelector :%@-%@&quot;,self,NSStringFromSelector(aSelector));</span><br><span class="line">    return nil;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">-(NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector&#123;</span><br><span class="line">    NSLog(@&quot;methodSignatureForSelector :%@-%@&quot;,self,NSStringFromSelector(aSelector));</span><br><span class="line">    if (aSelector &#x3D;&#x3D; @selector(sayNB)) &#123;</span><br><span class="line">        return [NSMethodSignature signatureWithObjCTypes:&quot;v@:&quot;];</span><br><span class="line">    &#125;</span><br><span class="line">    return [super methodSignatureForSelector:aSelector];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">-(void)forwardInvocation:(NSInvocation *)anInvocation&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
-
-<p>我们运行代码，发现运行正常，打印结果如下：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.163137</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.163803</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.164673</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] forwardingTargetForSelector :&lt;JSPerson: <span class="number">0x600000008070</span>&gt;-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165289</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165436</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] methodSignatureForSelector :&lt;JSPerson: <span class="number">0x600000008070</span>&gt;-sayNB</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165551</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-_forwardStackInvocation:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165634</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"><span class="number">2021</span><span class="number">-07</span><span class="number">-04</span> <span class="number">22</span>:<span class="number">34</span>:<span class="number">32.165986</span>+<span class="number">0800</span> ResolveMethodTest[<span class="number">7780</span>:<span class="number">447311</span>] &lt;JSPerson: <span class="number">0x600000008070</span>&gt; - -[JSPerson forwardInvocation:]</span><br></pre></td></tr></table></figure>
-
-<p>这里可能有人对添加<code>forwardInvocation</code>方法有因为，可以查看<a href="https://developer.apple.com/documentation/objectivec/nsobject/1571955-forwardinvocation" target="_blank" rel="noopener">苹果官方文档</a>查看原因</p>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>到这里我们就就把整个<code>objc_msgSend</code>的流程探索完了。</p>
-<ol>
-<li>汇编代码快速查找缓存</li>
-<li><code>loopUpImpForward</code>慢速递归查找类以及父类(包括缓存)的方法列表</li>
-<li>动态方法解析处理消息</li>
-<li>快速消息转发流程</li>
-<li>慢速消息转发流程</li>
-</ol>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="个人技术博客">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/07/04/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%8A%A8%E6%80%81%E6%96%B9%E6%B3%95%E8%A7%A3%E6%9E%90/" class="post-title-link" itemprop="url">iOS底层探索 - 动态方法决议</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-07-04 09:12:56" itemprop="dateCreated datePublished" datetime="2021-07-04T09:12:56+08:00">2021-07-04</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-07-05 17:22:29" itemprop="dateModified" datetime="2021-07-05T17:22:29+08:00">2021-07-05</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>前面两篇文章我们探索了消息查找的流程，包括快速查找和慢速查找，本文开始探索消息查找未找到时候的处理流程。</p>
-<h3 id="unrecognized-selector"><a href="#unrecognized-selector" class="headerlink" title="unrecognized selector"></a>unrecognized selector</h3><p><code>unrecognized selector</code>是我们开发中很熟悉的一种错误，就是找不到方法的时候报错的提示，比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;  JSPerson.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  JSPerson.m</span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;  main.m</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>我们定义一个<code>JSPerson</code>类，声明一个<code>sayNB</code>方法，但是并没有实现，因为<code>oc</code>是一种动态语言，可以在运行时添加方法实现，所以没有实现编译期并不会报错。在<code>main</code>函数里实例化一个<code>JSPerson</code>对象，调用<code>sayNB</code>方法，这个时候程序就会崩溃，报错：</p>
-<p><code>Terminating app due to uncaught exception &#39;NSInvalidArgumentException&#39;, reason: &#39;-[JSPerson sayNB]: unrecognized selector sent to instance 0x101844590&#39;</code>。</p>
-<p>这个错误是怎么来的呢，我们从上一节最后方法找不到的地方开始看，当没有找到方法实现时，<code>lookUpImpOrForward</code>方法返回值是<code>imp = forward_imp;</code>即<code>_objc_msgForward_impcache</code>。<code>objc</code>源码工程里全局搜索这个关键字，在<code>objc-msg-arm64.s</code>文件的<code>745</code>行找到实现：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">STATIC_ENTRY __objc_msgForward_impcache</span><br><span class="line">	&#x2F;&#x2F; No stret specialization.</span><br><span class="line">	b	__objc_msgForward</span><br><span class="line"></span><br><span class="line">END_ENTRY __objc_msgForward_impcache</span><br><span class="line">	</span><br><span class="line">ENTRY __objc_msgForward</span><br><span class="line"></span><br><span class="line">	adrp	x17, __objc_forward_handler@PAGE</span><br><span class="line">	ldr	p17, [x17, __objc_forward_handler@PAGEOFF]</span><br><span class="line">	&#x2F;&#x2F;&#x2F;返回x17 </span><br><span class="line">	TailCallFunctionPointer x17</span><br><span class="line">	</span><br><span class="line">END_ENTRY __objc_msgForward</span><br></pre></td></tr></table></figure>
-
-<p>这段代码比较简单，调用了<code>__objc_forward_handler</code>方法，继续搜索<code>__objc_forward_handler</code>方法，并没有找到方法实现，根据前面的经验，去掉<code>_</code>继续搜索<code>objc_forward_handler</code>,在<code>objc_runtime.mm</code>文件中找到了实现：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Default forward handler halts the process.</span></span><br><span class="line">__attribute__((noreturn, cold)) <span class="keyword">void</span></span><br><span class="line">objc_defaultForwardHandler(id self, SEL sel)</span><br><span class="line">&#123;</span><br><span class="line">    _objc_fatal(<span class="string">"%c[%s %s]: unrecognized selector sent to instance %p "</span></span><br><span class="line">                <span class="string">"(no message forward handler is installed)"</span>, </span><br><span class="line">                class_isMetaClass(object_getClass(self)) ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                object_getClassName(self), sel_getName(sel), self);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">void</span> *_objc_forward_handler = (<span class="keyword">void</span>*)objc_defaultForwardHandler;</span><br></pre></td></tr></table></figure>
-
-<p>这段代码就显而易见了，找不到方法的时候会执行<code>unrecognized selector</code>报错。</p>
-<h3 id="动态方法决议"><a href="#动态方法决议" class="headerlink" title="动态方法决议"></a>动态方法决议</h3><p>了解了<code>unrecognized selector</code>后我们回到<code>lookUpImpOrForward</code>的流程，当递归完查找所有父类流程没有找到方法实现会继续执行方法后面的代码：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (slowpath(behavior &amp; LOOKUP_RESOLVER)) &#123;</span><br><span class="line">     behavior ^= LOOKUP_RESOLVER;</span><br><span class="line">     <span class="keyword">return</span> resolveMethod_locked(inst, sel, cls, behavior);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><code>behavior</code>是<code>lookUpImpOrForward</code>方法的最后一个参数，通过找到方法的调用<code>behavior=LOOKUP_INITIALIZE | LOOKUP_RESOLVER</code>=<code>3</code>。<code>LOOKUP_RESOLVER=2</code></p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">	<span class="comment">// lookUpImpOrForward(obj, sel, cls, LOOKUP_INITIALIZE | LOOKUP_RESOLVER)</span></span><br><span class="line"><span class="keyword">enum</span> &#123;</span><br><span class="line">    LOOKUP_INITIALIZE = <span class="number">1</span>,</span><br><span class="line">    LOOKUP_RESOLVER = <span class="number">2</span>,</span><br><span class="line">    LOOKUP_NIL = <span class="number">4</span>,</span><br><span class="line">    LOOKUP_NOCACHE = <span class="number">8</span>,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-
-<p>这个<code>if</code>代码块其实是巧妙的使用了<code>单例</code>思想只会执行一次:</p>
-<ul>
-<li>初始behavior &amp; LOOKUP_RESOLVER = <code>3 &amp; 2</code> = <code>2</code>,条件为<code>true</code>执行</li>
-<li><code>behavior ^= LOOKUP_RESOLVER = 3 ^ 2 = 1</code></li>
-<li>如果后面再次进行<code>if</code>判断，<code>behavior &amp; LOOKUP_RESOLVER = 1 &amp; 2 = 0</code>,条件为<code>false</code>就不会执行代码块。</li>
-</ul>
-<p>前面<code>if</code>代码块会执行方法：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> NEVER_INLINE IMP</span><br><span class="line">resolveMethod_locked(id inst, SEL sel, Class cls, <span class="keyword">int</span> behavior)</span><br><span class="line">&#123;</span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    runtimeLock.unlock();</span><br><span class="line">    <span class="comment">//判断是否是元类</span></span><br><span class="line">    <span class="keyword">if</span> (! cls-&gt;isMetaClass()) &#123;</span><br><span class="line">      	<span class="comment">//实例方法 解析</span></span><br><span class="line">        <span class="comment">// try [cls resolveInstanceMethod:sel]</span></span><br><span class="line">        resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// try [nonMetaClass resolveClassMethod:sel]</span></span><br><span class="line">        <span class="comment">// and [cls resolveInstanceMethod:sel]</span></span><br><span class="line">        <span class="comment">//类方法 解析</span></span><br><span class="line">        resolveClassMethod(inst, sel, cls);</span><br><span class="line">        <span class="keyword">if</span> (!lookUpImpOrNilTryCache(inst, sel, cls)) &#123;</span><br><span class="line">            resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// chances are that calling the resolver have populated the cache</span></span><br><span class="line">    <span class="comment">// so attempt using it</span></span><br><span class="line">    <span class="comment">// 如果前面处理了 重新进行查找</span></span><br><span class="line">    <span class="keyword">return</span> lookUpImpOrForwardTryCache(inst, sel, cls, behavior);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="实例方法流程"><a href="#实例方法流程" class="headerlink" title="实例方法流程"></a>实例方法流程</h4><p>我们先看实例方法，实例方法会调用<code>resolveInstanceMethod</code>方法：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">resolveInstanceMethod</span><span class="params">(id inst, SEL sel, Class cls)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertUnlocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    <span class="comment">//resolveInstanceMethod 类方法</span></span><br><span class="line">    SEL resolve_sel = @selector(resolveInstanceMethod:);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!lookUpImpOrNilTryCache(cls, resolve_sel, cls-&gt;ISA(<span class="comment">/*authenticated*/</span><span class="literal">true</span>))) &#123;</span><br><span class="line">        <span class="comment">// Resolver not implemented.</span></span><br><span class="line">      	<span class="comment">// 因为系统有默认实现这里不会执行到</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    BOOL (*msg)(Class, SEL, SEL) = (typeof(msg))objc_msgSend;</span><br><span class="line">    <span class="keyword">bool</span> resolved = msg(cls, resolve_sel, sel);<span class="comment">//resolved 表示方法返回值</span></span><br><span class="line">    <span class="comment">// Cache the result (good or bad) so the resolver doesn't fire next time.</span></span><br><span class="line">    <span class="comment">// +resolveInstanceMethod adds to self a.k.a. cls</span></span><br><span class="line">    <span class="comment">// 继续查找 一次</span></span><br><span class="line">    IMP imp = lookUpImpOrNilTryCache(inst, sel, cls);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (resolved  &amp;&amp;  PrintResolving) &#123;</span><br><span class="line">        <span class="keyword">if</span> (imp) &#123;</span><br><span class="line">            <span class="comment">//找到了imp</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: method %c[%s %s] "</span></span><br><span class="line">                         <span class="string">"dynamically resolved to %p"</span>, </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), imp);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// resolved = true 但是不没有对应的处理方法</span></span><br><span class="line">            <span class="comment">// Method resolver didn't add anything?</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: +[%s resolveInstanceMethod:%s] returned YES"</span></span><br><span class="line">                         <span class="string">", but no new implementation of %c[%s %s] was found"</span>,</span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>可以看到，其实是在类中添加一个<code>resolveInstanceMethod:</code>进行处理，我们在前面例子的基础上给<code>JSPerson</code>类添加一个<code>resolveInstanceMethod:</code>方法处理：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">- (void)saySomethingDefalut&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayNB)) &#123;</span><br><span class="line">            IMP sayDefalutImp &#x3D; class_getMethodImplementation(self, @selector(saySomethingDefalut));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(self, @selector(saySomethingDefalut));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(self, sel, sayDefalutImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">        return [super resolveInstanceMethod:sel];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
-
-<p>重新运行<code>main</code>方法，发现程序可以正常运行了，控制台打印结果</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">resolveInstanceMethod :JSPerson-encodeWithOSLogCoder:options:maxLength:</span><br><span class="line"> &lt;JSPerson: <span class="number">0x10194fab0</span>&gt; - -[JSPerson saySomethingDefalut]</span><br></pre></td></tr></table></figure>
-
-<p>通过打印结果我们看到确实进入了<code>resolveInstanceMethod</code>,而且最终执行了<code>saySomethingDefalut</code>方法，实例方法的动态方法解析正常流程就是这样了。</p>
-<p>还有一个<strong>异常情况</strong>就是，如果我们不添加方法处理，只是打印执行<code>NSLog</code>方法：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        return [super resolveInstanceMethod:sel];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这个时候程序崩溃是毋庸置疑的，因为这样写相当于没有处理，但是这时候控制台的打印结果是：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">-[JSPerson sayNB]: unrecognized selector sent to instance <span class="number">0x10193a810</span></span><br></pre></td></tr></table></figure>
-
-<p><code>resolveInstanceMethod</code>执行了<strong>两次</strong>,这是为什么呢,我们在<code>resolveInstanceMethod</code>方法添加断点，使用<code>bt</code>命令查看调用栈：</p>
-<ul>
-<li><p>第一次调用，就是我们刚刚探索的来源是<code>libobjc</code>框架的<code>_objc_msgSend_uncached</code>方法。调用信息如下图</p>
-<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/82d0a5d1f1044e129b5a92cc2dc99429~tplv-k3u1fbpfcp-watermark.image" alt="1625382251804"></p>
-</li>
-<li><p>第二次调用，消息的来源是<code>CoreFoundation</code>的<code>___forwarding___</code>方法，下一篇我们会探索，调用信息如下图</p>
-<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a634df8fa05945829cdae9c99022496c~tplv-k3u1fbpfcp-watermark.image" alt="1625382659258"></p>
-</li>
-</ul>
-<h4 id="类方法流程"><a href="#类方法流程" class="headerlink" title="类方法流程"></a>类方法流程</h4><p>类方法的流程就是在<code>resolveClassMethod</code>实现，</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">resolveClassMethod</span><span class="params">(id inst, SEL sel, Class cls)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertUnlocked();</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    ASSERT(cls-&gt;isMetaClass());</span><br><span class="line">    <span class="keyword">if</span> (!lookUpImpOrNilTryCache(inst, @selector(resolveClassMethod:), cls)) &#123;</span><br><span class="line">        <span class="comment">// Resolver not implemented.</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    Class nonmeta;</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="function"><span class="keyword">mutex_locker_t</span> <span class="title">lock</span><span class="params">(runtimeLock)</span></span>;</span><br><span class="line">      	<span class="comment">//入参是元类 返回是当前类</span></span><br><span class="line">        nonmeta = getMaybeUnrealizedNonMetaClass(cls, inst);</span><br><span class="line">        <span class="comment">// +initialize path should have realized nonmeta already</span></span><br><span class="line">        <span class="keyword">if</span> (!nonmeta-&gt;isRealized()) &#123;</span><br><span class="line">            _objc_fatal(<span class="string">"nonmeta class %s (%p) unexpectedly not realized"</span>,</span><br><span class="line">                        nonmeta-&gt;nameForLogging(), nonmeta);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    BOOL (*msg)(Class, SEL, SEL) = (typeof(msg))objc_msgSend;</span><br><span class="line"> 		<span class="comment">//向当前类发送消息</span></span><br><span class="line">    <span class="keyword">bool</span> resolved = msg(nonmeta, @selector(resolveClassMethod:), sel);</span><br><span class="line">    <span class="comment">// Cache the result (good or bad) so the resolver doesn't fire next time.</span></span><br><span class="line">    <span class="comment">// +resolveClassMethod adds to self-&gt;ISA() a.k.a. cls</span></span><br><span class="line">    IMP imp = lookUpImpOrNilTryCache(inst, sel, cls);</span><br><span class="line">    <span class="keyword">if</span> (resolved  &amp;&amp;  PrintResolving) &#123;</span><br><span class="line">        <span class="keyword">if</span> (imp) &#123;</span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: method %c[%s %s] "</span></span><br><span class="line">                         <span class="string">"dynamically resolved to %p"</span>, </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), imp);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Method resolver didn't add anything?</span></span><br><span class="line">            _objc_inform(<span class="string">"RESOLVE: +[%s resolveClassMethod:%s] returned YES"</span></span><br><span class="line">                         <span class="string">", but no new implementation of %c[%s %s] was found"</span>,</span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel), </span><br><span class="line">                         cls-&gt;isMetaClass() ? <span class="string">'+'</span> : <span class="string">'-'</span>, </span><br><span class="line">                         cls-&gt;nameForLogging(), sel_getName(sel));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这个流程和实例方法很相似，在类中添加一个<code>resolveClassMethod:</code>的类方法处理，同样前面的例子我们验证一下:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">+ (void)sayHowAreYou;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">  </span><br><span class="line">@implementation JSPerson</span><br><span class="line"></span><br><span class="line">+ (void)sayAndYou&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveClassMethod:(SEL)sel&#123;</span><br><span class="line">    NSLog(@&quot;resolveClassMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayHowAreYou)) &#123;</span><br><span class="line">            IMP sayAndYouImp &#x3D; class_getMethodImplementation(objc_getMetaClass(&quot;JSPerson&quot;), @selector(sayAndYou));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(objc_getMetaClass(&quot;JSPerson&quot;), @selector(sayAndYou));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(objc_getMetaClass(&quot;JSPerson&quot;), sel, sayAndYouImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">    return [super resolveClassMethod:sel];</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        [JSPerson sayHowAreYou];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>编译运行发现程序正常运行了，打印结果为</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">resolveClassMethod :JSPerson-sayHowAreYou</span><br><span class="line">JSPerson - +[JSPerson sayAndYou]</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">else&#123;</span><br><span class="line">       &#x2F;&#x2F; try [nonMetaClass resolveClassMethod:sel]</span><br><span class="line">       &#x2F;&#x2F; and [cls resolveInstanceMethod:sel]</span><br><span class="line">       &#x2F;&#x2F;类方法 解析</span><br><span class="line">       resolveClassMethod(inst, sel, cls);</span><br><span class="line">       if (!lookUpImpOrNilTryCache(inst, sel, cls)) &#123;</span><br><span class="line">           resolveInstanceMethod(inst, sel, cls);</span><br><span class="line">       &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
-
-<p>细心地我们现在会发现在上面这段代码也就是类方法解析这个流程还有一个<code>resolveInstanceMethod(inst, sel, cls);</code>解析，这个原因是类方法在元类里是以实例方法的形式存在的，所以元类里<code>resolveInstanceMethod</code>对方法做了处理也会正常运行。</p>
-<h3 id="AOP思想处理动态方法决议"><a href="#AOP思想处理动态方法决议" class="headerlink" title="AOP思想处理动态方法决议"></a>AOP思想处理动态方法决议</h3><p>通过上面的动态方法解析流程，和前面我们探索的<a href="https://juejin.cn/post/6975781940519501861" target="_blank" rel="noopener"><code>isa</code>走位图和继承链</a>,我们可以使用<code>AOP</code>的思想，全局处理类的动态方法解析。具体实现就是在<code>NSObject</code>的分类中添加<code>resolveInstanceMethod:</code>类方法，处理方法的动态解析，例如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">@interface NSObject (JS)</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line">@implementation NSObject (LG)</span><br><span class="line"></span><br><span class="line">- (void)saySomethingDefalut&#123;</span><br><span class="line">    NSLog(@&quot;%@ - %s&quot;,self , __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">+ (BOOL)resolveInstanceMethod:(SEL)sel&#123;</span><br><span class="line">        NSLog(@&quot;resolveInstanceMethod :%@-%@&quot;,self,NSStringFromSelector(sel));</span><br><span class="line">        if (sel &#x3D;&#x3D; @selector(sayNB)) &#123;</span><br><span class="line">            IMP sayDefalutImp &#x3D; class_getMethodImplementation(self, @selector(saySomethingDefalut));</span><br><span class="line">            Method method     &#x3D; class_getInstanceMethod(self, @selector(saySomethingDefalut));</span><br><span class="line">            const char *type  &#x3D; method_getTypeEncoding(method);</span><br><span class="line">            return class_addMethod(self, sel, sayDefalutImp, type);</span><br><span class="line">        &#125;</span><br><span class="line">        return NO;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br><span class="line">  </span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line"></span><br><span class="line">- (void)sayNB;</span><br><span class="line"></span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">@implementation JSPerson</span><br><span class="line">  </span><br><span class="line">@end</span><br><span class="line"></span><br><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        [person sayNB];</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>运行项目发现正常运行，打印结果为：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">resolveInstanceMethod :JSPerson-sayNB</span><br><span class="line">&lt;JSPerson: <span class="number">0x100593ed0</span>&gt; - -[NSObject(LG) saySomethingDefalut]</span><br></pre></td></tr></table></figure>
-
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本节我们主要探讨了动态方法解析流程，分实例方法和类方法两种情况</p>
-<ul>
-<li>实例方法是在类中实现<code>resolveInstanceMethod:</code>的类方法，处理方法得动态绑定到异常处理的方法。</li>
-<li>类方法分两部分查找<ol>
-<li>搜索当前类的<code>resolveClassMethod:</code>方法。</li>
-<li>搜索类的元类的<code>resolveInstanceMethod:</code>方法</li>
-</ol>
-</li>
-<li>我们可以利用AOP思想在根类的<code>分类</code>中实现<code>resolveInstanceMethod:</code>从而完成全局方法的动态解析。</li>
-</ul>
-<p>如果没有进行动态方法解析，接下来就会进入消息转发的流程，我们下一节探索。</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1916,7 +1837,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-count">47</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1926,7 +1847,7 @@
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
-        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-count">8</span>
         <span class="site-state-item-name">标签</span>
       </div>
   </nav>
