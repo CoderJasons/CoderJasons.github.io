@@ -147,6 +147,116 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/09/iOS%E7%9A%84%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/05/09/iOS%E7%9A%84%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/" class="post-title-link" itemprop="url">iOS的内存对齐</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-05-09 09:05:24 / 修改时间：10:37:15" itemprop="dateCreated datePublished" datetime="2021-05-09T09:05:24+08:00">2021-05-09</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>上文中在分析alloc函数的时候，发现有个步骤是给对象分配内存空间，在分配内存空间的时候有一个内存对齐的概念，本文就详细说明一下内存对齐。</p>
+<h3 id="NSObject对象占用多少内存空间"><a href="#NSObject对象占用多少内存空间" class="headerlink" title="NSObject对象占用多少内存空间"></a>NSObject对象占用多少内存空间</h3><p>看下面这段代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">NSObject *obj &#x3D; [[NSObject alloc] init];</span><br><span class="line">NSLog(@&quot;实际占用： class_getInstanceSize &#x3D; %zd&quot;, class_getInstanceSize([NSObject class]));</span><br><span class="line">NSLog(@&quot;系统分配：malloc_size &#x3D; %zd&quot;, malloc_size((__bridge const void *)(obj)));</span><br><span class="line">NSLog(@&quot;NSObject类型占用：sizeOf &#x3D; %zd&quot;, sizeof(obj));</span><br></pre></td></tr></table></figure>
+
+<p>可以看到打印结果是</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">实际占用： class_getInstanceSize &#x3D; 8</span><br><span class="line">系统分配：malloc_size &#x3D; 16</span><br><span class="line">NSObject类型占用：sizeOf &#x3D; 8</span><br></pre></td></tr></table></figure>
+
+<p>说明NSObject对象占用的内存空间是8个字节，但是系统分配的空间是16字节。这是为什么，我们看一下核心代码，根据上文可以知道，各个函数的调用是<code>allocWithZone</code>-&gt;<code>_objc_rootAllocWithZone</code>-&gt;<code>_class-createInstanceFromZone</code>,前两个函数都是简单的调用后一个函数，代码集中在<code>_class-createInstanceFromZone</code>里</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> ALWAYS_INLINE id</span><br><span class="line">_class_createInstanceFromZone(Class cls, <span class="keyword">size_t</span> extraBytes, <span class="keyword">void</span> *zone,</span><br><span class="line">                              <span class="keyword">int</span> construct_flags = OBJECT_CONSTRUCT_NONE,</span><br><span class="line">                              <span class="keyword">bool</span> cxxConstruct = <span class="literal">true</span>,</span><br><span class="line">                              <span class="keyword">size_t</span> *outAllocatedSize = nil)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Read class's info bits all at once for performance</span></span><br><span class="line">    <span class="keyword">bool</span> hasCxxCtor = cxxConstruct &amp;&amp; cls-&gt;hasCxxCtor();</span><br><span class="line">    <span class="keyword">bool</span> hasCxxDtor = cls-&gt;hasCxxDtor();</span><br><span class="line">    <span class="keyword">bool</span> fast = cls-&gt;canAllocNonpointer();</span><br><span class="line">    <span class="keyword">size_t</span> <span class="built_in">size</span>;</span><br><span class="line">		<span class="comment">//这里是分配内存空间的</span></span><br><span class="line">    <span class="built_in">size</span> = cls-&gt;instanceSize(extraBytes);</span><br><span class="line">    <span class="keyword">if</span> (outAllocatedSize) *outAllocatedSize = <span class="built_in">size</span>;</span><br><span class="line"></span><br><span class="line">    id obj;</span><br><span class="line">    <span class="keyword">if</span> (zone) &#123;</span><br><span class="line">        obj = (id)malloc_zone_calloc((<span class="keyword">malloc_zone_t</span> *)zone, <span class="number">1</span>, <span class="built_in">size</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        obj = (id)<span class="built_in">calloc</span>(<span class="number">1</span>, <span class="built_in">size</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (slowpath(!obj)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (construct_flags &amp; OBJECT_CONSTRUCT_CALL_BADALLOC) &#123;</span><br><span class="line">            <span class="keyword">return</span> _objc_callBadAllocHandler(cls);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> nil;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!zone &amp;&amp; fast) &#123;</span><br><span class="line">        obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// Use raw pointer isa on the assumption that they might be</span></span><br><span class="line">        <span class="comment">// doing something weird with the zone or RR.</span></span><br><span class="line">        obj-&gt;initIsa(cls);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (fastpath(!hasCxxCtor)) &#123;</span><br><span class="line">        <span class="keyword">return</span> obj;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    construct_flags |= OBJECT_CONSTRUCT_FREE_ONFAILURE;</span><br><span class="line">    <span class="keyword">return</span> object_cxxConstructFromClass(obj, cls, construct_flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后我们看<code>instanceSize</code>函数</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">size_t</span> <span class="title">instanceSize</span><span class="params">(<span class="keyword">size_t</span> extraBytes)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (fastpath(cache.hasFastInstanceSize(extraBytes))) &#123;</span><br><span class="line">        <span class="keyword">return</span> cache.fastInstanceSize(extraBytes);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">size_t</span> <span class="built_in">size</span> = alignedInstanceSize() + extraBytes;</span><br><span class="line">    <span class="comment">// CF requires all objects be at least 16 bytes.</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">size</span> &lt; <span class="number">16</span>) <span class="built_in">size</span> = <span class="number">16</span>;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">size</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到当size&lt;16的时候，系统会分配16个字节。</p>
+<h3 id="内存对齐规则"><a href="#内存对齐规则" class="headerlink" title="内存对齐规则"></a>内存对齐规则</h3><p><strong>1、结构体变量的首地址是其最长基本类型成员的整数倍；</strong></p>
+<p><strong>2、结构体每个成员相对于结构体首地址的偏移量（offset）都是成员大小的整数倍，如不满足，对前一个成员填充字节以满足；</strong></p>
+<p><strong>3、结构体的总大小为结构体最大基本类型成员变量大小的整数倍；</strong></p>
+<p><strong>4、结构体中的成员变量都是分配在连续的内存空间中。</strong></p>
+<p>自定义一个类验证一下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">@interface TestMemory : NSObject&#123;</span><br><span class="line">    int _age;</span><br><span class="line">    NSString *_name;</span><br><span class="line">    int _weight;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>像刚开始一样，我们打印<code>TestMemory</code>对象的内存大小</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">TestMemory *obj &#x3D; [[TestMemory alloc] init];</span><br><span class="line">NSLog(@&quot;实际占用： class_getInstanceSize &#x3D; %zd&quot;, class_getInstanceSize([TestMemory class]));</span><br><span class="line">NSLog(@&quot;系统分配：malloc_size &#x3D; %zd&quot;, malloc_size((__bridge const void *)(obj)));</span><br><span class="line">NSLog(@&quot;TestMemory类型占用：sizeOf &#x3D; %zd&quot;, sizeof(obj));</span><br></pre></td></tr></table></figure>
+
+<p>打印结果</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">实际占用： class_getInstanceSize = <span class="number">32</span></span><br><span class="line">系统分配：malloc_size = <span class="number">32</span></span><br><span class="line">TestMemory类型占用：sizeOf = <span class="number">8</span></span><br></pre></td></tr></table></figure>
+
+<p>将<code>TestMemory</code>转成C++代码看一下结构体内容</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xcrun -sdk iphonesimulator clang -rewrite-objc TestMemory.m</span><br></pre></td></tr></table></figure>
+
+<p>结构体内容</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">TestMemory_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span><span class="comment">//8个字节</span></span><br><span class="line">	<span class="keyword">int</span> _age;<span class="comment">//int 正常4个字节 </span></span><br><span class="line">	NSString *_name;<span class="comment">//8个字节</span></span><br><span class="line">	<span class="keyword">int</span> _weight;<span class="comment">//4个字节</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>根据内存对齐规则2，_name变量的起始地址将会是8的整数倍，_age变量后面空了4个字节，可以计算出大小为8+4+4(填充4字节)+8+4=28，根据规则3，需要是最大成员的整数倍，所以28向上对8取整，内存大小为32。</p>
+<p>下面我们修改一下<code>TestMemory</code>成员变量的顺序</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">@interface TestMemory : NSObject&#123;</span><br><span class="line">    int _age;</span><br><span class="line">    int _weight;</span><br><span class="line">    NSString *_name;</span><br><span class="line">&#125;</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>现在打印的结果是：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">实际占用： class_getInstanceSize &#x3D; 24</span><br><span class="line">系统分配：malloc_size &#x3D; 32</span><br><span class="line">TestMemory类型占用：sizeOf &#x3D; 8</span><br></pre></td></tr></table></figure>
+
+<p>可以看到实际占用的大小为24了，我们看一下c++的结构体代码</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">TestMemory_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span><span class="comment">//8字节</span></span><br><span class="line">	<span class="keyword">int</span> _age;<span class="comment">//4字节</span></span><br><span class="line">	<span class="keyword">int</span> _weight;<span class="comment">//4字节</span></span><br><span class="line">	NSString *_name;<span class="comment">//8字节</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>因为我们调整了一下顺序，_name的起始地址是8的倍数，所以不需要再_weight字节后面填充字节，大小就为8+4+4+8=24，因为24是8的倍数，所以也不需要根据规则3对8向上取整，实际占用内存空间就是24。</p>
+<p>到这里我们可以得出一个结论，成员变量顺序不同可以影响对象站内内存的空间大小。现在我们可能会想如果我们实际开发中定义属性的顺序会不会影响内存大小呢，如果影响如果不注意岂不是对象的内存大小会有很大差别？带着这个问题我们看一下定义属性的c++代码。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">@interface TestMemory : NSObject&#123;</span><br><span class="line">&#x2F;&#x2F;    int _age;</span><br><span class="line">&#x2F;&#x2F;    int _weight;</span><br><span class="line">&#x2F;&#x2F;    NSString *_name;</span><br><span class="line">&#125;</span><br><span class="line">@property (nonatomic,assign)int age;</span><br><span class="line">@property (nonatomic,strong)NSString *name;</span><br><span class="line">@property (nonatomic,assign)int weight;</span><br><span class="line"></span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+
+<p>我们定义属性的顺序和第一次测试的顺序相同。c++代码</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">TestMemory_IMPL</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">NSObject_IMPL</span> <span class="title">NSObject_IVARS</span>;</span></span><br><span class="line">	<span class="keyword">int</span> _age;</span><br><span class="line">	<span class="keyword">int</span> _weight;</span><br><span class="line">	NSString * _Nonnull _name;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到结构体里成员变量的顺序已经改变过了，说明苹果已经进行了优化，我们实际开发定义属性的时候，不会因为属性定义顺序的不同而影响对象占用的内存大小。</p>
+<p><a href="https://sg.jianshu.io/p/6abf116d659d" target="_blank" rel="noopener">参考文档</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/08/iOS%E5%BA%95%E5%B1%82%EF%BC%9Aalloc%E5%92%8Cinit/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -826,7 +936,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">47</span>
+          <span class="site-state-item-count">48</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
