@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yujiusheng.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="前面几篇我们探索了iOS使用频率很高的多线程技术GCD，本篇我们探索多线程中一个重要的概念锁。 锁的分类锁主要分为两大类自旋锁和互斥锁。 自旋锁在自旋锁中，线程会反复检查变量是否可用。由于线程这个过程中一致保持执行，所以是一种忙等待。 一旦获取了自旋锁，线程就会一直保持该锁，直到显式释放自旋锁。自旋锁避免了进程上下文的调度开销，因此对于线程只会阻塞很短时间的场合是有效的。对于iOS属性的修饰符at">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS多线程-锁">
+<meta property="og:url" content="http://yujiusheng.com/2021/08/23/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B-%E9%94%81/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="前面几篇我们探索了iOS使用频率很高的多线程技术GCD，本篇我们探索多线程中一个重要的概念锁。 锁的分类锁主要分为两大类自旋锁和互斥锁。 自旋锁在自旋锁中，线程会反复检查变量是否可用。由于线程这个过程中一致保持执行，所以是一种忙等待。 一旦获取了自旋锁，线程就会一直保持该锁，直到显式释放自旋锁。自旋锁避免了进程上下文的调度开销，因此对于线程只会阻塞很短时间的场合是有效的。对于iOS属性的修饰符at">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3e27af26dedf46ff9c3bc053105c7f1d~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/db699552afd14951b6c3695a353a7d51~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/852b8ac50ca64cb6aa06a11eb15f9546~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/02d33a39e653474f9471c6e0e1ef2994~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/328a178a46ec4d4cb286a8360e332ddc~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/0e83ec7588234014956e787a0991f1ba~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a874305ec494450ab33acfb02f644768~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/467c7996864941688b3ca24a63d15e0a~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3a4425ac2c0541c3af2d506802ebf03c~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e05a791f9e0e4be78679301542fd64aa~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/5223b33727034d4eaf5490d7d8a08fdf~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/582cb7845b854b7e97338ddb9618d7a0~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/30104e8b0ae74ff8a0c3d7123644dc6c~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/b2b276d04dd04fd88e2f06568a9d8546~tplv-k3u1fbpfcp-watermark.image">
+<meta property="article:published_time" content="2021-08-23T15:29:44.000Z">
+<meta property="article:modified_time" content="2021-08-24T11:38:53.000Z">
+<meta property="article:author" content="Jason">
+<meta property="article:tag" content="iOS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3e27af26dedf46ff9c3bc053105c7f1d~tplv-k3u1fbpfcp-watermark.image">
+
+<link rel="canonical" href="http://yujiusheng.com/2021/08/23/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B-%E9%94%81/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>iOS多线程-锁 | Jason的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Jason的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/08/23/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B-%E9%94%81/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          iOS多线程-锁
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-08-23 23:29:44" itemprop="dateCreated datePublished" datetime="2021-08-23T23:29:44+08:00">2021-08-23</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-08-24 19:38:53" itemprop="dateModified" datetime="2021-08-24T19:38:53+08:00">2021-08-24</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>前面几篇我们探索了<code>iOS</code>使用频率很高的多线程技术<code>GCD</code>，本篇我们探索多线程中一个重要的概念<code>锁</code>。</p>
+<h3 id="锁的分类"><a href="#锁的分类" class="headerlink" title="锁的分类"></a>锁的分类</h3><p>锁主要分为两大类<code>自旋锁</code>和<code>互斥锁</code>。</p>
+<h4 id="自旋锁"><a href="#自旋锁" class="headerlink" title="自旋锁"></a>自旋锁</h4><p>在自旋锁中，<code>线程会反复检查变量是否可用</code>。由于线程这个过程中一致保持执行，所以是一种<code>忙等待</code>。 一旦获取了自旋锁，线程就<code>会一直保持该锁</code>，直到显式释放自旋锁。自旋锁避免了进程上下文的调度开销，因此对于<code>线程只会阻塞很短时间的场合</code>是<code>有效</code>的。对于iOS属性的修饰符<code>atomic</code>，自带一把自旋锁</p>
+<h4 id="互斥锁"><a href="#互斥锁" class="headerlink" title="互斥锁"></a>互斥锁</h4><p><code>互斥锁</code>是一种用于<code>多线程编程</code>中，<code>防止两条线程同时对同一公共资源（例如全局变量）进行读写的机制</code>，该目的是通过<code>将代码切成一个个临界区</code>而达成。</p>
+<h4 id="读写锁"><a href="#读写锁" class="headerlink" title="读写锁"></a>读写锁</h4><p>读写锁实际是一种特殊的互斥锁，它把对共享资源的访问者划分成读者和写者，读者只对共享资源 进行读访问，写者则需要对共享资源进行写操作。这种锁相对于自旋锁而言，能提高并发性，因为在多处理器系统中，它允许同时有多个读者来访问共享资源，最大可能的读者数为实际的逻辑CPU 数。写者是排他性的，一个读写锁同时只能有一个写者或多个读者(与CPU数相关)，但不能同时既有读者又有写者。在读写锁保持期间也是抢占失效的。</p>
+<p>如果读写锁当前没有读者，也没有写者，那么写者可以立刻获得读写锁，否则它必须自旋在那里， 直到没有任何写者或读者。如果读写锁没有写者，那么读者可以立即获得该读写锁，否则读者必须自旋在那里，直到写者释放该读写锁。</p>
+<p>当读写锁是写加锁状态时, 在这个锁被解锁之前, 所有试图对这个锁加锁的线程都会被阻塞.当读写锁在读加锁状态时, 所有试图以读模式对它进行加锁的线程都可以得到访问权, 但是如果线程希望以写模式对此锁进行加锁, 它必须直到所有的线程释放锁.通常, 当读写锁处于读模式锁住状态时, 如果有另外线程试图以写模式加锁, 读写锁通常会阻塞随后的读模式锁请求, 这样可以避免读模式锁⻓期占用, 而等待的写模式锁请求⻓期阻塞.读写锁适合于对数据结构的读次数比写次数多得多的情况. 因为, 读模式锁定时可以共享, 以写模式锁住时意味着独占, 所以读写锁又叫共享-独占锁.</p>
+<h3 id="几种锁的性能对比"><a href="#几种锁的性能对比" class="headerlink" title="几种锁的性能对比"></a>几种锁的性能对比</h3><p>我们通过代码打印的方式比较各种锁性能：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br></pre></td><td class="code"><pre><span class="line">int js_runTimes &#x3D; 100000;</span><br><span class="line">&#x2F;** OSSpinLock 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    OSSpinLock js_spinlock &#x3D; OS_SPINLOCK_INIT;</span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        OSSpinLockLock(&amp;js_spinlock);          &#x2F;&#x2F;解锁</span><br><span class="line">        OSSpinLockUnlock(&amp;js_spinlock);</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;OSSpinLock: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;** dispatch_semaphore_t 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    dispatch_semaphore_t js_sem &#x3D; dispatch_semaphore_create(1);</span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        dispatch_semaphore_wait(js_sem, DISPATCH_TIME_FOREVER);</span><br><span class="line">        dispatch_semaphore_signal(js_sem);</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;dispatch_semaphore_t: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;** os_unfair_lock_lock 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    os_unfair_lock js_unfairlock &#x3D; OS_UNFAIR_LOCK_INIT;</span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        os_unfair_lock_lock(&amp;js_unfairlock);</span><br><span class="line">        os_unfair_lock_unlock(&amp;js_unfairlock);</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;os_unfair_lock_lock: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#x2F;** pthread_mutex_t 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    pthread_mutex_t js_metext &#x3D; PTHREAD_MUTEX_INITIALIZER;</span><br><span class="line">  </span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        pthread_mutex_lock(&amp;js_metext);</span><br><span class="line">        pthread_mutex_unlock(&amp;js_metext);</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;pthread_mutex_t: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#x2F;** NSlock 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    NSLock *js_lock &#x3D; [NSLock new];</span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        [js_lock lock];</span><br><span class="line">        [js_lock unlock];</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;NSlock: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;** NSCondition 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    NSCondition *js_condition &#x3D; [NSCondition new];</span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        [js_condition lock];</span><br><span class="line">        [js_condition unlock];</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;NSCondition: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;** PTHREAD_MUTEX_RECURSIVE 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    pthread_mutex_t js_metext_recurive;</span><br><span class="line">    pthread_mutexattr_t attr;</span><br><span class="line">    pthread_mutexattr_init (&amp;attr);</span><br><span class="line">    pthread_mutexattr_settype (&amp;attr, PTHREAD_MUTEX_RECURSIVE);</span><br><span class="line">    pthread_mutex_init (&amp;js_metext_recurive, &amp;attr);</span><br><span class="line">    </span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        pthread_mutex_lock(&amp;js_metext_recurive);</span><br><span class="line">        pthread_mutex_unlock(&amp;js_metext_recurive);</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;PTHREAD_MUTEX_RECURSIVE: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;** NSRecursiveLock 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    NSRecursiveLock *js_recursiveLock &#x3D; [NSRecursiveLock new];</span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        [js_recursiveLock lock];</span><br><span class="line">        [js_recursiveLock unlock];</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;NSRecursiveLock: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#x2F;** NSConditionLock 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    NSConditionLock *js_conditionLock &#x3D; [NSConditionLock new];</span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        [js_conditionLock lock];</span><br><span class="line">        [js_conditionLock unlock];</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;NSConditionLock: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;** @synchronized 性能 *&#x2F;</span><br><span class="line">&#123;</span><br><span class="line">    double_t js_beginTime &#x3D; CFAbsoluteTimeGetCurrent();</span><br><span class="line">    for (int i&#x3D;0 ; i &lt; js_runTimes; i++) &#123;</span><br><span class="line">        @synchronized(self) &#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line">    double_t js_endTime &#x3D; CFAbsoluteTimeGetCurrent() ;</span><br><span class="line">    JSLog(@&quot;@synchronized: %f ms&quot;,(js_endTime - js_beginTime)*1000);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在iPhone 12pro模拟器打印的结果为：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3e27af26dedf46ff9c3bc053105c7f1d~tplv-k3u1fbpfcp-watermark.image" alt="模拟器锁性能"></p>
+<p>可以看到<strong>@synchronized</strong>锁性能是比较差的，但是我们项目中可能会比较常见，我们就从<strong>@synchronized</strong>开始探索。</p>
+<h3 id="synchronized"><a href="#synchronized" class="headerlink" title="@synchronized"></a><strong>@synchronized</strong></h3><h4 id="xcrun分析"><a href="#xcrun分析" class="headerlink" title="xcrun分析"></a>xcrun分析</h4><p>我们在<code>main.m</code>文件里写一个锁：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, char * argv[]) &#123;</span><br><span class="line">    NSString * appDelegateClassName;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        &#x2F;&#x2F; Setup code that might create autoreleased objects goes here.</span><br><span class="line">        appDelegateClassName &#x3D; NSStringFromClass([AppDelegate class]);</span><br><span class="line">        @synchronized (appDelegateClassName) &#123;</span><br><span class="line">       </span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return UIApplicationMain(argc, argv, nil, appDelegateClassName);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>使用<code>xcrun</code>命令将其编译成<code>.cpp</code>文件</p>
+<p><code>xcrun -sdk iphoneos clang -arch arm64e -rewrite-objc main.m</code></p>
+<p>在<code>main.cpp</code>文件最下方找到<code>main</code>函数的实习，定位到<code>@synchronized</code>代码块</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/db699552afd14951b6c3695a353a7d51~tplv-k3u1fbpfcp-watermark.image" alt="xcrunsyn"></p>
+<p>将代码排版之后：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#123; </span><br><span class="line">  id _rethrow = <span class="number">0</span>; </span><br><span class="line">  id _sync_obj = (id)appDelegateClassName; </span><br><span class="line">  objc_sync_enter(_sync_obj);</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">   <span class="class"><span class="keyword">struct</span> _<span class="title">SYNC_EXIT</span> &#123;</span></span><br><span class="line">         _SYNC_EXIT(id arg) : sync_exit(arg) &#123;&#125;</span><br><span class="line">       ~_SYNC_EXIT() &#123;objc_sync_exit(sync_exit);&#125;</span><br><span class="line">        id sync_exit;</span><br><span class="line">    &#125; </span><br><span class="line">    _sync_exit(_sync_obj);</span><br><span class="line">  &#125; <span class="keyword">catch</span> (id e) &#123;_rethrow = e;&#125;</span><br><span class="line">  &#123; </span><br><span class="line">    <span class="class"><span class="keyword">struct</span> _<span class="title">FIN</span> &#123;</span> _FIN(id reth) : rethrow(reth) &#123;&#125;</span><br><span class="line">  ~_FIN() &#123; <span class="keyword">if</span> (rethrow) objc_exception_throw(rethrow); &#125;</span><br><span class="line">  id rethrow;</span><br><span class="line">&#125; _fin_force_rethow(_rethrow);&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>加锁成功的情况我们只需要关注<code>try</code>代码块及以上的代码。经过我们的简化后的代码：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">id _sync_obj = (id)appDelegateClassName; </span><br><span class="line">objc_sync_enter(_sync_obj);</span><br><span class="line">objc_sync_exit(sync_exit);</span><br></pre></td></tr></table></figure>
+
+<p>可以看到主要就是执行了两个函数<code>objc_sync_enter</code>和<code>objc_sync_exit</code>。</p>
+<h4 id="libobjc源码分析"><a href="#libobjc源码分析" class="headerlink" title="libobjc源码分析"></a>libobjc源码分析</h4><p>通过打符号断点<code>objc_sync_enter</code>,我们可以知道<code>objc_sync_enter</code>在<code>libobjc</code>源码中。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/852b8ac50ca64cb6aa06a11eb15f9546~tplv-k3u1fbpfcp-watermark.image" alt="libobjc_enter"></p>
+<p>接下来我们在<code>libobjc</code>源码中全局搜索<code>objc_sync_enter</code>:</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">objc_sync_enter</span><span class="params">(id obj)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> result = OBJC_SYNC_SUCCESS;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (obj) &#123;<span class="comment">///重要代码</span></span><br><span class="line">        SyncData* data = id2data(obj, ACQUIRE);</span><br><span class="line">        ASSERT(data);</span><br><span class="line">        data-&gt;mutex.lock();</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// @synchronized(nil) does nothing</span></span><br><span class="line">        <span class="keyword">if</span> (DebugNilSync) &#123;</span><br><span class="line">            _objc_inform(<span class="string">"NIL SYNC DEBUG: @synchronized(nil); set a breakpoint on objc_sync_nil to debug"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        objc_sync_nil();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果传入<code>obj</code>为<code>nil</code>,会什么也不做。主要看<code>if</code>代码块的代码，可以看到加锁是通过<code>data-&gt;mutex.lock()</code>,也就是<code>SyncData</code>的实例，所以我们先探究一下<code>SyncData</code>类型的结构：</p>
+<h5 id="SyncData"><a href="#SyncData" class="headerlink" title="SyncData"></a>SyncData</h5><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">typedef</span> struct <span class="title">alignas</span><span class="params">(CacheLineSize)</span> SyncData </span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">SyncData</span>* <span class="title">nextData</span>;</span></span><br><span class="line">    DisguisedPtr&lt;objc_object&gt; object;</span><br><span class="line">    <span class="keyword">int32_t</span> threadCount;  <span class="comment">// number of THREADS using this block</span></span><br><span class="line">    <span class="keyword">recursive_mutex_t</span> mutex;</span><br><span class="line">&#125; SyncData;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>nextData</code>：链表结构下一个节点</li>
+<li><code>object</code>：参照关联对象的结构，哈希表</li>
+<li><code>threadCount</code>：使用block的线程数量</li>
+<li><code>mutex</code>：递归锁（单用多线程会出现问题）</li>
+</ul>
+<p>在初始化<code>SyncData</code>实例的时候使用的是<code>id2data</code>函数，我们接下来探索这个函数。</p>
+<h5 id="id2data函数"><a href="#id2data函数" class="headerlink" title="id2data函数"></a>id2data函数</h5><p><code>id2data</code>函数有150+行，我们先隐藏代码块，总览一下结构：</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/02d33a39e653474f9471c6e0e1ef2994~tplv-k3u1fbpfcp-watermark.image" alt="id2data"></p>
+<p>函数的最开始两行有两个宏，它们的定义如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> LOCK_FOR_OBJ(obj) sDataLists[obj].lock</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> LIST_FOR_OBJ(obj) sDataLists[obj].data</span></span><br><span class="line"><span class="keyword">static</span> StripedMap&lt;SyncList&gt; sDataLists;</span><br></pre></td></tr></table></figure>
+
+<p><code>sDataLists</code>是一个静态哈希表结构，我们使用<code>lldb</code>查看它的数据结构：</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/328a178a46ec4d4cb286a8360e332ddc~tplv-k3u1fbpfcp-watermark.image" alt="sData"></p>
+<p>经过断点调试，第一次进来执行的代码是：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">posix_memalign((<span class="keyword">void</span> **)&amp;result, <span class="keyword">alignof</span>(SyncData), <span class="keyword">sizeof</span>(SyncData));</span><br><span class="line">result-&gt;object = (objc_object *)object;</span><br><span class="line">result-&gt;threadCount = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">new</span> (&amp;result-&gt;mutex) <span class="keyword">recursive_mutex_t</span>(fork_unsafe_lock);</span><br><span class="line">result-&gt;nextData = *listp;<span class="comment">//头插法 添加近链表</span></span><br><span class="line">*listp = result;</span><br></pre></td></tr></table></figure>
+
+<p>这里有个细节就是<code>listp</code>使用的<code>头插法</code>将新的元素添加到链表，它的可递归性的实现依赖了这种数据结构的使用。</p>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><ul>
+<li>synchronized的数据结构是哈希表，采用的拉链法处理哈希冲突</li>
+<li>sDataLists arrary key是和对象相关的，拉链链表里的元素是同一个对象的锁。</li>
+<li>objc_sync_enter和objc_sync_exit是对称的，它是一把递归锁。</li>
+<li>会有两种存储结构：tls和catch</li>
+<li>第一次访问syncData采用的是头插法链表结构 标记threadCount = 1</li>
+<li>后续访问，会判断是不是同一个对象，同一对象lockcount++,不是同一个对象threadCount++1。</li>
+<li>synchronized是一种可重入、递归的多线程锁，原因<ul>
+<li>tls保障 threadCount 可以有多个线程对这个锁对象加锁</li>
+<li>lock++会记录总共锁了多少次。</li>
+</ul>
+</li>
+</ul>
+<h3 id="NSLock和NSRecursiveLock使用"><a href="#NSLock和NSRecursiveLock使用" class="headerlink" title="NSLock和NSRecursiveLock使用"></a>NSLock和NSRecursiveLock使用</h3><p>我们以一个实例分析这两种锁的区别：</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (<span class="keyword">int</span> i= <span class="number">0</span>; i&lt;<span class="number">10</span>; i++) &#123;</span><br><span class="line">    <span class="built_in">dispatch_async</span>(dispatch_get_global_queue(<span class="number">0</span>, <span class="number">0</span>), ^&#123;</span><br><span class="line">        <span class="keyword">static</span> <span class="keyword">void</span> (^testMethod)(<span class="keyword">int</span>);</span><br><span class="line">        testMethod = ^(<span class="keyword">int</span> value)&#123;</span><br><span class="line">        <span class="keyword">if</span> (value &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="built_in">NSLog</span>(<span class="string">@"current value = %d"</span>,value);</span><br><span class="line">            testMethod(value - <span class="number">1</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        testMethod(<span class="number">10</span>);</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上面这个代码有多线程冲突的问题，打印的结果无序，不是我们想要的结果</p>
+<p> <img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/0e83ec7588234014956e787a0991f1ba~tplv-k3u1fbpfcp-watermark.image" alt="没有锁无序"></p>
+<h4 id="使用NSLock解决问题"><a href="#使用NSLock解决问题" class="headerlink" title="使用NSLock解决问题"></a>使用<code>NSLock</code>解决问题</h4><p>使用<code>NSLock</code>解决的方法其实很简单，就是在我们调用方法<code>testMethod</code>前后加锁。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a874305ec494450ab33acfb02f644768~tplv-k3u1fbpfcp-watermark.image" alt="nslock"></p>
+<p>我们再看打印结果就正常了。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/467c7996864941688b3ca24a63d15e0a~tplv-k3u1fbpfcp-watermark.image" alt="nslock打印结果"></p>
+<p><code>NSLock</code>适用的是在最外层加锁，如果我们能写的代码只能在<code>testMethod</code>操作，这个时候加<code>NSLock</code>就不会正常工作了。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3a4425ac2c0541c3af2d506802ebf03c~tplv-k3u1fbpfcp-watermark.image" alt="nslock加在业务代码"></p>
+<h4 id="使用NSRecursiveLock"><a href="#使用NSRecursiveLock" class="headerlink" title="使用NSRecursiveLock"></a>使用NSRecursiveLock</h4><p>上面我们知道<code>NSLock</code>在<code>testMethod</code>无法解决问题，我们尝试用<code>NSRecursiveLock</code>解决。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e05a791f9e0e4be78679301542fd64aa~tplv-k3u1fbpfcp-watermark.image" alt="nsrecrusiveLock"></p>
+<p>发现<code>NSRecursiveLock</code>并不能解决问题，而且还会偶现崩溃。<code>NSRecursiveLock</code>是一把递归锁，但是它并不支持多线程递归。</p>
+<h4 id="使用-synchronized"><a href="#使用-synchronized" class="headerlink" title="使用@synchronized"></a>使用@synchronized</h4><p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/5223b33727034d4eaf5490d7d8a08fdf~tplv-k3u1fbpfcp-watermark.image" alt="sychorsize解决问题"></p>
+<p>使用@synchronized解决了业务代码里的问题，说明@synchronized是一把支持多线程的递归锁。</p>
+<h3 id="NSCondition"><a href="#NSCondition" class="headerlink" title="NSCondition"></a>NSCondition</h3><p><strong>NSCondition</strong> 的对象实际上作为一个锁和一个线程检查器:锁主要 为了当检测条件时保护数据源，执行条件引发的任务;线程检查器 主要是根据条件决定是否继续运行线程，即线程是否被阻塞。它主要有四个方法</p>
+<ul>
+<li><strong>[condition lock]</strong>：一般用于多线程同时访问、修改同一个数据源，保证在同一 时间内数据源只被访问、修改一次，其他线程的命令需要在<strong>lock</strong> 外等待，只到 <strong>unlock</strong> ，才可访问</li>
+<li><strong>[condition unlock];//</strong>与<strong>lock</strong> 同时使用</li>
+<li><strong>[condition wait];//</strong>让当前线程处于等待状态</li>
+<li><strong>[condition signal];//CPU</strong>发信号告诉线程不用在等待，可以继续执行</li>
+</ul>
+<p>它的一个应用场景之一就是<code>生产者-消费者</code>模型。也就是通过多线程进行生产和销售产品，当产品数量为0的时候就只能等待，具体代码如下：</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)js_testConditon&#123;</span><br><span class="line">    _testCondition = [[<span class="built_in">NSCondition</span> alloc] init];</span><br><span class="line">    <span class="comment">//创建生产-消费者</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">50</span>; i++) &#123;</span><br><span class="line">        <span class="built_in">dispatch_async</span>(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, <span class="number">0</span>), ^&#123;</span><br><span class="line">            [<span class="keyword">self</span> js_producer];</span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="built_in">dispatch_async</span>(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, <span class="number">0</span>), ^&#123;</span><br><span class="line">            [<span class="keyword">self</span> js_consumer];</span><br><span class="line">        &#125;);</span><br><span class="line">        </span><br><span class="line">        <span class="built_in">dispatch_async</span>(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, <span class="number">0</span>), ^&#123;</span><br><span class="line">            [<span class="keyword">self</span> js_consumer];</span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="built_in">dispatch_async</span>(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, <span class="number">0</span>), ^&#123;</span><br><span class="line">            [<span class="keyword">self</span> js_producer];</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">- (<span class="keyword">void</span>)js_producer&#123;</span><br><span class="line">    [_testCondition lock]; <span class="comment">// 操作的多线程影响</span></span><br><span class="line">    <span class="keyword">self</span>.ticketCount = <span class="keyword">self</span>.ticketCount + <span class="number">1</span>;</span><br><span class="line">    <span class="built_in">NSLog</span>(<span class="string">@"生产一个 现有 count %zd"</span>,<span class="keyword">self</span>.ticketCount);</span><br><span class="line">    [_testCondition signal]; <span class="comment">// 信号</span></span><br><span class="line">    [_testCondition unlock];</span><br><span class="line">&#125;</span><br><span class="line">- (<span class="keyword">void</span>)js_consumer&#123;</span><br><span class="line">     [_testCondition lock];  <span class="comment">// 操作的多线程影响</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">self</span>.ticketCount == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">NSLog</span>(<span class="string">@"等待 count %zd"</span>,<span class="keyword">self</span>.ticketCount);</span><br><span class="line">        [_testCondition wait];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//注意消费行为，要在等待条件判断之后</span></span><br><span class="line">    <span class="keyword">self</span>.ticketCount -= <span class="number">1</span>;</span><br><span class="line">    <span class="built_in">NSLog</span>(<span class="string">@"消费一个 还剩 count %zd "</span>,<span class="keyword">self</span>.ticketCount);</span><br><span class="line">     [_testCondition unlock];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Foundation源码看锁的封装"><a href="#Foundation源码看锁的封装" class="headerlink" title="Foundation源码看锁的封装"></a>Foundation源码看锁的封装</h3><p>我们在<code>swift-corelibs-foundation</code>源码中探索。</p>
+<p>通过源码我们看到，<code>NSLock</code>等锁都实现了一个协议就是<code>NSLocking</code></p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">protocol</span> <span class="title">NSLocking</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">func</span> <span class="title">lock</span><span class="params">()</span></span></span><br><span class="line">    <span class="function"><span class="keyword">func</span> <span class="title">unlock</span><span class="params">()</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>它们都是对<code>pthread</code>的封装</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/582cb7845b854b7e97338ddb9618d7a0~tplv-k3u1fbpfcp-watermark.image" alt="锁的源码"></p>
+<p>NSRecursiveLock，也类似，它和<code>NSLock</code>的区别是<code>pthread_mutexattr_settype(attrs, Int32(PTHREAD_MUTEX_RECURSIVE))</code></p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/30104e8b0ae74ff8a0c3d7123644dc6c~tplv-k3u1fbpfcp-watermark.image" alt="nsrecursivelock源码"></p>
+<h3 id="NSConditionLock"><a href="#NSConditionLock" class="headerlink" title="NSConditionLock"></a>NSConditionLock</h3><ul>
+<li><strong>NSConditionLock</strong> 是锁，一旦一个线程获得锁，其他线程一定等待</li>
+<li>lock函数：表示 对象期待获得锁，如果没有其他线程获得锁(不需要判断内部的 <strong>condition)</strong> 那它能执行此行以下代码，如果已经有其他线程获得锁(可能是条件锁，或者无条件 锁)，则等待，直至其他线程解锁</li>
+<li>[xx <strong>lockWhenCondition</strong>：<strong>:A</strong>条件]方法：表示如果没有其他线程获得该锁，但是该锁内部的 <strong>condition</strong>不等于<strong>A</strong>条件，它依然不能获得锁，仍然等待。如果内部的<strong>condition</strong>等于<strong>A</strong>条件，并且 没有其他线程获得该锁，则进入代码区，同时设置它获得该锁，其他任何线程都将等待它代码的 完成，直至它解锁。</li>
+<li><strong>[xxx unlockWithCondition:A</strong>条件<strong>];</strong> 表示释放锁，同时把内部的<strong>condition</strong>设置为<strong>A</strong>条件</li>
+<li><strong>return = [xxx lockWhenCondition:A</strong>条件 <strong>beforeDate:A</strong>时间<strong>];</strong> 表示如果被锁定(没获得 锁)，并超过该时间则不再阻塞线程。但是注意:返回的值是<strong>NO,</strong>它没有改变锁的状态，这个函 数的目的在于可以实现两种状态下的处理。</li>
+</ul>
+<h3 id="栅栏函数实现读写锁"><a href="#栅栏函数实现读写锁" class="headerlink" title="栅栏函数实现读写锁"></a>栅栏函数实现读写锁</h3><p>读写锁主要要实现以下功能：</p>
+<ul>
+<li>多读单写功能。</li>
+<li>写入和写入互斥。</li>
+<li>读和写入互斥。</li>
+<li>写入不能阻塞主线程任务执行。</li>
+</ul>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">@interface</span> <span class="title">ViewController</span> ()</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">dispatch_queue_t</span> js_currentQueue;</span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">NSMutableDictionary</span> *mDict;</span><br><span class="line"><span class="keyword">@end</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">@implementation</span> <span class="title">ViewController</span></span></span><br><span class="line"></span><br><span class="line">- (<span class="keyword">void</span>)viewDidLoad &#123;</span><br><span class="line">    [<span class="keyword">super</span> viewDidLoad];</span><br><span class="line">    <span class="keyword">self</span>.js_currentQueue = dispatch_queue_create(<span class="string">"jscurrent"</span>, DISPATCH_QUEUE_CONCURRENT);</span><br><span class="line">    <span class="keyword">self</span>.mDict = [[<span class="built_in">NSMutableDictionary</span> alloc] init];</span><br><span class="line">    [<span class="keyword">self</span> js_safeSetter:<span class="string">@"123"</span> time:<span class="number">10</span>];</span><br><span class="line">    [<span class="keyword">self</span> js_safeSetter:<span class="string">@"456"</span> time:<span class="number">5</span>];</span><br><span class="line">    [<span class="keyword">self</span> js_safeSetter:<span class="string">@"789"</span> time:<span class="number">3</span>];</span><br><span class="line">    </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">- (<span class="keyword">void</span>)touchesBegan:(<span class="built_in">NSSet</span>&lt;<span class="built_in">UITouch</span> *&gt; *)touches withEvent:(<span class="built_in">UIEvent</span> *)event&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">5</span>; i++) &#123;</span><br><span class="line">        <span class="built_in">dispatch_async</span>(dispatch_get_global_queue(<span class="number">0</span>, <span class="number">0</span>), ^&#123;</span><br><span class="line">            <span class="built_in">NSLog</span>(<span class="string">@"读取，name = %@ thread---%@"</span>,[<span class="keyword">self</span> js_safeGetter],[<span class="built_in">NSThread</span> currentThread]);</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">- (<span class="keyword">void</span>)js_safeSetter:(<span class="built_in">NSString</span> *)name time:(<span class="keyword">int</span>)time&#123;</span><br><span class="line">    dispatch_barrier_async(<span class="keyword">self</span>.js_currentQueue, ^&#123;</span><br><span class="line">        sleep(time);</span><br><span class="line">        [<span class="keyword">self</span>.mDict setValue:name forKey:<span class="string">@"name"</span>];</span><br><span class="line">        <span class="built_in">NSLog</span>(<span class="string">@"写入，name = %@ thread---%@"</span>,name,[<span class="built_in">NSThread</span> currentThread]);</span><br><span class="line">    &#125;);</span><br><span class="line">    </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">- (<span class="built_in">NSString</span> *)js_safeGetter&#123;</span><br><span class="line">    __block <span class="built_in">NSString</span> *result;</span><br><span class="line">    <span class="built_in">dispatch_sync</span>(<span class="keyword">self</span>.js_currentQueue, ^&#123;</span><br><span class="line">        result = <span class="keyword">self</span>.mDict[<span class="string">@"name"</span>];</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
+
+<p>程序运行我们就开始点击屏幕(读操作)，最后看打印结果：</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/b2b276d04dd04fd88e2f06568a9d8546~tplv-k3u1fbpfcp-watermark.image" alt="读写锁"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/iOS/" rel="tag"># iOS</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/08/21/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B-GCD-%E4%B8%89/" rel="prev" title="iOS多线程 - GCD(三)">
+      <i class="fa fa-chevron-left"></i> iOS多线程 - GCD(三)
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#锁的分类"><span class="nav-number">1.</span> <span class="nav-text">锁的分类</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#自旋锁"><span class="nav-number">1.1.</span> <span class="nav-text">自旋锁</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#互斥锁"><span class="nav-number">1.2.</span> <span class="nav-text">互斥锁</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#读写锁"><span class="nav-number">1.3.</span> <span class="nav-text">读写锁</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#几种锁的性能对比"><span class="nav-number">2.</span> <span class="nav-text">几种锁的性能对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#synchronized"><span class="nav-number">3.</span> <span class="nav-text">@synchronized</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#xcrun分析"><span class="nav-number">3.1.</span> <span class="nav-text">xcrun分析</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#libobjc源码分析"><span class="nav-number">3.2.</span> <span class="nav-text">libobjc源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#SyncData"><span class="nav-number">3.2.1.</span> <span class="nav-text">SyncData</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#id2data函数"><span class="nav-number">3.2.2.</span> <span class="nav-text">id2data函数</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#小结"><span class="nav-number">3.3.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NSLock和NSRecursiveLock使用"><span class="nav-number">4.</span> <span class="nav-text">NSLock和NSRecursiveLock使用</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#使用NSLock解决问题"><span class="nav-number">4.1.</span> <span class="nav-text">使用NSLock解决问题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#使用NSRecursiveLock"><span class="nav-number">4.2.</span> <span class="nav-text">使用NSRecursiveLock</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#使用-synchronized"><span class="nav-number">4.3.</span> <span class="nav-text">使用@synchronized</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NSCondition"><span class="nav-number">5.</span> <span class="nav-text">NSCondition</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Foundation源码看锁的封装"><span class="nav-number">6.</span> <span class="nav-text">Foundation源码看锁的封装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NSConditionLock"><span class="nav-number">7.</span> <span class="nav-text">NSConditionLock</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#栅栏函数实现读写锁"><span class="nav-number">8.</span> <span class="nav-text">栅栏函数实现读写锁</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Jason</p>
+  <div class="site-description" itemprop="description">个人技术博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">51</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
