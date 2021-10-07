@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yujiusheng.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="上一篇我们介绍了编译的流程，本篇我们主要看编译产物Mach-O文件的内容。 目标文件编译器编译源代码后生成的文件就叫目标文件，Windows平台下PE(Portable Executable)和Linux下是ELF（Executalbe Linkable Format），它们都是COFF格式的变种，目标文件就是源代码编译后但未进行链接的中间文件(Windows的.obj和Linux下的.o)，它和">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS底层探索- Mach-O文件">
+<meta property="og:url" content="http://yujiusheng.com/2021/10/06/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-Mach-O%E6%96%87%E4%BB%B6/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="上一篇我们介绍了编译的流程，本篇我们主要看编译产物Mach-O文件的内容。 目标文件编译器编译源代码后生成的文件就叫目标文件，Windows平台下PE(Portable Executable)和Linux下是ELF（Executalbe Linkable Format），它们都是COFF格式的变种，目标文件就是源代码编译后但未进行链接的中间文件(Windows的.obj和Linux下的.o)，它和">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/57e2dc98564840c1843c3e71c4fb0761~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8ddf848598a54f8d83ba53fd09af90ce~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/2b0ba9c47d9f40d188f0bf2b35c9e384~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/cc28ea2cda5246d89fb59c22c03185e9~tplv-k3u1fbpfcp-watermark.image">
+<meta property="article:published_time" content="2021-10-06T02:25:15.000Z">
+<meta property="article:modified_time" content="2021-10-07T09:02:28.768Z">
+<meta property="article:author" content="Jason">
+<meta property="article:tag" content="iOS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/57e2dc98564840c1843c3e71c4fb0761~tplv-k3u1fbpfcp-watermark.image">
+
+<link rel="canonical" href="http://yujiusheng.com/2021/10/06/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-Mach-O%E6%96%87%E4%BB%B6/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>iOS底层探索- Mach-O文件 | Jason的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Jason的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/10/06/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-Mach-O%E6%96%87%E4%BB%B6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          iOS底层探索- Mach-O文件
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-10-06 10:25:15" itemprop="dateCreated datePublished" datetime="2021-10-06T10:25:15+08:00">2021-10-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-10-07 17:02:28" itemprop="dateModified" datetime="2021-10-07T17:02:28+08:00">2021-10-07</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>上一篇我们介绍了编译的流程，本篇我们主要看编译产物<code>Mach-O</code>文件的内容。</p>
+<h3 id="目标文件"><a href="#目标文件" class="headerlink" title="目标文件"></a>目标文件</h3><p>编译器编译源代码后生成的文件就叫<strong>目标文件</strong>，Windows平台下<code>PE</code>(Portable Executable)和Linux下是<code>ELF</code>（Executalbe Linkable Format），它们都是COFF格式的变种，目标文件就是源代码编译后但未进行<code>链接</code>的中间文件(Windows的.obj和Linux下的.o)，它和可执行文件的结构很相似，从广义上看，目标文件和可执行文件的格式几乎是一样的，所以我们可以广义的将目标文件和可执行文件看成是一种类型的文件，本文我们主要看iOS/macOS平台的目标文件<code>Mach-O</code>的内容。</p>
+<h3 id="Mach-O文件内容概况"><a href="#Mach-O文件内容概况" class="headerlink" title="Mach-O文件内容概况"></a>Mach-O文件内容概况</h3><p>使用<code>MachOView</code>工具，我们查看一个<code>Mach-O</code>文件的内容</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/57e2dc98564840c1843c3e71c4fb0761~tplv-k3u1fbpfcp-watermark.image?" alt="macho文件概览"></p>
+<p>可以看到主要分为三部分：</p>
+<ul>
+<li>Header：它描述了整个文件的基本属性，比如文件版本、目标机器型号、程序入口地址等。</li>
+<li>Load Commands：它包含了很多表，描述了文件中数据的组织结构，不同的数据类型使用不同的加载命令标识。</li>
+<li>Data：目标文件最大的部分，包含<code>Segment</code>的具体数据。</li>
+</ul>
+<h3 id="Header"><a href="#Header" class="headerlink" title="Header"></a>Header</h3><p>我们先看<code>Header</code>部分，测试工程的字段值如下：</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8ddf848598a54f8d83ba53fd09af90ce~tplv-k3u1fbpfcp-watermark.image?" alt="macho-header"></p>
+<p>我们也可以在iOS的sdk的<code>loader.h</code>文件中找到定义：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mach_header_64</span> &#123;</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	magic;		<span class="comment">/* mach magic number identifier */</span></span><br><span class="line">	<span class="keyword">cpu_type_t</span>	cputype;	<span class="comment">/* cpu specifier */</span></span><br><span class="line">	<span class="keyword">cpu_subtype_t</span>	cpusubtype;	<span class="comment">/* machine specifier */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	filetype;	<span class="comment">/* type of file */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	ncmds;		<span class="comment">/* number of load commands */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	sizeofcmds;	<span class="comment">/* the size of all the load commands */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	flags;		<span class="comment">/* flags */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	reserved;	<span class="comment">/* reserved */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到<code>Header</code>主要包括：</p>
+<ul>
+<li>Magic Number：魔数，它是文件的标识码，用于标识当前设备是大端序还是小端序，有 <code>MH_MAGIC_64</code> 和 <code>MH_CIGAM</code> 两种形式 。</li>
+<li>CPU Type：表示cpu的架构，包括<code>ARM64</code>、<code>X86_64</code>、<code>i386</code>等。</li>
+<li>CPU SubType：表示具体cpu的类型，区分不同版本的处理器。</li>
+<li>File Type：表示Mach-O文件类型，有<code>MH_EXECUTE</code>（可执行文件）、<code>MH_OBJECT</code>（可重定向的目标文件）、<code>MH_DYLIB</code>（动态绑定的共享库文件）等。</li>
+<li>Number of Load Commands：表示文件中<code>Load Commads</code>(加载命令)的个数。</li>
+<li>Size of Load Commands：表示文件中<code>Load Commads</code>(加载命令)所占的总字节大小。</li>
+<li>Flags：不同的文件标签的组合，每个标签占一个位，可以用位或来进行组合，常见的标签有<ul>
+<li>MH_NOUNDEFS：该文件没有未定义的引用。</li>
+<li>MH_DYLDLINK：该文件将要作为动态链接器的输入，不能再被静态链接器修改。</li>
+<li>MH_TWOLEVEL: 该文件使用两级名字空间绑定</li>
+<li>MH_PIE: 可执行文件会被加载到随机地址，只对<code>MH_EXECUTE</code>有效，意思是启用<code>ALSR</code>。</li>
+</ul>
+</li>
+<li>Reserved：保留字段。</li>
+</ul>
+<p>Mach-O文件被系统装载的时候，会先读取Header部分，通过Header找到Load Commands加载指令部分，读取到加载指令就可以加载到我们编写的代码。</p>
+<h3 id="Load-Commands"><a href="#Load-Commands" class="headerlink" title="Load Commands"></a>Load Commands</h3><p>Load Commands描述了Data中的各个段信息，比如每个段的段名、段的长度、在文件中的偏移、读取权限以及段的其他属性，它的起始位置要由Header的大小决定。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/2b0ba9c47d9f40d188f0bf2b35c9e384~tplv-k3u1fbpfcp-watermark.image?" alt="LoadCommads"></p>
+<p>由上图可以看到LoadCommad由很多段构成：</p>
+<ul>
+<li>LCSEGMEMT64(_PAGEZERO):该段在虚拟内存中的位置及大小都为0,不可读、不可写、不可执行,用来处理空指针，如果试图访问该段，那么将会引起系统的崩溃。</li>
+<li>LCSEGMEMT64(_TEXT):可执行的代码和其他一些只读数据，映射到内存，紧跟随_PAGEZERO端之后。</li>
+<li>LCSEGMEMT64(_DATA):可以更改的数据，映射到内存，紧跟随_TEXT端之后。</li>
+<li>LCSEGMEMT64(_LINKEDIT):动态链接库的原始数据,如符号、字符串和重定位表条目等。</li>
+<li>LC_DYLD_INFO_ONLY:保存动态链接的重要信息，根据它来进行地址重定向.根据它所记录的偏移量，我们便可以找到在 Dynamic Loader Info 中的相关信息。</li>
+<li>LC_SYMTAB:文件所使用的符号表,找到后分别获取符号表偏移量，符号数，字符串标偏移量，字符串表大小。</li>
+<li>LC_DYSYMTAB:动态链接器所使用的符号表,找到后获取间接符号表偏移符申表偏移量。</li>
+<li>LC_LOAD DYLINKER:默认的加载器路径(/usr/bin/dyld)</li>
+<li>LCUD: Mach-O文件的唯一标识(UUID)</li>
+<li>LC_VERSION MIN IPHONEOS: Mach-O文件要求的最低系统版本,和Xcod配置的 target有关。</li>
+<li>LC_SOURCE VERSION:构建二进制文件的源代码版本。</li>
+<li>LC_MAIN:程序的入口，包括入口的<code>Offset</code>和<code>Point</code>。</li>
+<li>LC_ENCRYPTION_INFO64:文件加密信息,包括加密标记、加密数据的偏移和大小。<code>Crypt Id</code>为1表示加密，0表示未加密。</li>
+<li>LC_LOAD_DYLIB:依赖的动态库,包括动态库路径、当前版本、兼容版本，对应我们依赖framework选择<code>Required</code>。</li>
+<li>LC_LOAD_WEAK_DYLIB:依赖的弱引用库，如果加载路径下有这个库,就引入,否则可以不引入,不影响使用，但是一旦使用的时候没有这个库,也会报异常,对应我们依赖framework是选择<code>Optional</code>。</li>
+<li>LC_RPATH:@math的路径,指定动态链接器搜索路径列表</li>
+<li>LC_FUNCTION_STARTS:记录函数起始地址表</li>
+<li>LC_DATA_IN_CODE:定义在代码段内的非指令表。</li>
+<li>LC_CODE_SIGNATURE:代码签名信息</li>
+</ul>
+<p>Load Command 由多个 Segment 构成，同样的我们也可以从<code>loader.h</code>文件中找到<code>Segment</code>的数据结构:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">segment_command_64</span> &#123;</span> <span class="comment">/* for 64-bit architectures */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	cmd;		<span class="comment">/* LC_SEGMENT_64 */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	cmdsize;	<span class="comment">/* includes sizeof section_64 structs */</span></span><br><span class="line">	<span class="keyword">char</span>		segname[<span class="number">16</span>];	<span class="comment">/* segment name */</span></span><br><span class="line">	<span class="keyword">uint64_t</span>	vmaddr;		<span class="comment">/* memory address of this segment */</span></span><br><span class="line">	<span class="keyword">uint64_t</span>	vmsize;		<span class="comment">/* memory size of this segment */</span></span><br><span class="line">	<span class="keyword">uint64_t</span>	fileoff;	<span class="comment">/* file offset of this segment */</span></span><br><span class="line">	<span class="keyword">uint64_t</span>	filesize;	<span class="comment">/* amount to map from the file */</span></span><br><span class="line">	<span class="keyword">vm_prot_t</span>	maxprot;	<span class="comment">/* maximum VM protection */</span></span><br><span class="line">	<span class="keyword">vm_prot_t</span>	initprot;	<span class="comment">/* initial VM protection */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	nsects;		<span class="comment">/* number of sections in segment */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	flags;		<span class="comment">/* flags */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>cmd：segment 的类型，和下面的 flags 标记位决定着这个段如何被装载。</li>
+<li>cmdsize：section_64 结构体所需要的空间。</li>
+<li>segname[16]：segment的名字。</li>
+<li>vmaddr：所描述段的虚拟内存地址。</li>
+<li>vmsize：为当前段分配的虚拟内存大小。</li>
+<li>fileoff：当前段在文件中的偏移量。</li>
+<li>filesize：当前段在文件中占用的字节。</li>
+<li>maxprot：segment所在页需要的最高内存保护，八进制表示。</li>
+<li>initprot：segment所在页面原始内存保护。</li>
+<li>nsects：segment中section的数量</li>
+<li>flags：标识符</li>
+</ul>
+<h3 id="Data"><a href="#Data" class="headerlink" title="Data"></a>Data</h3><p>Data 中存放的所有的 Section，例如机器指令，全局变量和局部静态变量，符号表，调试信息等都会被存储到对应的 Section 中。在<code>loader.h</code>文件中可以查看<code>Section</code>结构体的定义：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">section_64</span> &#123;</span> <span class="comment">/* for 64-bit architectures */</span></span><br><span class="line">	<span class="keyword">char</span>		sectname[<span class="number">16</span>];	<span class="comment">/* name of this section */</span></span><br><span class="line">	<span class="keyword">char</span>		segname[<span class="number">16</span>];	<span class="comment">/* segment this section goes in */</span></span><br><span class="line">	<span class="keyword">uint64_t</span>	addr;		<span class="comment">/* memory address of this section */</span></span><br><span class="line">	<span class="keyword">uint64_t</span>	<span class="built_in">size</span>;		<span class="comment">/* size in bytes of this section */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	offset;		<span class="comment">/* file offset of this section */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	align;		<span class="comment">/* section alignment (power of 2) */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	reloff;		<span class="comment">/* file offset of relocation entries */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	nreloc;		<span class="comment">/* number of relocation entries */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	flags;		<span class="comment">/* flags (section type and attributes)*/</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	reserved1;	<span class="comment">/* reserved (for offset or index) */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	reserved2;	<span class="comment">/* reserved (for count or sizeof) */</span></span><br><span class="line">	<span class="keyword">uint32_t</span>	reserved3;	<span class="comment">/* reserved */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/cc28ea2cda5246d89fb59c22c03185e9~tplv-k3u1fbpfcp-watermark.image?" alt="macho-data"></p>
+<p>几个重要的section如下</p>
+<p>__TEXT(代码段)部分：</p>
+<ul>
+<li>__text：主程序代码。</li>
+<li>__objc_methname：OC方法名</li>
+<li>__csstring：只读C语言字符串</li>
+<li>__objc_methtype：OC方法类型(方法签名)，方法签名包含了一个方法的方法名、参数类型、它所在的类等信息。</li>
+</ul>
+<p>__Data(数据段)部分：</p>
+<ul>
+<li>__const：常量</li>
+<li>__data：存储已经初始化的可变数据</li>
+<li>__bss：存储未初始化的全局变量和局部静态变量</li>
+<li>__objc_classname：存储OC的类名。</li>
+<li>__objc_clalsslist：OC方法列表</li>
+<li>__objc_protocollist：协议列表</li>
+<li>_la_symbol_ptr:懒绑定符号指针表 （对应还有一个nl_symbol_pt：非 懒绑定 的指针表）</li>
+<li>_objc_nlclslist:实现了+load方法的 Objective-C类列表。</li>
+<li>_ objc_catalist:OC分类( Category)列表。</li>
+<li>_objc_ classes:OC类引用列表</li>
+<li>_objc_protore:OC协议引用列表</li>
+</ul>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本文我们主要看了Mach-O文件的结构主要包括：</p>
+<ul>
+<li>Header：用于快速确定该文件的CPU类型、文件类型</li>
+<li>Load Commands：指示加载器如何设置并加载二进制数据</li>
+<li>Data：存放数据，例如代码、数据、字符串常量、类、方法等。</li>
+</ul>
+<p>我们研究Mach-O文件有一些应用(后面有机会再详细写)，包括但不限于以下几点：</p>
+<ul>
+<li>研究fishhook原理，它利用了<code>_la_symbol_ptr</code>等方面原理，在加载时实现C语言方法的替换。</li>
+<li>包体积优化，查找未使用的类(_objc_classlist和_objc_ classes比较)</li>
+<li>load方法使用的检测（_objc_nlclslist）。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/iOS/" rel="tag"># iOS</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/10/02/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-LLVM%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B/" rel="prev" title="iOS底层探索-LLVM编译流程">
+      <i class="fa fa-chevron-left"></i> iOS底层探索-LLVM编译流程
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#目标文件"><span class="nav-number">1.</span> <span class="nav-text">目标文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Mach-O文件内容概况"><span class="nav-number">2.</span> <span class="nav-text">Mach-O文件内容概况</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Header"><span class="nav-number">3.</span> <span class="nav-text">Header</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Load-Commands"><span class="nav-number">4.</span> <span class="nav-text">Load Commands</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Data"><span class="nav-number">5.</span> <span class="nav-text">Data</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Jason</p>
+  <div class="site-description" itemprop="description">个人技术博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">55</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
