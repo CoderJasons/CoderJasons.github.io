@@ -147,6 +147,87 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/06/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-alloc%E6%96%B9%E6%B3%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/06/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-alloc%E6%96%B9%E6%B3%95/" class="post-title-link" itemprop="url">iOS底层探索-alloc方法</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-06-06 16:23:12" itemprop="dateCreated datePublished" datetime="2021-06-06T16:23:12+08:00">2021-06-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-11 00:27:14" itemprop="dateModified" datetime="2021-07-11T00:27:14+08:00">2021-07-11</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><code>alloc</code>是我们日常开发中经常遇到，下面我们从源码层面分析一下，<code>alloc</code>方法的底层。</p>
+<h3 id="准备工作-获取源码"><a href="#准备工作-获取源码" class="headerlink" title="准备工作-获取源码"></a>准备工作-获取源码</h3><ul>
+<li>从苹果<a href="https://opensource.apple.com/tarballs/" target="_blank" rel="noopener">开源网站</a>下载<code>objc</code>的源码。</li>
+<li>根据<a href="https://juejin.cn/post/6914265121183236104" target="_blank" rel="noopener">这个教程</a>将源码调试成可编译的状态<h3 id="开始探究"><a href="#开始探究" class="headerlink" title="开始探究"></a>开始探究</h3>我们新建一个类JSPerson<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;.m</span><br><span class="line">@implementation JSPerson</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+在<code>main</code>方法中初始化<code>JSPerson</code><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        NSLog(@&quot;%@&quot;,person);</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+在<code>JSPerson *person = [JSPerson alloc];</code>这行添加断点运行。<br>按<code>control</code>键发现断点走到了<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">KCObjcBuild&#96;objc_alloc:</span><br><span class="line">-&gt;  0x100003f44 &lt;+0&gt;: jmpq   *0x40be(%rip)             ; (void *)0x0000000100003f76</span><br></pre></td></tr></table></figure>
+说明这个时候调用了<code>objc_alloc</code>方法，我们打一个<code>objc_alloc</code>的符号断点，继续执行程序，发现断点来到了<code>objc_alloc</code>的源码部分。<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; Calls [cls alloc].</span><br><span class="line">id</span><br><span class="line">objc_alloc(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    return callAlloc(cls, true&#x2F;*checkNil*&#x2F;, false&#x2F;*allocWithZone*&#x2F;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+我们继续进入<code>callAlloc</code>方法：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">static ALWAYS_INLINE id</span><br><span class="line">callAlloc(Class cls, bool checkNil, bool allocWithZone&#x3D;false)</span><br><span class="line">&#123;</span><br><span class="line">#if __OBJC2__</span><br><span class="line">    if (slowpath(checkNil &amp;&amp; !cls)) return nil;</span><br><span class="line">    if (fastpath(!cls-&gt;ISA()-&gt;hasCustomAWZ())) &#123;</span><br><span class="line">        return _objc_rootAllocWithZone(cls, nil);</span><br><span class="line">    &#125;</span><br><span class="line">#endif</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; No shortcuts available.</span><br><span class="line">    if (allocWithZone) &#123;</span><br><span class="line">        return ((id(*)(id, SEL, struct _NSZone *))objc_msgSend)(cls, @selector(allocWithZone:), nil);</span><br><span class="line">    &#125;</span><br><span class="line">    return ((id(*)(id, SEL))objc_msgSend)(cls, @selector(alloc));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+我们继续走断点，发现走到了<code>return ((id(*)(id, SEL))objc_msgSend)(cls, @selector(alloc));</code>即又调用了alloc方法，也就是说<code>callAlloc</code>也会再次调用。<br>继续调试这次走到了<code>return _objc_rootAllocWithZone(cls, nil);</code>,断点进入<code>_objc_rootAllocWithZone</code>方法看一下源码：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">id</span><br><span class="line">_objc_rootAllocWithZone(Class cls, malloc_zone_t *zone __unused)</span><br><span class="line">&#123;</span><br><span class="line">    &#x2F;&#x2F; allocWithZone under __OBJC2__ ignores the zone parameter</span><br><span class="line">    return _class_createInstanceFromZone(cls, 0, nil,</span><br><span class="line">                                         OBJECT_CONSTRUCT_CALL_BADALLOC);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+代码很简单，我们继续跟进到<code>_class_createInstanceFromZone</code>方法：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">static ALWAYS_INLINE id</span><br><span class="line">_class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,</span><br><span class="line">                              int construct_flags &#x3D; OBJECT_CONSTRUCT_NONE,</span><br><span class="line">                              bool cxxConstruct &#x3D; true,</span><br><span class="line">                              size_t *outAllocatedSize &#x3D; nil)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    &#x2F;&#x2F; Read class&#39;s info bits all at once for performance</span><br><span class="line">    bool hasCxxCtor &#x3D; cxxConstruct &amp;&amp; cls-&gt;hasCxxCtor();</span><br><span class="line">    bool hasCxxDtor &#x3D; cls-&gt;hasCxxDtor();</span><br><span class="line">    bool fast &#x3D; cls-&gt;canAllocNonpointer();</span><br><span class="line">    size_t size;</span><br><span class="line">    &#x2F;&#x2F;&#x2F;获取实例大小</span><br><span class="line">    size &#x3D; cls-&gt;instanceSize(extraBytes);</span><br><span class="line">    if (outAllocatedSize) *outAllocatedSize &#x3D; size;</span><br><span class="line">    id obj;</span><br><span class="line">    if (zone) &#123;</span><br><span class="line">        obj &#x3D; (id)malloc_zone_calloc((malloc_zone_t *)zone, 1, size);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        &#x2F;&#x2F;分配内存</span><br><span class="line">        obj &#x3D; (id)calloc(1, size);</span><br><span class="line">    &#125;</span><br><span class="line">    if (slowpath(!obj)) &#123;</span><br><span class="line">        if (construct_flags &amp; OBJECT_CONSTRUCT_CALL_BADALLOC) &#123;</span><br><span class="line">            return _objc_callBadAllocHandler(cls);</span><br><span class="line">        &#125;</span><br><span class="line">        return nil;</span><br><span class="line">    &#125;</span><br><span class="line">    &#x2F;&#x2F;&#x2F;关联isa指针</span><br><span class="line">    if (!zone &amp;&amp; fast) &#123;</span><br><span class="line">        obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        &#x2F;&#x2F; Use raw pointer isa on the assumption that they might be</span><br><span class="line">        &#x2F;&#x2F; doing something weird with the zone or RR.</span><br><span class="line">        obj-&gt;initIsa(cls);</span><br><span class="line">    &#125;</span><br><span class="line">    if (fastpath(!hasCxxCtor)) &#123;</span><br><span class="line">        return obj;</span><br><span class="line">    &#125;</span><br><span class="line">    construct_flags |&#x3D; OBJECT_CONSTRUCT_FREE_ONFAILURE;</span><br><span class="line">    return object_cxxConstructFromClass(obj, cls, construct_flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<code>_class_createInstanceFromZone</code>方法有三个关键的点，我们下面分别分析：<h4 id="获取实例大小-size-cls-gt-instanceSize-extraBytes"><a href="#获取实例大小-size-cls-gt-instanceSize-extraBytes" class="headerlink" title="获取实例大小 size = cls-&gt;instanceSize(extraBytes)"></a>获取实例大小 <code>size = cls-&gt;instanceSize(extraBytes)</code></h4>内联函数<code>instanceSize</code>的作用是获取实例的大小，对象的大小取决于其<code>ivars</code>(成员变量)的大小。<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; May be unaligned depending on class&#39;s ivars.</span><br><span class="line">uint32_t unalignedInstanceSize() const &#123;</span><br><span class="line">    ASSERT(isRealized());</span><br><span class="line">    return data()-&gt;ro()-&gt;instanceSize;</span><br><span class="line">&#125;</span><br><span class="line">inline size_t instanceSize(size_t extraBytes) const &#123;</span><br><span class="line">    if (fastpath(cache.hasFastInstanceSize(extraBytes))) &#123;</span><br><span class="line">        return cache.fastInstanceSize(extraBytes);</span><br><span class="line">    &#125;</span><br><span class="line">    size_t size &#x3D; alignedInstanceSize() + extraBytes;</span><br><span class="line">    &#x2F;&#x2F; CF requires all objects be at least 16 bytes.</span><br><span class="line">    if (size &lt; 16) size &#x3D; 16;</span><br><span class="line">    return size;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+根据<code>if (size &lt; 16) size = 16;</code>可以看出，对象最小大小为16，这个就是内存对齐的概念，上面的<code>alignedInstanceSize()</code>函数,会继续调用内联函数<code>word_align</code><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; __LP64__</span><br><span class="line">#   define WORD_MASK 7UL</span><br><span class="line">static inline uint32_t word_align(uint32_t x) &#123;</span><br><span class="line">    return (x + WORD_MASK) &amp; ~WORD_MASK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+这里就引入一个概念就是字节对齐。可以看到<code>WORD_MASK=7</code>,它的作用是保证字节的大小为8的倍数。<h4 id="给对象分配内存空间"><a href="#给对象分配内存空间" class="headerlink" title="给对象分配内存空间"></a>给对象分配内存空间</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">if (zone) &#123;</span><br><span class="line">    obj &#x3D; (id)malloc_zone_calloc((malloc_zone_t *)zone, 1, size);</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    obj &#x3D; (id)calloc(1, size);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="给对象关联isa指针"><a href="#给对象关联isa指针" class="headerlink" title="给对象关联isa指针"></a>给对象关联isa指针</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">if (!zone &amp;&amp; fast) &#123;</span><br><span class="line">    obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    &#x2F;&#x2F; Use raw pointer isa on the assumption that they might be</span><br><span class="line">    &#x2F;&#x2F; doing something weird with the zone or RR.</span><br><span class="line">    obj-&gt;initIsa(cls);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3>总结来看<code>alloc</code>的流程图即为下图所示：</li>
+</ul>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/62281d7404a940a9bcf2390166545e97~tplv-k3u1fbpfcp-watermark.image" alt="alloc流程.png"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/01/Swift-RxSwift%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1545,179 +1626,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/17/iOS-%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%88%86%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="个人技术博客">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/05/17/iOS-%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%88%86%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD/" class="post-title-link" itemprop="url">iOS 底层探索 - 分类的加载</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-05-17 11:20:09 / 修改时间：13:38:57" itemprop="dateCreated datePublished" datetime="2021-05-17T11:20:09+08:00">2021-05-17</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h3 id="初探懒加载类"><a href="#初探懒加载类" class="headerlink" title="初探懒加载类"></a>初探懒加载类</h3><p>上一章我们探索了 <code>iOS</code> 中类的加载，让我们简单回顾一下大概的流程。</p>
-<h4 id="类的加载回顾"><a href="#类的加载回顾" class="headerlink" title="类的加载回顾"></a>类的加载回顾</h4><ul>
-<li><code>libObjc</code> 向 <code>dyld</code> 注册了回调 <code>_dyld_objc_notify_register</code>，当 <code>dyld</code> 把 <code>App</code> 以及 <code>App</code> 所依赖的一系列 <code>Mach-O</code> 镜像加载到当前 <code>App</code> 被分配的内存空间之后，<code>dyld</code> 会通过 <code>_dyld_objc_notify_mapped</code> 也就是 <code>map_images</code> 来通知 <code>libObjc</code> 来完成具体的加载工作，<code>map_images</code> 被调用之后会来到 <code>_read_images</code></li>
-<li><code>_read_images</code><ul>
-<li>主要会进行类的加载工作，会插入 <strong>所有的类</strong> 到 <code>gdb_objc_realized_classes</code> 哈希表中（插入方式为 类名为 <code>key</code>，类对象为<code>value</code>, 不包括通过 <em>共享缓存</em> 里面的类），同时还会把类插入到 <code>allocatedClasses</code> 这个集合里面，注意，<code>allocatedClasses</code> 的类型为 <code>NXHashTable</code>，可以类比为 <code>NSSet</code>，而 <code>gdb_objc_realized_classes</code> 的类型为 <code>NXMapTable</code>，可以类比为 <code>NSDictionary</code></li>
-<li>对所有的类进行重映射</li>
-<li>将所有的 <code>SEL</code> 插入到 <code>namedSelectors</code> 哈希表中(插入方式为：<code>SEL</code> 名称为 <code>key</code>，<code>SEL</code> 为<code>value</code>)</li>
-<li>修复函数指针遗留</li>
-<li>将所有的 <code>Protocol</code> 插入到 <code>readProtocol</code> 哈希表中(插入方式为：<code>Protocol</code> 名称为 <code>key</code>，<code>Protocol</code> 为 <code>value</code>)</li>
-<li>对所有的 <code>Protocol</code> 做重映射</li>
-<li>初始化所有的<strong>非懒加载类</strong>，包括 <code>rw</code> 和 <code>ro</code> 的初始化操作</li>
-<li>处理所有的分类(包括类的分类和元类的分类)</li>
-</ul>
-</li>
-</ul>
-<h4 id="懒加载类的发现"><a href="#懒加载类的发现" class="headerlink" title="懒加载类的发现"></a>懒加载类的发现</h4><p>我们这个时候观察 <code>_read_images</code> 源码这部分的注释:</p>
-<blockquote>
-<p>Realize non-lazy classes (for +load methods and static instances)</p>
-<p>实现<strong>非懒加载</strong>类(实现了 <code>+load</code> 方法和静态实例)</p>
-</blockquote>
-<p>什么意思呢，我们这里其实打印的都是所谓的<strong>非懒加载类</strong>，这里除了我们自己实现了 <code>+load</code> 方法的两个类之外，其他的内容都是系统内置的类，包括我们十分熟悉的 <code>NSObject</code> 类。通过这里其实反过来推论，我们没有实现 <code>+load</code> 方法就是所谓的懒加载类，这种类并不会在 <code>_read_images</code>环节被加载，那么应该是在哪里加载呢？我们稍微思考一下，我们一般第一次操作一个类是不是在初始化这个类的时候，而初始化类不就是发送<code>alloc</code>消息吗，而根据我们前面探索消息查找的知识，在第一次发送某个消息的时候，是没有缓存的，所以会来到一个非常重要的方法叫<code>lookUpImpOrForward</code>，我们在<code>main.m</code>中<code>LGPerson</code>类初始化的地方和<code>lookUpImpOrForward</code> 入口处打上断点:</p>
-<p>Tips: 这里有个小技巧，我们先打开 <code>main.m</code> 文件中的断点，等断点来到了我们想要探索的 <code>LGPerson</code> 初始化的位置的时候，我们再打开 <code>lookUpImpOrForward</code> 处的断点，这样才能确保当前执行 <code>lookUpImpOrForward</code> 的是我们的研究对象 <code>LGPerson</code></p>
-<p>因为我们断点的位置是 <code>LGPerson</code> 类发送 <code>alloc</code> 消息，而显然 <code>alloc</code> 作为类方法是存储在元类上的，也就是说 <code>lookUpImpOrForward</code> 的 <code>cls</code> 其实是 <code>LGPerson</code> 元类。那么 <code>inst</code> 就应该是真正的对象.</p>
-<p>我们总结一下，如果类没有实现 <code>load</code> 方法，那么这个类就是<strong>懒加载类</strong>，反之、这个类如果实现了 <code>load</code> 方法，那么这个类就是<strong>非懒加载类</strong>。</p>
-<h4 id="懒加载类的流程"><a href="#懒加载类的流程" class="headerlink" title="懒加载类的流程"></a>懒加载类的流程</h4><p>关于<strong>非懒加载类</strong>的加载流程我们已经很熟悉了，我们总结下<strong>懒加载类</strong>的流程：</p>
-<ul>
-<li>类第一次发送消息的时候是没有缓存的，所以会来到 <code>_class_lookupMethodAndLoadCache3</code> ，关于这个方法我们在前面的消息查找章节已经介绍过了，不熟悉的同学可以去查阅一下。</li>
-<li><code>_class_lookupMethodAndLoadCache3</code> 会调用 <code>lookUpImpOrForward</code> ，这个方法的重要性在我们学习 <code>Runtime</code> 的过程中不言而喻</li>
-<li><code>lookUpImpOrForward</code> 内部会进行一下判断，如果 <code>cls</code> 没有被实现，会调用 <code>realizeClassMaybeSwiftAndLeaveLocked</code> 方法</li>
-<li><code>realizeClassMaybeSwiftAndLeaveLocked</code> 方法又会调用 <code>realizeClassMaybeSwiftMaybeRelock</code> 方法</li>
-<li><code>realizeClassMaybeSwiftMaybeRelock</code> 方法内部会进行一下是否是 <code>Swift</code> 的判断，如果不是 <code>Swift</code> 环境的话，就会来到 <code>realizeClassWithoutSwift</code> ，也就是最终的类的加载的地方</li>
-</ul>
-<h3 id="分类的底层实现"><a href="#分类的底层实现" class="headerlink" title="分类的底层实现"></a>分类的底层实现</h3><p>分类作为 <code>Objective-C</code> 中常见的特性，相信大家都不会陌生，不过在底层它是怎么实现的呢？</p>
-<h4 id="分类的定义"><a href="#分类的定义" class="headerlink" title="分类的定义"></a>分类的定义</h4><p>我们根据 <code>_category_t</code> 来到 <code>libObjc</code> 源码中进行查找，不过我们需要去掉一下 <code>_category_t</code> 的下划线，然后不难找到分类真正的定义所在：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">category_t</span> &#123;</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">char</span> *name;</span><br><span class="line">    <span class="keyword">classref_t</span> cls;</span><br><span class="line">    WrappedPtr&lt;<span class="keyword">method_list_t</span>, PtrauthStrip&gt; instanceMethods;</span><br><span class="line">    WrappedPtr&lt;<span class="keyword">method_list_t</span>, PtrauthStrip&gt; classMethods;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">protocol_list_t</span> *<span class="title">protocols</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">property_list_t</span> *<span class="title">instanceProperties</span>;</span></span><br><span class="line">    <span class="comment">// Fields below this point are not always present on disk.</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">property_list_t</span> *_<span class="title">classProperties</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">method_list_t</span> *<span class="title">methodsForMeta</span><span class="params">(<span class="keyword">bool</span> isMeta)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (isMeta) <span class="keyword">return</span> classMethods;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">return</span> instanceMethods;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">property_list_t</span> *<span class="title">propertiesForMeta</span><span class="params">(<span class="keyword">bool</span> isMeta, struct header_info *hi)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">protocol_list_t</span> *<span class="title">protocolsForMeta</span><span class="params">(<span class="keyword">bool</span> isMeta)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (isMeta) <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">return</span> protocols;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-
-<p>根据刚才 <code>clang</code> 重写之后的内容，我们不难看出</p>
-<ul>
-<li><p><code>name</code> : 是分类所关联的类，也就是类的名字，而不是分类的名字</p>
-</li>
-<li><p><code>cls</code> : 我们在前面可以看到 <code>clang</code> 重写后这个值为 0，但是后面有注释为 <code>&amp;OBJC_CLASS_$_LGTeacher</code> ，也就是我们的类对象的定义，所以这里其实就是我们要扩展的类对象，只是在编译期这个值并不存在</p>
-</li>
-<li><p><code>instanceMethods</code> : 分类上存储的实例方法</p>
-</li>
-<li><p><code>classMethods</code> ：分类上存储的类方法</p>
-</li>
-<li><p><code>protocols</code> ：分类所实现的协议</p>
-</li>
-<li><p><code>instanceProperties</code> ：分类所定义的实例属性，不过我们一般在分类中添加属性都是通过关联对象来实现的</p>
-</li>
-<li><p><code>_classProperties</code>：分类所定义的类属性。这里有一行注释：</p>
-<blockquote>
-<p>Fields below this point are not always present on disk.<br>下面的内容并不是一直在磁盘上保存</p>
-</blockquote>
-</li>
-</ul>
-<p>也就是说 <code>_classProperties</code> 其实是一个私有属性，但并不是一直都存在的。</p>
-<h3 id="分类的加载"><a href="#分类的加载" class="headerlink" title="分类的加载"></a>分类的加载</h3><p>我们现在知道了类分为了 <code>懒加载类</code> 和 <code>非懒加载类</code> ，它们的加载时机是不一样的，那么分类的加载又是怎么样的呢？我们还是同样的先分析没有实现 <code>load</code> 方法的分类的情况:</p>
-<p>但是我们在分析前，还要搞清楚一点，分类必须依附于类而存在，如果只有分类，没有类，那么从逻辑上是说不通的，就算实现了，编译器也会忽略掉。而关于类是懒加载还是非懒加载的，所以这里我们还要再细分一次。</p>
-<ul>
-<li>懒加载分类与懒加载类</li>
-<li>懒加载分类和非懒加载类</li>
-</ul>
-<h4 id="没有实现-load-的分类"><a href="#没有实现-load-的分类" class="headerlink" title="没有实现 load 的分类"></a>没有实现 load 的分类</h4><h5 id="与懒加载类配合加载"><a href="#与懒加载类配合加载" class="headerlink" title="与懒加载类配合加载"></a>与懒加载类配合加载</h5><p>我们先分析第一种情况，也就是类和分类都不实现 <code>load</code> 方法的情况。<br>首先，懒加载类的流程上面我们已经探索过了，在向类<strong>第一次发送消息</strong>的时候，懒加载类才会开始加载，而根据我们上一章类的加载探索内容，在 <code>realizeClassWithoutSwift</code> 方法的最后有一个 <code>methodizeClass</code> 方法，在这个方法里面会有一个 <code>Attach categories</code> 的地方：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Attach categories.</span></span><br><span class="line"><span class="keyword">if</span> (previously) &#123;</span><br><span class="line">    <span class="keyword">if</span> (isMeta) &#123;</span><br><span class="line">        objc::unattachedCategories.attachToClass(cls, previously,</span><br><span class="line">                                                 ATTACH_METACLASS);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// When a class relocates, categories with class methods</span></span><br><span class="line">        <span class="comment">// may be registered on the class itself rather than on</span></span><br><span class="line">        <span class="comment">// the metaclass. Tell attachToClass to look for those.</span></span><br><span class="line">        objc::unattachedCategories.attachToClass(cls, previously,</span><br><span class="line">                                                 ATTACH_CLASS_AND_METACLASS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">objc::unattachedCategories.attachToClass(cls, cls,</span><br><span class="line">                                         isMeta ? ATTACH_METACLASS : ATTACH_CLASS);</span><br></pre></td></tr></table></figure>
-
-<p>我们进入<code>unattachedCategories</code>的<code>attachToClass</code>方法</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">attachToClass</span><span class="params">(Class cls, Class previously, <span class="keyword">int</span> flags)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line">    ASSERT((flags &amp; ATTACH_CLASS) ||</span><br><span class="line">           (flags &amp; ATTACH_METACLASS) ||</span><br><span class="line">           (flags &amp; ATTACH_CLASS_AND_METACLASS));</span><br><span class="line">    <span class="keyword">auto</span> &amp;<span class="built_in">map</span> = <span class="built_in">get</span>();</span><br><span class="line">    <span class="keyword">auto</span> it = <span class="built_in">map</span>.<span class="built_in">find</span>(previously);</span><br><span class="line">    <span class="keyword">if</span> (it != <span class="built_in">map</span>.<span class="built_in">end</span>()) &#123;</span><br><span class="line">        category_list &amp;<span class="built_in">list</span> = it-&gt;second;</span><br><span class="line">        <span class="keyword">if</span> (flags &amp; ATTACH_CLASS_AND_METACLASS) &#123;</span><br><span class="line">            <span class="keyword">int</span> otherFlags = flags &amp; ~ATTACH_CLASS_AND_METACLASS;</span><br><span class="line">            attachCategories(cls, <span class="built_in">list</span>.<span class="built_in">array</span>(), <span class="built_in">list</span>.count(), otherFlags | ATTACH_CLASS);</span><br><span class="line">            attachCategories(cls-&gt;ISA(), <span class="built_in">list</span>.<span class="built_in">array</span>(), <span class="built_in">list</span>.count(), otherFlags | ATTACH_METACLASS);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            attachCategories(cls, <span class="built_in">list</span>.<span class="built_in">array</span>(), <span class="built_in">list</span>.count(), flags);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">map</span>.erase(it);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>但是我们断点之后发现这个时候通过 <code>unattachedCategoriesForClass</code> 方法并没有取到分类，我们此时不妨通过 <code>LLDB</code> 打印一下当前类里面是否已经把分类的内容附加上了。<br>前面的流程大家都很熟悉了，我们直接看 <code>cls</code> 的 <code>rw</code> 中的 <code>methods</code> 是否有内容：</p>
-<p>这样进一步证明了，如果是懒加载类，并且分类也是懒加载，那么分类的加载并不会来到 <code>unattachedCategoriesForClass</code> ，而是直接在编译时加载到了类的 <code>ro</code> 里面，然后在运行时被拷贝到了类的 <code>rw</code> 里面。这一点可以通过下面的 <code>LLDB</code> 打印来证明。</p>
-<h5 id="与非懒加载类配合加载"><a href="#与非懒加载类配合加载" class="headerlink" title="与非懒加载类配合加载"></a>与非懒加载类配合加载</h5><p>同样的道理，当类为非懒加载类的时候，走的是 <code>_read_images</code> 里面的流程，这个时候我们的懒加载分类是在哪加载的呢？</p>
-<p>分类还是不在这，同时通过 <code>LLDB</code> 打印，发现分类的方法已经在类的 <code>ro</code> 里面了，所以说分类的加载其实跟类的懒加载与否并没有关系，也就是说懒加载的分类都是在编译时期被加载的。</p>
-<h4 id="实现了-load-的分类"><a href="#实现了-load-的分类" class="headerlink" title="实现了 load 的分类"></a>实现了 load 的分类</h4><p>我们再接着分下下面两种情况：</p>
-<ul>
-<li>非懒加载分类与懒加载类</li>
-<li>非懒加载分类和非懒加载类</li>
-</ul>
-<h5 id="与懒加载类配合加载-1"><a href="#与懒加载类配合加载-1" class="headerlink" title="与懒加载类配合加载"></a>与懒加载类配合加载</h5><p>其实懒加载和非懒加载的最大区别就是加载是否提前，而实现了 <code>+load</code> 方法的分类，面对的是懒加载的类，<br>而懒加载的类我们前面已经知道了，是在第一次发送消息的时候才会被加载的，那我们直接在<br><code>lookupImpOrForward</code> =&gt; <code>realizeClassMaybeSwiftAndLeaveLocked</code> =&gt; <code>realizeClassMaybeSwiftMaybeRelock</code> =&gt; <code>realizeClassWithoutSwift</code> =&gt; <code>methodizeClass</code> 流程中的 <code>methodizeClass</code> 打上断点，看下在这里分类会不会被加载：</p>
-<p>这一次通过 <code>unattachedCategoriesForClass</code> 取出来值了，并且在这之前 <code>cls</code> 的 <code>ro</code> 中并没有分类的 <code>initialize</code> 方法：</p>
-<p>为什么走的不是发送消息的流程，而走的是 <code>load_images</code> 里面的 <code>prepare_load_methods</code> 方法呢？我们来到 <code>prepare_load_methods</code> 方法处：</p>
-<p>可以看到，其实是在这里调用了 <code>realizeClassWithoutSwift</code> 方法来加载类的。而上面的 <code>_getObjc2NonlazyCategoryList</code> 方法显示就是获取的所有的非懒加载分类，然后遍历这些非懒加载分类，然后去加载这些分类所依赖的类。这个逻辑很好理解，非懒加载分类让我们的懒加载类实现提前了，所以说懒加载类<strong>并不一定</strong>只会在第一次消息发送的时候加载，还要取决于有没有非懒加载的分类，如果有非懒加载的分类，那么就走的是 <code>load_images</code> 里面的 <code>prepare_load_methods</code> 的 <code>realizeClassWithoutSwift</code> 。</p>
-<h5 id="与非懒加载类配合加载-1"><a href="#与非懒加载类配合加载-1" class="headerlink" title="与非懒加载类配合加载"></a>与非懒加载类配合加载</h5><p>非懒加载类的流程我们也十分熟悉了，在 <code>_read_images</code> 里面进行加载，而此时，分类也是非懒加载。我们还是在 <code>methodizeClass</code> 里面进行断点：</p>
-<p>结果如上图所示，这次从 <code>unattachedCategoriesForClass</code> 方法取出来的是 <code>NULL</code> 值，显然分类不是在这个地方被加载的，我们回到 <code>_read_images</code> 方法，还记得那个 <code>Discover categories</code> 流程吗，我们打开里面的断点：</p>
-<p>其实 <code>attachCategories</code> 这个方法只会在实现了 <code>load</code> 方法的分类下才会被调用，而来到 <code>attachCategories</code> 之前又取决于类是否为懒加载，如果是懒加载，那么就在 <code>load_images</code> 里面去处理，如果是非懒加载，那么就在 <code>map_images</code> 里面去处理。</p>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>我们今天探索的内容可能会有点绕，不过其实探索下来，我们只需要保持研究重点就很简单。分类的加载其实可以笼统的分为实现 <code>load</code> 方法和没有实现 <code>load</code> 方法：</p>
-<ul>
-<li>没有实现 <code>load</code> 方法的分类由编译时确定</li>
-<li>实现了 <code>load</code> 方法的分类由运行时去确定</li>
-</ul>
-<p>这也说明分类的加载和类的加载是不一样的，而结合着类的懒加载与否，我们有以下的结论：</p>
-<ul>
-<li>懒加载分类 + 懒加载类</li>
-</ul>
-<blockquote>
-<p>类的加载在<strong>第一次消息发送</strong>的时候，而分类的加载则在<strong>编译时</strong></p>
-</blockquote>
-<ul>
-<li>懒加载分类 + 非懒加载类</li>
-</ul>
-<blockquote>
-<p>类的加载在 <code>_read_images</code> 处，分类的加载还是在<strong>编译时</strong></p>
-</blockquote>
-<ul>
-<li>非懒加载分类 + 懒加载类</li>
-</ul>
-<blockquote>
-<p>类的加载在 <code>load_images</code> 内部，分类的加载在类加载之后的 <code>methodizeClass</code></p>
-</blockquote>
-<ul>
-<li>非懒加载分类 + 非懒加载类</li>
-</ul>
-<blockquote>
-<p>类的加载在 <code>_read_images</code> 处，分类的加载在类加载之后的 <code>reMethodizeClass</code></p>
-</blockquote>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1787,7 +1695,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">55</span>
+          <span class="site-state-item-count">56</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

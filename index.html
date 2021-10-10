@@ -147,6 +147,98 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/10/10/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E7%9A%84%E7%90%86%E8%AE%BA/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/10/10/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E7%9A%84%E7%90%86%E8%AE%BA/" class="post-title-link" itemprop="url">iOS底层探索-内存管理理论</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-10-10 13:18:07 / 修改时间：18:14:08" itemprop="dateCreated datePublished" datetime="2021-10-10T13:18:07+08:00">2021-10-10</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>上一篇文章我们简单介绍了可执行文件<code>Mach-O</code>的结构,本篇我们主要看一些内存的理论知识，从物理内存管理时代开始。</p>
+<h3 id="直接物理内存管理"><a href="#直接物理内存管理" class="headerlink" title="直接物理内存管理"></a>直接物理内存管理</h3><p>这种加载方式比较简单暴力，当我们打开一个应用的时候会将整个应用都加载到物理内存上去，应用程序访问的是实际的物理内存地址，示意图如下：</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/6a005a51a30a41e4a88c3d8a1877dbb9~tplv-k3u1fbpfcp-watermark.image?" alt="物理内存管理示意图"></p>
+<p>这种管理方式挺好理解的，但是会有两个问题：</p>
+<ul>
+<li>内存不够用：如上图所示，A、B、C三个应用已经加载到内存了，如果现在我们要加载E应用到内存，此时物理内存的剩下的空间不够就会导致应用E打开失败，比较关闭A、B、C其中一个应用才能正常打开应用E。</li>
+<li>应用的安全问题：因为现在应用程序是直接访问物理内存，假如B是一个恶意软件，它就可以通过自己应用的内存地址通过偏移找到应用C访问的内存地址，这样就不能保证应用C的安全。</li>
+</ul>
+<p>为了解决内存不够用的问题，提出了<code>分页管理内存</code>的概念，就是把每个应用使用的内存才分<code>页</code>，每次只是将使用到的<code>页</code>加载到内存里，这样就大大增加了内存的利用率，示意图如下：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/61636c8201894316816e7d996930bd32~tplv-k3u1fbpfcp-watermark.image?" alt="分页内存管理示意图"></p>
+<p>可以看到采用分页管理的确可以解决内存不够用的问题，同一时间可以有更多的活跃应用，但是这种方式会引起一个新的问题，就是单个应用访问的内存地址不连续，不连续提高了管理的复杂性，应用安全的问题依然存在，所以后面出现了我们现在常用的虚拟内存管理方式。</p>
+<h3 id="虚拟内存管理"><a href="#虚拟内存管理" class="headerlink" title="虚拟内存管理"></a>虚拟内存管理</h3><p>每个应用运行以后，它将拥有自己独立的虚拟地址空间，这个虚拟地址空间的大小由计算机硬件平台决定，具体说就是由CPU的位数决定的。硬件决定了地址空间的理论上限，注意这里说的是理论上，理论64位的iPhone的虚拟内存地址可以是2^64字节的大小，但是iPhone6s之后的机型的虚拟内存空间大小是4GB(1GB被操作系统使用、3GB应用使用)。</p>
+<p>虚拟内存管理大致的示意图如下：</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a66b53ffdc7c4822ab844a477a4675cf~tplv-k3u1fbpfcp-watermark.image?" alt="虚拟内存管理示意图"></p>
+<p>可以看到每个应用都有自己独立且连续的虚拟内存空间，虚拟地址通过<code>MMU</code>这个硬件进行映射找到实际的物理地址，达到访问使用物理地址的功能。从程序点击启动，到运行<code>操作系统角度</code>来看一共经历了三件事情：</p>
+<ul>
+<li>创建一个独立的虚拟地址空间,实际上只是分配一个<code>页目录</code>就可以，映射关系等后面程序发生页错误的时候再进行设置。</li>
+<li>读取可执行文件头，并且建立虚拟空间与可执行文件的映射关系，后面我们会提到<code>缺页</code>错误,当发生缺页错误的时候，操作系统将从物理内存中分配一个屋里也，然后将该<code>缺页</code>从磁盘中读取到内存中，在设置缺页的虚拟页和物理页的映射关系，这样才能正常运行，这时候就是使用了虚拟空间地址和可执行文件之间的映射关系。</li>
+<li>将CPU的指令寄存器设置成可执行文件的入口地址，启动运行。</li>
+</ul>
+<p>可以看出<code>虚拟内存</code>同时解决了内存不够用和应用安全的问题，因为每个应用程序是独立的虚拟内存，不能访问其他程序的内存也就达不到攻击的目的。</p>
+<h4 id="缺页错误"><a href="#缺页错误" class="headerlink" title="缺页错误"></a>缺页错误</h4><p>我们知道采用分页管理的时候，应用程序不是一下在都加载到内存的，当我们访问的数据或指令不在内存里的时候，就需要加载访问数据或指令所在的页，这个情况就要<code>缺页错误</code>(page fault)。</p>
+<p>在抖音团队的<a href="https://juejin.cn/post/6887741815529832456" target="_blank" rel="noopener">iOS启动优化《原理篇》</a>,有提到这一点，一次<code>pagefault</code>所消耗的时间是毫秒级别的，但是在我们应用启动的时候会有大量的pagefault，这样我们可以使用<code>二进制重排</code>的方式减少<code>pagefault</code>的次数，从而达到启动优化的目的，感兴趣的同学可以研究一下。</p>
+<h3 id="应用虚拟内存空间分布"><a href="#应用虚拟内存空间分布" class="headerlink" title="应用虚拟内存空间分布"></a>应用虚拟内存空间分布</h3><p>应用在虚拟内存的分布如下图所示：</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/6449eca984e2447f9563eeed4c0fa69f~tplv-k3u1fbpfcp-watermark.image?" alt="虚拟内存区域分布.png"></p>
+<p>可以看到应用程序能访问到的是五个区域：</p>
+<ul>
+<li>代码区(.text):通过镜像文件加载到内存的代码，权限只读，可执行。</li>
+<li>已初始化数据(.data):通过镜像文件加载到内存的已经初始化的数据(全局变量、静态变量)，权限可读写，可执行。</li>
+<li>未初始化数据(.bass):通过镜像文件加载到内存的未初始化的数据(全局变量、静态变量)，权限可读写，可执行。</li>
+<li>堆区(heap):通过alloc等方法新建的对象所在的区域，我们平时说的<code>ARC</code>的内存管理就是对这个区域的管理，权限可读写，可执行，但是不能通过镜像文件加载恢复，地址向上扩展。</li>
+<li>栈区(stack):主要存储是函数、方法以及一些参数，权限可读写，不可执行，不能通过镜像文件恢复，地址向下扩展。</li>
+</ul>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>本篇我们主要介绍了内存的一些理论知识，对目前主流的内存管理方案<code>虚拟内存</code>和应用加载到内存分布的五大区有了一定了解，它对我们理解应用的加载和内存管理的内容有很大帮助，iOS应用的加载流程和内存管理方案在后面的文章中继续探索。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/10/06/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-Mach-O%E6%96%87%E4%BB%B6/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1625,228 +1717,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/07/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-KVO/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="个人技术博客">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/07/27/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-KVO/" class="post-title-link" itemprop="url">iOS底层探索-KVO</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-07-27 20:30:04" itemprop="dateCreated datePublished" datetime="2021-07-27T20:30:04+08:00">2021-07-27</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-07-31 15:58:49" itemprop="dateModified" datetime="2021-07-31T15:58:49+08:00">2021-07-31</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><code>KVO</code>是一种机制，它允许对象在其他对象的指定属性发生更改时收到通知。它最常用的一个场景就是<code>viewconroller</code>中监听<code>model</code>属性的变化从而刷新页面展示。</p>
-<h3 id="KVO使用过程的细节"><a href="#KVO使用过程的细节" class="headerlink" title="KVO使用过程的细节"></a><code>KVO</code>使用过程的细节</h3><h4 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h4><p><code>KVO</code>的基本使用就是三部曲：</p>
-<ul>
-<li><p>注册观察者 <code>addObserver:forKeyPath:options:context</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[self.person addObserver:self forKeyPath:@&quot;nickname&quot; options:NSKeyValueObservingOptionNew context:NULL];</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>实现<code>KVO</code>的回调<code>observeValueForKeyPath:ofObject:change:context</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary&lt;NSKeyValueChangeKey,id&gt; *)change context:(void *)context&#123;</span><br><span class="line">    if ([keyPath isEqualToString:@&quot;nickname&quot;]) &#123;</span><br><span class="line">        NSLog(@&quot;%@&quot;,change);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>移除观察者<code>removeObserver:forKeyPath:context</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[self.person removeObserver:self forKeyPath:@&quot;nickname&quot; context:NULL];</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h4 id="context参数的使用"><a href="#context参数的使用" class="headerlink" title="context参数的使用"></a>context参数的使用</h4><p>基本使用的过程中我们经常会给<code>context</code>传<code>NULL</code>作为实参，<code>context</code>参数的作用很容易被我们忽略。苹果官方文档对<code>context</code>有详细的说明</p>
-<blockquote>
-<p>The context pointer in the <code>addObserver:forKeyPath:options:context:</code> message contains arbitrary data that will be passed back to the observer in the corresponding change notifications. You may specify <code>NULL</code> and rely entirely on the key path string to determine the origin of a change notification, but this approach may cause problems for an object whose superclass is also observing the same key path for different reasons.</p>
-<p>A safer and more extensible approach is to use the context to ensure notifications you receive are destined for your observer and not a superclass.</p>
-</blockquote>
-<p>大体意思就是：<code>addObserver：forKeyPath：options：context：</code>方法中的<code>context</code>指针包含任意数据，这些数据将在相应的更改通知中传递回观察者。可以通过<code>指定context为NULL</code>，从而<code>依靠keyPath</code>即<code>键路径字符串</code>传来确定更改通知的来源，但是这种方法可能会导致对象的父类由于不同的原因也观察到相同的键路径而导致问题。所以可以为每个观察到的keyPath创建一个不同的context，从而<code>完全不需要进行字符串比较</code>，从而可以更有效地进行通知解析。</p>
-<p><code>context</code>主要是用于区分不同对象的同名属性，从而在KVO回调方法中可以直接使用<code>context</code>进行区分，可以大大提升性能，以及代码的可读性。</p>
-<ul>
-<li><p>不使用context时，我们通过字符串判断：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[self.person addObserver:self forKeyPath:@&quot;nickname&quot; options:NSKeyValueObservingOptionNew context:NULL];</span><br><span class="line">- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary&lt;NSKeyValueChangeKey,id&gt; *)change context:(void *)context&#123;</span><br><span class="line">    if ([keyPath isEqualToString:@&quot;nickname&quot;]) &#123;</span><br><span class="line">        NSLog(@&quot;%@&quot;,change);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>使用context时，我们通过<code>context</code>判断：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;context定义</span><br><span class="line">static void *PersonNickNameContext &#x3D; &amp;PersonNickNameContext;</span><br><span class="line">static void *PersonNameContext &#x3D; &amp;PersonNameContext;</span><br><span class="line">&#x2F;&#x2F;注册观察者</span><br><span class="line">[self.person addObserver:self forKeyPath:@&quot;nick&quot; options:NSKeyValueObservingOptionNew context:PersonNickNameContext];</span><br><span class="line">[self.person addObserver:self forKeyPath:@&quot;name&quot; options:NSKeyValueObservingOptionNew context:PersonNameContext];</span><br><span class="line">&#x2F;&#x2F;KVO的回调</span><br><span class="line">- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary&lt;NSKeyValueChangeKey,id&gt; *)change context:(void *)context&#123;</span><br><span class="line">    if (context &#x3D;&#x3D; PersonNickNameContext) &#123;</span><br><span class="line">        NSLog(@&quot;%@&quot;,change);</span><br><span class="line">    &#125;else if (context &#x3D;&#x3D; PersonNameContext)&#123;</span><br><span class="line">        NSLog(@&quot;%@&quot;,change);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h4 id="是否有必要移除KVOobserver"><a href="#是否有必要移除KVOobserver" class="headerlink" title="是否有必要移除KVOobserver"></a>是否有必要移除<code>KVO</code>observer</h4><p>官方文档对<code>removeObserver</code>也有说明：</p>
-<blockquote>
-<p>When removing an observer, keep several points in mind:</p>
-<ul>
-<li>Asking to be removed as an observer if not already registered as one results in an <code>NSRangeException</code>. You either call <code>removeObserver:forKeyPath:context:</code> exactly once for the corresponding call to <code>addObserver:forKeyPath:options:context:</code>, or if that is not feasible in your app, place the <code>removeObserver:forKeyPath:context:</code> call inside a try/catch block to process the potential exception.</li>
-<li>An observer does not automatically remove itself when deallocated. The observed object continues to send notifications, oblivious to the state of the observer. However, a change notification, like any other message, sent to a released object, triggers a memory access exception. You therefore ensure that observers remove themselves before disappearing from memory.</li>
-<li>The protocol offers no way to ask an object if it is an observer or being observed. Construct your code to avoid release related errors. A typical pattern is to register as an observer during the observer’s initialization (for example in <code>init</code> or <code>viewDidLoad</code>) and unregister during deallocation (usually in <code>dealloc</code>), ensuring properly paired and ordered add and remove messages, and that the observer is unregistered before it is freed from memory.</li>
-</ul>
-</blockquote>
-<p>翻译过来就是，移除观察者时，注意以下几点：</p>
-<ul>
-<li>如果未注册为观察者，在移除观察者的时候会导致<code>NSRangeException</code>异常。<code>removeObserver</code>必须和<code>addObserver</code>对应，且只能调用一次。如果项目中不能保证，就需要在使用的时候使用<code>try/catch</code>来处理异常。</li>
-<li>观察者在对象销毁的时候不会自动移除观察者。被观察者会继续发送通知，对观察者来说这个状态是感知不到的。但是，向一个已经释放的对象发送通知会引起内存访问异常。所以，我们要保证观察者在内存释放之前移除观察。</li>
-<li>这个协议没有方法可以判断他是一个观察者还是被观察者，写代码是要避免释放内存相关的错误。一个典型的规范就是在观察者初始画的时候注册观察，在<code>dealloc</code>的时候移除观察，以确保成对和有序地添加和删除消息，并确保观察者在注册之前被取消注册，从内存中释放出来。</li>
-</ul>
-<p>所以，总的来说，<code>KVO注册观察者 和移除观察者是需要成对出现的</code>，如果只注册，不移除，会出现<code>野指针的崩溃</code>。</p>
-<h4 id="自动触发与手动触发"><a href="#自动触发与手动触发" class="headerlink" title="自动触发与手动触发"></a>自动触发与手动触发</h4><p>KVO观察的自动和手动两种方式</p>
-<ul>
-<li><p>自动开关，<code>automaticallyNotifiesObserversForKey</code>返回<code>YES</code>的时候标示自动监听，如果是<code>NO</code>表示我们需要手动监听</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; 自动开关</span><br><span class="line">+ (BOOL) automaticallyNotifiesObserversForKey:(NSString *)key&#123;</span><br><span class="line">    return YES;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>如果是手动，我们需要通过<code>手动开关</code>监听</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">- (void)setNickName:(NSString *)nickName&#123;</span><br><span class="line">    &#x2F;&#x2F;手动开关</span><br><span class="line">    [self willChangeValueForKey:@&quot;nickName&quot;];</span><br><span class="line">    _nickName &#x3D; namenickName</span><br><span class="line">    [self didChangeValueForKey:@&quot;nickName&quot;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h4 id="观察多个属性变化"><a href="#观察多个属性变化" class="headerlink" title="观察多个属性变化"></a>观察多个属性变化</h4><p>我们以观察两个属性为例，例如我们需要根据速度<code>speed</code>和时间<code>time</code>，取得当前的路程<code>distance</code>。我们用两种方式。</p>
-<ul>
-<li><p>第一种就是分别观察速度<code>speed</code>和时间<code>time</code>两个属性，当其中一个发生变化计算 当前路程<code>distance</code>。</p>
-</li>
-<li><p>第二种方式就是，通过<code>keyPathsForValuesAffectingValueForKey</code>方法，将两个观察合为一个观察，即观察当前路程<code>distance</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;1、合二为一的观察方法</span><br><span class="line">+ (NSSet&lt;NSString *&gt; *)keyPathsForValuesAffectingValueForKey:(NSString *)key&#123;</span><br><span class="line">    NSSet *keyPaths &#x3D; [super keyPathsForValuesAffectingValueForKey:key];</span><br><span class="line">    if ([key isEqualToString:@&quot;distance&quot;]) &#123;</span><br><span class="line">        NSArray *affectingKeys &#x3D; @[@&quot;speed&quot;, @&quot;time&quot;];</span><br><span class="line">        keyPaths &#x3D; [keyPaths setByAddingObjectsFromArray:affectingKeys];</span><br><span class="line">    &#125;</span><br><span class="line">    return keyPaths;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;2、注册KVO观察</span><br><span class="line">[self.person addObserver:self forKeyPath:@&quot;distance&quot; options:(NSKeyValueObservingOptionNew) context:NULL];</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;3、触发属性值变化</span><br><span class="line">- (void)touchesBegan:(NSSet&lt;UITouch *&gt; *)touches withEvent:(UIEvent *)event&#123;</span><br><span class="line">    self.person.speed +&#x3D; 10;</span><br><span class="line">    self.person.time  +&#x3D; 1;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;4、移除观察者</span><br><span class="line">- (void)dealloc&#123;</span><br><span class="line">    [self.person removeObserver:self forKeyPath:@&quot;distance&quot;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h4 id="可变数组的观察"><a href="#可变数组的观察" class="headerlink" title="可变数组的观察"></a>可变数组的观察</h4><p>KVO是基于KVC基础之上的，所以可变数组如果直接添加数据，是不会调用setter方法的，所有对<code>可变数组</code>的KVO观察下面这种方式<code>不生效</code>的,即直接通过<code>[self.person.dateArray addObject:@&quot;1&quot;];</code>向数组添加元素，是不会触发kvo通知回调的，代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;1、注册可变数组KVO观察者</span><br><span class="line">self.person.dateArray &#x3D; [NSMutableArray arrayWithCapacity:1];</span><br><span class="line">    [self.person addObserver:self forKeyPath:@&quot;dateArray&quot; options:(NSKeyValueObservingOptionNew) context:NULL];</span><br><span class="line">    </span><br><span class="line">&#x2F;&#x2F;2、KVO回调</span><br><span class="line">- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary&lt;NSKeyValueChangeKey,id&gt; *)change context:(void *)context&#123;</span><br><span class="line">    NSLog(@&quot;%@&quot;,change);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;3、移除观察者</span><br><span class="line">- (void)dealloc&#123;</span><br><span class="line"> [self.person removeObserver:self forKeyPath:@&quot;dateArray&quot;];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;4、触发数组添加数据</span><br><span class="line">- (void)touchesBegan:(NSSet&lt;UITouch *&gt; *)touches withEvent:(UIEvent *)event&#123;</span><br><span class="line">    [self.person.dateArray addObject:@&quot;1&quot;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>在KVC官方文档中，针对<code>可变数组的集合</code>类型，有如下说明，即访问集合对象需要需要通过<code>mutableArrayValueForKey</code>方法，这样才能<code>将元素添加到可变数组</code>中</p>
-<blockquote>
-<p>The protocol defines three different proxy methods for collection object access, each with a key and a key path variant:</p>
-<ul>
-<li><p><code>mutableArrayValueForKey:</code> and <code>mutableArrayValueForKeyPath:</code></p>
-<p>These return a proxy object that behaves like an <code>NSMutableArray</code> object.</p>
-</li>
-<li><p><code>mutableSetValueForKey:</code> and <code>mutableSetValueForKeyPath:</code></p>
-<p>These return a proxy object that behaves like an <code>NSMutableSet</code> object.</p>
-</li>
-<li><p><code>mutableOrderedSetValueForKey:</code> and <code>mutableOrderedSetValueForKeyPath:</code></p>
-<p>These return a proxy object that behaves like an <code>NSMutableOrderedSet</code> object.</p>
-</li>
-</ul>
-</blockquote>
-<p>我们代码这样修改：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">- (void)touchesBegan:(NSSet&lt;UITouch *&gt; *)touches withEvent:(UIEvent *)event&#123;</span><br><span class="line">    &#x2F;&#x2F; KVC 集合 array</span><br><span class="line">    [[self.person mutableArrayValueForKey:@&quot;dateArray&quot;] addObject:@&quot;1&quot;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>现在可变数组就可以监听到了。</p>
-<h3 id="KVO底层探索"><a href="#KVO底层探索" class="headerlink" title="KVO底层探索"></a>KVO底层探索</h3><p>苹果官方文档在<code>Key-Value Observing Implementation Details</code>里有提到<code>KVO</code>的实现：</p>
-<blockquote>
-<p>Automatic key-value observing is implemented using a technique called <em>isa-swizzling</em>.</p>
-<p>The <code>isa</code> pointer, as the name suggests, points to the object’s class which maintains a dispatch table. This dispatch table essentially contains pointers to the methods the class implements, among other data.</p>
-<p>When an observer is registered for an attribute of an object the isa pointer of the observed object is modified, pointing to an intermediate class rather than at the true class. As a result the value of the isa pointer does not necessarily reflect the actual class of the instance.</p>
-<p>You should never rely on the <code>isa</code> pointer to determine class membership. Instead, you should use the <code>class</code> method to determine the class of an object instance.</p>
-</blockquote>
-<p>大概意思就是<code>KVO</code>的实现使用了<code>isa</code>的交换。当我们添加一个<code>observer</code>的时候<code>isa</code>的指向会发生改变，是一个<code>中间类</code>而不是<code>真正的类</code>。我们不能根据<code>isa</code>指针确定类的成员身份，而是用哪个<code>class</code>方法确定。</p>
-<h4 id="中间类是什么"><a href="#中间类是什么" class="headerlink" title="中间类是什么"></a><code>中间类</code>是什么</h4><p>看苹果官网文档我们了解了，<code>KVO</code>的实现时通过修改<code>isa</code>指针指向了一个<code>中间类</code>实现的，我们使用<code>lldb</code>探究一下<code>中间类</code>是什么。</p>
-<ul>
-<li><p>添加观察者之前，我们打印实例对象<code>person</code>的方法是<code>JSPerson</code>。</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(lldb) <span class="function">po <span class="title">object_getClassName</span><span class="params">(self.person)</span></span></span><br><span class="line">"JSPerson"</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>添加观察者之后，我们打印实例对象<code>person</code>的方法是<code>NSKVONotifying_JSPerson</code>。</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(lldb) <span class="function">po <span class="title">object_getClassName</span><span class="params">(self.person)</span></span></span><br><span class="line">"NSKVONotifying_JSPerson"</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<p>通过上面的调试，我们看到添加观察者值<code>isa</code>指向了一个名为<code>&quot;NSKVONotifying_JSPerson</code>的中间类。关于这个<code>中间类</code>我们有几个点需要研究一下。</p>
-<ol>
-<li><p><code>中间类</code>和之前的类是父子类关系吗</p>
-<p>我们通过一个方法来判断</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">#pragma mark - 遍历类以及子类</span><br><span class="line">- (void)printClasses:(Class)cls&#123;</span><br><span class="line">    &#x2F;&#x2F; 注册类的总数</span><br><span class="line">    int count &#x3D; objc_getClassList(NULL, 0);</span><br><span class="line">    &#x2F;&#x2F; 创建一个数组， 其中包含给定对象</span><br><span class="line">    NSMutableArray *mArray &#x3D; [NSMutableArray arrayWithObject:cls];</span><br><span class="line">    &#x2F;&#x2F; 获取所有已注册的类</span><br><span class="line">    Class* classes &#x3D; (Class*)malloc(sizeof(Class)*count);</span><br><span class="line">    objc_getClassList(classes, count);</span><br><span class="line">    for (int i &#x3D; 0; i&lt;count; i++) &#123;</span><br><span class="line">        if (cls &#x3D;&#x3D; class_getSuperclass(classes[i])) &#123;</span><br><span class="line">            [mArray addObject:classes[i]];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    free(classes);</span><br><span class="line">    NSLog(@&quot;classes &#x3D; %@&quot;, mArray);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;********以下为调用********</span><br><span class="line">[self printClasses:[JSPerson class]];</span><br></pre></td></tr></table></figure>
-
-<p>打印结果为</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">classes = (</span><br><span class="line">    JSPerson,</span><br><span class="line">    <span class="string">"NSKVONotifying_JSPerson"</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-
-<p>通过打印结果我们可以判断中间类<code>NSKVONotifying_JSPerson</code>是<code>JSPerson</code>的子类。</p>
-</li>
-<li><p>中间类里有什么方法。</p>
-<p>同样，我们定义一个方法获取<code>NSKVONotifying_JSPerson</code>的所有方法</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">#pragma mark - 遍历方法-ivar-property</span><br><span class="line">- (void)printClassAllMethod:(Class)cls&#123;</span><br><span class="line">    unsigned int count &#x3D; 0;</span><br><span class="line">    Method *methodList &#x3D; class_copyMethodList(cls, &amp;count);</span><br><span class="line">    for (int i &#x3D; 0; i&lt;count; i++) &#123;</span><br><span class="line">        Method method &#x3D; methodList[i];</span><br><span class="line">        SEL sel &#x3D; method_getName(method);</span><br><span class="line">        IMP imp &#x3D; class_getMethodImplementation(cls, sel);</span><br><span class="line">        NSLog(@&quot;%@-%p&quot;,NSStringFromSelector(sel),imp);</span><br><span class="line">    &#125;</span><br><span class="line">    free(methodList);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;********以下为调用********</span><br><span class="line">[self printClassAllMethod:objc_getClass(&quot;NSKVONotifying_JSPerson&quot;)];</span><br></pre></td></tr></table></figure>
-
-<p>打印结果</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">setNickName:<span class="number">-0x7fff207bbb57</span></span><br><span class="line"><span class="class"><span class="keyword">class</span>-0<span class="title">x7fff207ba662</span></span></span><br><span class="line"><span class="class"><span class="title">dealloc</span>-0<span class="title">x7fff207ba40b</span></span></span><br><span class="line"><span class="class">_<span class="title">isKVOA</span>-0<span class="title">x7fff207ba403</span></span></span><br></pre></td></tr></table></figure>
-
-<p>我们看到一共有四个方法</p>
-<ul>
-<li>重写了父类的<code>setNickName</code>方法</li>
-<li>重写了根类的<code>class</code>、<code>dealloc</code>方法</li>
-<li><code>_isKVO</code>方法，用来判断是否是<code>kvo</code>类</li>
-</ul>
-</li>
-<li><p>dealloc中移除观察者后，isa会指回来吗</p>
-<ul>
-<li><p>移除观察者之前，我们用<code>lldb</code>打印</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(lldb) <span class="function">po <span class="title">object_getClassName</span><span class="params">(self.person)</span></span></span><br><span class="line">"NSKVONotifying_JSPerson"</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>移除观察者之后，我们重新打印</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(lldb) <span class="function">po <span class="title">object_getClassName</span><span class="params">(self.person)</span></span></span><br><span class="line">"JSPerson"</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<p>说明的确是在移除观察的时候将<code>isa</code>指回来的。</p>
-</li>
-<li><p>移除观察后中间类会销毁吗</p>
-<p>我们返回前一个页面，此时添加观察者的VC已经销毁，我们打印<code>JSPerson</code>的子类</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[self printClasses:[JSPerson class]];</span><br></pre></td></tr></table></figure>
-
-<p>打印结果</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">classes = (</span><br><span class="line">    JSPerson,</span><br><span class="line">    <span class="string">"NSKVONotifying_JSPerson"</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-
-<p>发现子类并不会被销毁。</p>
-</li>
-</ol>
-<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><ul>
-<li>实例对象<code>isa</code>的指向<code>在添加KVO观察者之后</code>，由<code>原有类</code>更改为<code>指向中间类</code></li>
-<li><code>中间类</code>重写了观察<code>属性的setter方法</code>、<code>class</code>、<code>dealloc</code>、<code>_isKVOA</code>方法</li>
-<li><code>dealloc</code>方法中，移除KVO观察者之后，实例对象<code>isa</code>指向由<code>中间类</code>更改为<code>原有类</code></li>
-<li><code>中间类</code>从创建后，就一直<code>存在内存中，不会被销毁</code></li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1916,7 +1786,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">55</span>
+          <span class="site-state-item-count">56</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
