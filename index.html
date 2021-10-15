@@ -147,6 +147,161 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/10/13/iOS%E7%BA%BF%E6%80%A7%E6%B5%81%E5%BC%8F%E5%B8%83%E5%B1%80-UIStackView/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/10/13/iOS%E7%BA%BF%E6%80%A7%E6%B5%81%E5%BC%8F%E5%B8%83%E5%B1%80-UIStackView/" class="post-title-link" itemprop="url">iOS线性流式布局-UIStackView</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-10-13 20:22:08" itemprop="dateCreated datePublished" datetime="2021-10-13T20:22:08+08:00">2021-10-13</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-10-14 19:43:58" itemprop="dateModified" datetime="2021-10-14T19:43:58+08:00">2021-10-14</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><code>UIStackView</code>是在<code>iOS9</code>推出的，最近项目中刚好用到，对<code>UIStackView</code>的使用和一些属性做一个记录。</p>
+<h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><blockquote>
+<p>A streamlined interface for laying out a collection of views in either a column or a row.</p>
+</blockquote>
+<p>这是苹果官方对这个UI控件的定义，翻译过来就是一个用于在<code>列</code>或<code>行</code>中布置视图集合的流线型界面。我们可以用<code>UIStackView</code>创建自动适配屏幕方向、屏幕大小等变化布局视图。</p>
+<h3 id="关键属性"><a href="#关键属性" class="headerlink" title="关键属性"></a>关键属性</h3><p>主要介绍几个使用时会大概率用到的属性。</p>
+<h4 id="axix属性"><a href="#axix属性" class="headerlink" title="axix属性"></a>axix属性</h4><p>这个很好理解，就是确定视图的布局方向，有两个取值：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">enum</span> <span class="title">Axis</span> : <span class="title">Int</span> </span>&#123;</span><br><span class="line">    <span class="keyword">case</span> horizontal = <span class="number">0</span></span><br><span class="line">    <span class="keyword">case</span> vertical = <span class="number">1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>看字面就知道其意思，<code>horizontal</code>表示水平布局，<code>vertical</code>表示垂直布局。</p>
+<h4 id="spacing"><a href="#spacing" class="headerlink" title="spacing"></a>spacing</h4><p>每个<code>arranged view</code>之间的空隙。</p>
+<h4 id="distribution属性"><a href="#distribution属性" class="headerlink" title="distribution属性"></a>distribution属性</h4><p>决定了<code>axix</code>设置值方向的布局，有五种取值：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">enum</span> <span class="title">Distribution</span> : <span class="title">Int</span> </span>&#123;</span><br><span class="line">      <span class="keyword">case</span> fill = <span class="number">0</span></span><br><span class="line">      <span class="keyword">case</span> fillEqually = <span class="number">1</span></span><br><span class="line">      <span class="keyword">case</span> fillProportionally = <span class="number">2</span></span><br><span class="line">      <span class="keyword">case</span> equalSpacing = <span class="number">3</span></span><br><span class="line">      <span class="keyword">case</span> equalCentering = <span class="number">4</span></span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>fill:<code>arranged views</code>会改变<code>size</code>以用来填满<code>stack view</code>的axis方向的空间,如果arranged views在stack view<code>空间内不能显示完整，arranged views会等比例缩小，如果arranged views</code>不能填充满<code>stack view</code>,views将会拉伸以填充满。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fa0181941f854c34b1c34f4810e37306~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_fillroportionally_2x_4a83cd74-be8d-4ef1-adf9-c5252a1bcc65"></p>
+</li>
+<li><p>fillEqually: <code>arranged views</code>会自动适配大小，以填充满axis方向的空间，所有<code>arranged views</code>在axis设置的方向上长度相等。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d6834e48443a4688a986d81c7a054217~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_fillequally_2x_5ccda608-869a-48b9-9515-9b6314d091a9"></p>
+</li>
+<li><p>fillProportionally：<code>arranged views</code>会自动适配大小，以填充满axis方向的空间，<code>arranged views</code>在axis设置的方向上长度会根据它们实际的大小比例缩放或拉伸。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/ddfbfa2807354f0e915d85c435988854~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_fillroportionally_2x_4a83cd74-be8d-4ef1-adf9-c5252a1bcc65 (1)"></p>
+</li>
+<li><p>equalSpacing:<code>arranged views</code>会自动适配大小，以填充满axis方向的空间，这里和fill不同的是，如果<code>arranged views</code>不能填充满<code>stack view</code>，每个view之间会添加相同长度的<code>space</code>,同样如果arranged views在stack view`空间内不能显示完整，arranged views会等比例缩小。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/334f620bc69943d0888fa73dd151298b~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_equalspacing_2x_6668568b-a445-402c-94ae-f5e85b0b10bd"></p>
+</li>
+<li><p>equalCentering：每个<code>arranged views</code>在axis方向上中心点的距离相等。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/718ef0c01aa34a2289e569c579461a9a~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_equalcentering_2x_7089d0d3-f161-452b-ab3e-9885c7b6101e"></p>
+</li>
+</ul>
+<h4 id="alignment-属性"><a href="#alignment-属性" class="headerlink" title="alignment 属性"></a>alignment 属性</h4><p>这个决定了view在axis设置方向的<code>垂直</code>方向的布局，有六个枚举值：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">enum</span> <span class="title">Alignment</span> : <span class="title">Int</span> </span>&#123;</span><br><span class="line">     <span class="comment">/* Align the leading and trailing edges of vertically stacked items</span></span><br><span class="line"><span class="comment">      or the top and bottom edges of horizontally stacked items tightly to the container.</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">case</span> fill = <span class="number">0</span></span><br><span class="line">     <span class="comment">/* Align the leading edges of vertically stacked items</span></span><br><span class="line"><span class="comment">      or the top edges of horizontally stacked items tightly to the relevant edge</span></span><br><span class="line"><span class="comment">      of the container</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">case</span> leading = <span class="number">1</span></span><br><span class="line">     <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">var</span> top: <span class="type">UIStackView</span>.<span class="type">Alignment</span> &#123; <span class="keyword">get</span> &#125;</span><br><span class="line">     <span class="keyword">case</span> firstBaseline = <span class="number">2</span> <span class="comment">// Valid for horizontal axis only</span></span><br><span class="line"></span><br><span class="line">     <span class="comment">/* Center the items in a vertical stack horizontally</span></span><br><span class="line"><span class="comment">      or the items in a horizontal stack vertically</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">case</span> center = <span class="number">3</span></span><br><span class="line">     <span class="comment">/* Align the trailing edges of vertically stacked items</span></span><br><span class="line"><span class="comment">      or the bottom edges of horizontally stacked items tightly to the relevant</span></span><br><span class="line"><span class="comment">      edge of the container</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">case</span> trailing = <span class="number">4</span></span><br><span class="line">     <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">var</span> bottom: <span class="type">UIStackView</span>.<span class="type">Alignment</span> &#123; <span class="keyword">get</span> &#125;</span><br><span class="line">     <span class="keyword">case</span> lastBaseline = <span class="number">5</span> <span class="comment">// Valid for horizontal axis only</span></span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>fill:<code>arranged views</code>会改变<code>size</code>以用来填满<code>stack view</code>的axis垂直方向的空间。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7792319b128d46b7ada0149e029e1f2b~tplv-k3u1fbpfcp-watermark.image?" alt="align_fill_2x_8d71867d-e6cf-4063-b337-17dbc815c16e"></p>
+</li>
+<li><p>leading/top:</p>
+<ul>
+<li><p>leading：axis设置为<code>vertical</code>时生效，垂直axis方向上居前对齐。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/91de9cec0bd741deb3e6358fe9d1bd3e~tplv-k3u1fbpfcp-watermark.image?" alt="align_leading_2x_bd31ee78-682d-4e36-990e-d655505fdc95"></p>
+</li>
+<li><p>top：axis设置为<code>horizontal</code>时生效，垂直axis方向上居上对齐。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4a6c115a18b84c65adbeb8ccb5617515~tplv-k3u1fbpfcp-watermark.image?" alt="align_top_2x_bfa21a2d-1678-4b11-aa80-0750a4534bfc"></p>
+</li>
+</ul>
+</li>
+<li><p>firstBaseline：axis垂直方向首行以baseline对齐，仅axis设置为<code>vertical</code>时生效。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/36b5e5b9f4d74c069b0788b8c81fb560~tplv-k3u1fbpfcp-watermark.image?" alt="align_firstbaseline_2x_8b939a0f-5296-45d2-836c-aa05b4432e12"></p>
+</li>
+<li><p>center：中间对齐。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f63368e5cef8401f92658e2edf5882c3~tplv-k3u1fbpfcp-watermark.image?" alt="align_center_2x_a34c8513-6f32-4cac-8149-4e4c1d206a3a"></p>
+</li>
+<li><p>trailing/bottom:</p>
+<ul>
+<li><p>trailing：axis设置为<code>vertical</code>时生效，垂直axis方向上居后对齐。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1d046efc133243f88eb647f14463e35e~tplv-k3u1fbpfcp-watermark.image?" alt="align_leading_2_2x_61cdf9c4-2a5b-4a3e-9c13-b0f1fa6bf348"></p>
+</li>
+<li><p>bottom：axis设置为<code>horizontal</code>时生效，垂直axis方向上居底对齐。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4ce7baaaff92474ebeef92f321287b19~tplv-k3u1fbpfcp-watermark.image?" alt="align_bottom_2x_2dc738dd-2d3a-4f7b-baee-aa283fe41e9f"></p>
+</li>
+</ul>
+</li>
+<li><p>lastBaseline：末尾baseline对齐仅axis设置为<code>horizontal</code>时生效。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/2b180151f2de4c269d4732ab52a4ac72~tplv-k3u1fbpfcp-watermark.image?" alt="align_lastbaseline_2x_82af7014-4e27-450d-9115-b058217de073"></p>
+</li>
+</ul>
+<h3 id="用法"><a href="#用法" class="headerlink" title="用法"></a>用法</h3><p><code>UIStackView</code>特别适合那种视图个数不定的场景，例如一行显示的元素个数受数据源状态字段的影响。</p>
+<ul>
+<li><p>实例化<code>UIStackView</code>的一个实例：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> stackView = <span class="type">UIStackView</span>(frame: <span class="type">CGRect</span>.<span class="keyword">init</span>(x: <span class="number">15</span>, y: <span class="number">40</span>, width: <span class="number">350</span>, height: <span class="number">30</span>))</span><br><span class="line">stackView.axis = .horizontal<span class="comment">///水平方向</span></span><br><span class="line">stackView.spacing = <span class="number">10.0</span><span class="comment">///每个view间距</span></span><br><span class="line">stackView.distribution = .fillEqually<span class="comment">///等宽</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>向<code>UIStackView</code>中添加子<code>arranged view</code>：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">stackView.addArrangedSubview(label1)</span><br><span class="line">stackView.addArrangedSubview(label2)</span><br><span class="line">stackView.addArrangedSubview(label3)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>改变外界数据条件，以隐藏一个<code>arranged view</code>:</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">isHideLabel2 = !isHideLabel2<span class="comment">///外部数据条件</span></span><br><span class="line">label2.isHidden = isHideLabel2<span class="comment">///修改隐藏</span></span><br></pre></td></tr></table></figure>
+
+<p>注意这里有一个细节，就是当<code>arranged view</code>的<code>isHidden</code>属性设置为<code>false</code>的时候，<code>stackView</code>会自动调整布局。</p>
+</li>
+<li><p>如果我们需要动画效果，也可以通过<code>UIView</code>的方法添加：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">isHideLabel2 = !isHideLabel2</span><br><span class="line"><span class="type">UIView</span>.animate(withDuration: <span class="number">0.25</span>) &#123;</span><br><span class="line">    <span class="keyword">self</span>.label2.isHidden = <span class="keyword">self</span>.isHideLabel2</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>显示的效果：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/15d93f71b9fd47858b518ae8f2b5e0e8~tplv-k3u1fbpfcp-watermark.image?" alt="1634210839500"></p>
+<p>隐藏的效果：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1961a7c0ea3a406f9a86840c205902be~tplv-k3u1fbpfcp-watermark.image?" alt="1634210857755"></p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>这里主要介绍了<code>UIStackView</code>的一些常用属性，和一个简单的用法，如果有更好的用法或者写的不准确的地方欢迎批评指正。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/10/10/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E7%9A%84%E7%90%86%E8%AE%BA/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1541,183 +1696,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/08/01/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%8E%9F%E7%90%86/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="个人技术博客">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/08/01/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%8E%9F%E7%90%86/" class="post-title-link" itemprop="url">iOS多线程-多线程原理</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-08-01 17:05:50 / 修改时间：21:23:57" itemprop="dateCreated datePublished" datetime="2021-08-01T17:05:50+08:00">2021-08-01</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>本节我们主要了解一些多线程的理论知识。</p>
-<h3 id="进程和线程"><a href="#进程和线程" class="headerlink" title="进程和线程"></a>进程和线程</h3><h4 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h4><h5 id="进程"><a href="#进程" class="headerlink" title="进程"></a>进程</h5><ul>
-<li>进程是指在系统中正在运行的一个应用程序。</li>
-<li>每个进程之间是独立的，每个进程均运行在其专用的且受保护的内存空间内。</li>
-<li>通过“活动监视器”可以查看 Mac 系统中所开启的进程。</li>
-</ul>
-<h5 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h5><ul>
-<li>线程是进程的基本执行单元，一个进程的所有任务都在线程中执行。</li>
-<li>进程要想执行任务，必须得有线程，进程至少要有一条线程。</li>
-<li>程序启动会默认开启一条线程，这条线程被称为主线程或 UI 线程。</li>
-</ul>
-<h4 id="关系"><a href="#关系" class="headerlink" title="关系"></a>关系</h4><ul>
-<li>地址空间:同一进程的线程共享本进程的地址空间，而进程之间则是独立的地址空间。</li>
-<li>资源拥有:同一进程内的线程共享本进程的资源如内存、I/O、cpu等，但是进程之间的 资源是独立的。</li>
-</ul>
-<h4 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h4><ol>
-<li>一个进程崩溃后，在保护模式下不会对其他进程产生影响，但是一个线程崩溃整个进程都死掉。所以多进程要比多线程健壮。</li>
-<li>进程切换时，消耗的资源大，效率高。所以涉及到频繁的切换时，使用线程要好于进 程。同样如果要求同时进行并且又要共享某些变量的并发操作，只能用线程不能用进程 </li>
-<li>执行过程:每个独立的进程有一个程序运行的入口、顺序执行序列和程序入口。但是 线程不能独立执行，必须依存在应用程序中，由应用程序提供多个线程执行控制。</li>
-<li>线程是处理器调度的基本单位，但是进程不是。</li>
-<li>线程没有地址空间,线程包含在进程地址空间中。</li>
-</ol>
-<h3 id="多线程原理"><a href="#多线程原理" class="headerlink" title="多线程原理"></a>多线程原理</h3><ul>
-<li>对于<code>单核CPU</code>，<code>同一时间，CPU只能处理一条线程</code>，即只有一条线程在工作，</li>
-<li>iOS中的<code>多线程同时执行</code>的本质是CPU在多个任务直接进行快速的切换，由于CPU调度线程的时间足够快，就造成了多线程的“同时”执行的效果。其中切换的时间间隔就是<code>时间片</code>。</li>
-</ul>
-<h4 id="多线程的优点"><a href="#多线程的优点" class="headerlink" title="多线程的优点"></a>多线程的优点</h4><ul>
-<li>能适当提高程序的执行效率</li>
-<li>能适当提高资源的利用率(CPU，内存)</li>
-<li>线程上的任务执行完成后，线程会自动销毁</li>
-</ul>
-<h4 id="多线程的缺点"><a href="#多线程的缺点" class="headerlink" title="多线程的缺点"></a>多线程的缺点</h4><ul>
-<li>开启线程需要占用一定的内存空间(默认情况下，每一个线程都占 512 KB，90ms的时间)。</li>
-<li>如果开启大量的线程，会占用大量的内存空间，降低程序的性能。</li>
-<li>线程越多，CPU 在调用线程上的开销就越大。</li>
-<li>程序设计更加复杂，比如线程间的通信，多线程的数据共享。</li>
-</ul>
-<h3 id="多线程生命周期"><a href="#多线程生命周期" class="headerlink" title="多线程生命周期"></a>多线程生命周期</h3><p>多线程的生命周期主要分为5部分：新建 - 就绪 - 运行 - 阻塞 - 死亡，如下图所示</p>
-<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/c5c1d80cb9754ab98612a71b7f3ea3ec~tplv-k3u1fbpfcp-watermark.image" alt="多线程生命周期"></p>
-<ul>
-<li><code>新建</code>：主要是实例化线程对象</li>
-<li><code>就绪</code>：线程对象调用start方法，将线程对象加入可调度线程池，等待CPU的调用，即调用start方法，并不会立即执行，进入<code>就绪状态</code>，需要等待一段时间，经CPU时间片调度后再执行，也就是从就绪状态进入<code>运行状态</code>。</li>
-<li><code>阻塞</code>：当满足某个预定条件时，可以<code>使用休眠，即sleep，或者同步锁</code>，阻塞线程执行。当进入sleep时，会重新将<code>线程加入就绪</code>中。</li>
-<li><code>死亡</code>：分为两种情况，<ol>
-<li><code>正常死亡</code>，即线程执行完毕</li>
-<li><code>非正常死亡</code>，即当满足某个条件后，在线程内部（或者主线程中）终止执行（调用exit方法等退出）</li>
-</ol>
-</li>
-<li><code>运行</code>：就是线程执行，处于<code>运行中的线程</code>拥有一段可以执行的时间(<code>时间片</code>)。<ol>
-<li>如果<code>时间片用尽</code>，线程就会进入<code>就绪状态队列</code></li>
-<li>如果<code>时间片没有用尽</code>，且需要开始<code>等待某事件</code>，就会进入<code>阻塞状态队列</code></li>
-<li>等待事件发生后，线程又会重新进入<code>就绪状态队列</code></li>
-<li>每当一个<code>线程离开运行</code>，即执行完毕或者强制退出后，会重新从就绪状态队列中选择一个线程继续执行</li>
-</ol>
-</li>
-</ul>
-<h3 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h3><p>线程池流程图如下：</p>
-<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/86ba007efda84d878b9551594a95d4b4~tplv-k3u1fbpfcp-watermark.image" alt="线程池"></p>
-<ol>
-<li>判断核心线程池是否都正在执行任务<ul>
-<li>返回NO，创建新的工作线程去执行</li>
-<li>返回YES，进入2</li>
-</ul>
-</li>
-<li>判断线程池工作队列是否已经饱满<ul>
-<li>返回NO，将任务存储到工作队列，等待CPU调度</li>
-<li>返回YES，进入3</li>
-</ul>
-</li>
-<li>判断线程池中的线程是否都处于执行状态<ul>
-<li>返回NO，安排可调度线程池中空闲的线程去执行任务</li>
-<li>返回YES，进入4</li>
-</ul>
-</li>
-<li>交给饱和策略去执行。饱和策略有一下四种：<ul>
-<li><code>AbortPolicy</code>：直接抛出RejectedExecutionExeception异常来阻止系统正常运行</li>
-<li><code>CallerRunsPolicy</code>：将任务回退到调用者</li>
-<li><code>DisOldestPolicy</code>：丢掉等待最久的任务</li>
-<li><code>DisCardPolicy</code>：直接丢弃任务</li>
-<li>这四种拒绝策略均实现的RejectedExecutionHandler接口</li>
-</ul>
-</li>
-</ol>
-<h3 id="互斥锁与自旋锁"><a href="#互斥锁与自旋锁" class="headerlink" title="互斥锁与自旋锁"></a>互斥锁与自旋锁</h3><p>锁是用户保护临界区，确保同一时间，只有一条线程能够访问临界区。</p>
-<h4 id="自旋锁"><a href="#自旋锁" class="headerlink" title="自旋锁"></a>自旋锁</h4><ul>
-<li>自旋锁在获取到资源之前一直处于忙等。</li>
-<li>自旋锁的使用场景：锁持有时间短，且线程不希望在重新调用上花太多成本。<code>OC</code>属性的关键字<code>atomic</code>就是使用了自旋锁。</li>
-<li>使用自旋锁，当心线程访问代码时，如果发现其他线程转给你在锁定代码，新线程会用死循环的方法，一直等待锁定的代码执行完成，比较消耗性能。</li>
-</ul>
-<h4 id="互斥锁"><a href="#互斥锁" class="headerlink" title="互斥锁"></a>互斥锁</h4><ul>
-<li><p>互斥锁在获取到资源之前是休眠状态，释放资源后会被唤醒。</p>
-</li>
-<li><p>如果代码中<code>只有一个地方需要加锁，大多都使用 self</code>，这样可以避免单独再创建一个锁对象</p>
-</li>
-<li><p>互斥锁的<code>锁定范围，应该尽量小</code>，锁定范围越大，效率越差</p>
-</li>
-<li><p>能够<code>加锁的任意 NSObject 对象</code></p>
-</li>
-<li><p>锁对象一定要保证所有的线程都能够访问</p>
-<h3 id="几个多线程题目"><a href="#几个多线程题目" class="headerlink" title="几个多线程题目"></a>几个多线程题目</h3></li>
-</ul>
-<h4 id="任务执行的影响因素"><a href="#任务执行的影响因素" class="headerlink" title="任务执行的影响因素"></a>任务执行的影响因素</h4><ul>
-<li>cpu的调度</li>
-<li>执行任务的复杂度</li>
-<li>任务的优先级</li>
-<li>线程的状态</li>
-</ul>
-<h4 id="优先级反转"><a href="#优先级反转" class="headerlink" title="优先级反转"></a>优先级反转</h4><p>两种线程：IO密集型、CPU密集型</p>
-<ul>
-<li>IO密集型，频繁等待的线程。更容易得到优先级提升。</li>
-<li>CPU密集型，很少等待的线程。</li>
-<li>IO密集型线程容易饿死。</li>
-<li>cpu调度来提升等待线程的优先级</li>
-</ul>
-<h4 id="优先级的影响因素"><a href="#优先级的影响因素" class="headerlink" title="优先级的影响因素"></a>优先级的影响因素</h4><ul>
-<li>用户指定。</li>
-<li>等待的频繁度。</li>
-<li>长时间不执行。</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1787,7 +1765,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">56</span>
+          <span class="site-state-item-count">57</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

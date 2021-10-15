@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yujiusheng.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="UIStackView是在iOS9推出的，最近项目中刚好用到，对UIStackView的使用和一些属性做一个记录。 简介 A streamlined interface for laying out a collection of views in either a column or a row.  这是苹果官方对这个UI控件的定义，翻译过来就是一个用于在列或行中布置视图集合的流线型界面。我们可">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS线性流式布局-UIStackView">
+<meta property="og:url" content="http://yujiusheng.com/2021/10/13/iOS%E7%BA%BF%E6%80%A7%E6%B5%81%E5%BC%8F%E5%B8%83%E5%B1%80-UIStackView/index.html">
+<meta property="og:site_name" content="Jason的博客">
+<meta property="og:description" content="UIStackView是在iOS9推出的，最近项目中刚好用到，对UIStackView的使用和一些属性做一个记录。 简介 A streamlined interface for laying out a collection of views in either a column or a row.  这是苹果官方对这个UI控件的定义，翻译过来就是一个用于在列或行中布置视图集合的流线型界面。我们可">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fa0181941f854c34b1c34f4810e37306~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d6834e48443a4688a986d81c7a054217~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/ddfbfa2807354f0e915d85c435988854~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/334f620bc69943d0888fa73dd151298b~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/718ef0c01aa34a2289e569c579461a9a~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7792319b128d46b7ada0149e029e1f2b~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/91de9cec0bd741deb3e6358fe9d1bd3e~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4a6c115a18b84c65adbeb8ccb5617515~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/36b5e5b9f4d74c069b0788b8c81fb560~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f63368e5cef8401f92658e2edf5882c3~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1d046efc133243f88eb647f14463e35e~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4ce7baaaff92474ebeef92f321287b19~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/2b180151f2de4c269d4732ab52a4ac72~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/15d93f71b9fd47858b518ae8f2b5e0e8~tplv-k3u1fbpfcp-watermark.image">
+<meta property="og:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1961a7c0ea3a406f9a86840c205902be~tplv-k3u1fbpfcp-watermark.image">
+<meta property="article:published_time" content="2021-10-13T12:22:08.000Z">
+<meta property="article:modified_time" content="2021-10-14T11:43:58.042Z">
+<meta property="article:author" content="Jason">
+<meta property="article:tag" content="iOS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fa0181941f854c34b1c34f4810e37306~tplv-k3u1fbpfcp-watermark.image">
+
+<link rel="canonical" href="http://yujiusheng.com/2021/10/13/iOS%E7%BA%BF%E6%80%A7%E6%B5%81%E5%BC%8F%E5%B8%83%E5%B1%80-UIStackView/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>iOS线性流式布局-UIStackView | Jason的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Jason的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/10/13/iOS%E7%BA%BF%E6%80%A7%E6%B5%81%E5%BC%8F%E5%B8%83%E5%B1%80-UIStackView/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          iOS线性流式布局-UIStackView
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-10-13 20:22:08" itemprop="dateCreated datePublished" datetime="2021-10-13T20:22:08+08:00">2021-10-13</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-10-14 19:43:58" itemprop="dateModified" datetime="2021-10-14T19:43:58+08:00">2021-10-14</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><code>UIStackView</code>是在<code>iOS9</code>推出的，最近项目中刚好用到，对<code>UIStackView</code>的使用和一些属性做一个记录。</p>
+<h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><blockquote>
+<p>A streamlined interface for laying out a collection of views in either a column or a row.</p>
+</blockquote>
+<p>这是苹果官方对这个UI控件的定义，翻译过来就是一个用于在<code>列</code>或<code>行</code>中布置视图集合的流线型界面。我们可以用<code>UIStackView</code>创建自动适配屏幕方向、屏幕大小等变化布局视图。</p>
+<h3 id="关键属性"><a href="#关键属性" class="headerlink" title="关键属性"></a>关键属性</h3><p>主要介绍几个使用时会大概率用到的属性。</p>
+<h4 id="axix属性"><a href="#axix属性" class="headerlink" title="axix属性"></a>axix属性</h4><p>这个很好理解，就是确定视图的布局方向，有两个取值：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">enum</span> <span class="title">Axis</span> : <span class="title">Int</span> </span>&#123;</span><br><span class="line">    <span class="keyword">case</span> horizontal = <span class="number">0</span></span><br><span class="line">    <span class="keyword">case</span> vertical = <span class="number">1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>看字面就知道其意思，<code>horizontal</code>表示水平布局，<code>vertical</code>表示垂直布局。</p>
+<h4 id="spacing"><a href="#spacing" class="headerlink" title="spacing"></a>spacing</h4><p>每个<code>arranged view</code>之间的空隙。</p>
+<h4 id="distribution属性"><a href="#distribution属性" class="headerlink" title="distribution属性"></a>distribution属性</h4><p>决定了<code>axix</code>设置值方向的布局，有五种取值：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">enum</span> <span class="title">Distribution</span> : <span class="title">Int</span> </span>&#123;</span><br><span class="line">      <span class="keyword">case</span> fill = <span class="number">0</span></span><br><span class="line">      <span class="keyword">case</span> fillEqually = <span class="number">1</span></span><br><span class="line">      <span class="keyword">case</span> fillProportionally = <span class="number">2</span></span><br><span class="line">      <span class="keyword">case</span> equalSpacing = <span class="number">3</span></span><br><span class="line">      <span class="keyword">case</span> equalCentering = <span class="number">4</span></span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>fill:<code>arranged views</code>会改变<code>size</code>以用来填满<code>stack view</code>的axis方向的空间,如果arranged views在stack view<code>空间内不能显示完整，arranged views会等比例缩小，如果arranged views</code>不能填充满<code>stack view</code>,views将会拉伸以填充满。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fa0181941f854c34b1c34f4810e37306~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_fillroportionally_2x_4a83cd74-be8d-4ef1-adf9-c5252a1bcc65"></p>
+</li>
+<li><p>fillEqually: <code>arranged views</code>会自动适配大小，以填充满axis方向的空间，所有<code>arranged views</code>在axis设置的方向上长度相等。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d6834e48443a4688a986d81c7a054217~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_fillequally_2x_5ccda608-869a-48b9-9515-9b6314d091a9"></p>
+</li>
+<li><p>fillProportionally：<code>arranged views</code>会自动适配大小，以填充满axis方向的空间，<code>arranged views</code>在axis设置的方向上长度会根据它们实际的大小比例缩放或拉伸。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/ddfbfa2807354f0e915d85c435988854~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_fillroportionally_2x_4a83cd74-be8d-4ef1-adf9-c5252a1bcc65 (1)"></p>
+</li>
+<li><p>equalSpacing:<code>arranged views</code>会自动适配大小，以填充满axis方向的空间，这里和fill不同的是，如果<code>arranged views</code>不能填充满<code>stack view</code>，每个view之间会添加相同长度的<code>space</code>,同样如果arranged views在stack view`空间内不能显示完整，arranged views会等比例缩小。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/334f620bc69943d0888fa73dd151298b~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_equalspacing_2x_6668568b-a445-402c-94ae-f5e85b0b10bd"></p>
+</li>
+<li><p>equalCentering：每个<code>arranged views</code>在axis方向上中心点的距离相等。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/718ef0c01aa34a2289e569c579461a9a~tplv-k3u1fbpfcp-watermark.image?" alt="distribute_equalcentering_2x_7089d0d3-f161-452b-ab3e-9885c7b6101e"></p>
+</li>
+</ul>
+<h4 id="alignment-属性"><a href="#alignment-属性" class="headerlink" title="alignment 属性"></a>alignment 属性</h4><p>这个决定了view在axis设置方向的<code>垂直</code>方向的布局，有六个枚举值：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">enum</span> <span class="title">Alignment</span> : <span class="title">Int</span> </span>&#123;</span><br><span class="line">     <span class="comment">/* Align the leading and trailing edges of vertically stacked items</span></span><br><span class="line"><span class="comment">      or the top and bottom edges of horizontally stacked items tightly to the container.</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">case</span> fill = <span class="number">0</span></span><br><span class="line">     <span class="comment">/* Align the leading edges of vertically stacked items</span></span><br><span class="line"><span class="comment">      or the top edges of horizontally stacked items tightly to the relevant edge</span></span><br><span class="line"><span class="comment">      of the container</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">case</span> leading = <span class="number">1</span></span><br><span class="line">     <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">var</span> top: <span class="type">UIStackView</span>.<span class="type">Alignment</span> &#123; <span class="keyword">get</span> &#125;</span><br><span class="line">     <span class="keyword">case</span> firstBaseline = <span class="number">2</span> <span class="comment">// Valid for horizontal axis only</span></span><br><span class="line"></span><br><span class="line">     <span class="comment">/* Center the items in a vertical stack horizontally</span></span><br><span class="line"><span class="comment">      or the items in a horizontal stack vertically</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">case</span> center = <span class="number">3</span></span><br><span class="line">     <span class="comment">/* Align the trailing edges of vertically stacked items</span></span><br><span class="line"><span class="comment">      or the bottom edges of horizontally stacked items tightly to the relevant</span></span><br><span class="line"><span class="comment">      edge of the container</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">case</span> trailing = <span class="number">4</span></span><br><span class="line">     <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">var</span> bottom: <span class="type">UIStackView</span>.<span class="type">Alignment</span> &#123; <span class="keyword">get</span> &#125;</span><br><span class="line">     <span class="keyword">case</span> lastBaseline = <span class="number">5</span> <span class="comment">// Valid for horizontal axis only</span></span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>fill:<code>arranged views</code>会改变<code>size</code>以用来填满<code>stack view</code>的axis垂直方向的空间。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7792319b128d46b7ada0149e029e1f2b~tplv-k3u1fbpfcp-watermark.image?" alt="align_fill_2x_8d71867d-e6cf-4063-b337-17dbc815c16e"></p>
+</li>
+<li><p>leading/top:</p>
+<ul>
+<li><p>leading：axis设置为<code>vertical</code>时生效，垂直axis方向上居前对齐。</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/91de9cec0bd741deb3e6358fe9d1bd3e~tplv-k3u1fbpfcp-watermark.image?" alt="align_leading_2x_bd31ee78-682d-4e36-990e-d655505fdc95"></p>
+</li>
+<li><p>top：axis设置为<code>horizontal</code>时生效，垂直axis方向上居上对齐。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4a6c115a18b84c65adbeb8ccb5617515~tplv-k3u1fbpfcp-watermark.image?" alt="align_top_2x_bfa21a2d-1678-4b11-aa80-0750a4534bfc"></p>
+</li>
+</ul>
+</li>
+<li><p>firstBaseline：axis垂直方向首行以baseline对齐，仅axis设置为<code>vertical</code>时生效。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/36b5e5b9f4d74c069b0788b8c81fb560~tplv-k3u1fbpfcp-watermark.image?" alt="align_firstbaseline_2x_8b939a0f-5296-45d2-836c-aa05b4432e12"></p>
+</li>
+<li><p>center：中间对齐。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f63368e5cef8401f92658e2edf5882c3~tplv-k3u1fbpfcp-watermark.image?" alt="align_center_2x_a34c8513-6f32-4cac-8149-4e4c1d206a3a"></p>
+</li>
+<li><p>trailing/bottom:</p>
+<ul>
+<li><p>trailing：axis设置为<code>vertical</code>时生效，垂直axis方向上居后对齐。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1d046efc133243f88eb647f14463e35e~tplv-k3u1fbpfcp-watermark.image?" alt="align_leading_2_2x_61cdf9c4-2a5b-4a3e-9c13-b0f1fa6bf348"></p>
+</li>
+<li><p>bottom：axis设置为<code>horizontal</code>时生效，垂直axis方向上居底对齐。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4ce7baaaff92474ebeef92f321287b19~tplv-k3u1fbpfcp-watermark.image?" alt="align_bottom_2x_2dc738dd-2d3a-4f7b-baee-aa283fe41e9f"></p>
+</li>
+</ul>
+</li>
+<li><p>lastBaseline：末尾baseline对齐仅axis设置为<code>horizontal</code>时生效。</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/2b180151f2de4c269d4732ab52a4ac72~tplv-k3u1fbpfcp-watermark.image?" alt="align_lastbaseline_2x_82af7014-4e27-450d-9115-b058217de073"></p>
+</li>
+</ul>
+<h3 id="用法"><a href="#用法" class="headerlink" title="用法"></a>用法</h3><p><code>UIStackView</code>特别适合那种视图个数不定的场景，例如一行显示的元素个数受数据源状态字段的影响。</p>
+<ul>
+<li><p>实例化<code>UIStackView</code>的一个实例：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> stackView = <span class="type">UIStackView</span>(frame: <span class="type">CGRect</span>.<span class="keyword">init</span>(x: <span class="number">15</span>, y: <span class="number">40</span>, width: <span class="number">350</span>, height: <span class="number">30</span>))</span><br><span class="line">stackView.axis = .horizontal<span class="comment">///水平方向</span></span><br><span class="line">stackView.spacing = <span class="number">10.0</span><span class="comment">///每个view间距</span></span><br><span class="line">stackView.distribution = .fillEqually<span class="comment">///等宽</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>向<code>UIStackView</code>中添加子<code>arranged view</code>：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">stackView.addArrangedSubview(label1)</span><br><span class="line">stackView.addArrangedSubview(label2)</span><br><span class="line">stackView.addArrangedSubview(label3)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>改变外界数据条件，以隐藏一个<code>arranged view</code>:</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">isHideLabel2 = !isHideLabel2<span class="comment">///外部数据条件</span></span><br><span class="line">label2.isHidden = isHideLabel2<span class="comment">///修改隐藏</span></span><br></pre></td></tr></table></figure>
+
+<p>注意这里有一个细节，就是当<code>arranged view</code>的<code>isHidden</code>属性设置为<code>false</code>的时候，<code>stackView</code>会自动调整布局。</p>
+</li>
+<li><p>如果我们需要动画效果，也可以通过<code>UIView</code>的方法添加：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">isHideLabel2 = !isHideLabel2</span><br><span class="line"><span class="type">UIView</span>.animate(withDuration: <span class="number">0.25</span>) &#123;</span><br><span class="line">    <span class="keyword">self</span>.label2.isHidden = <span class="keyword">self</span>.isHideLabel2</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>显示的效果：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/15d93f71b9fd47858b518ae8f2b5e0e8~tplv-k3u1fbpfcp-watermark.image?" alt="1634210839500"></p>
+<p>隐藏的效果：</p>
+<p><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1961a7c0ea3a406f9a86840c205902be~tplv-k3u1fbpfcp-watermark.image?" alt="1634210857755"></p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>这里主要介绍了<code>UIStackView</code>的一些常用属性，和一个简单的用法，如果有更好的用法或者写的不准确的地方欢迎批评指正。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/iOS/" rel="tag"># iOS</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/10/10/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E7%9A%84%E7%90%86%E8%AE%BA/" rel="prev" title="iOS底层探索-内存管理理论">
+      <i class="fa fa-chevron-left"></i> iOS底层探索-内存管理理论
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#简介"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#关键属性"><span class="nav-number">2.</span> <span class="nav-text">关键属性</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#axix属性"><span class="nav-number">2.1.</span> <span class="nav-text">axix属性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#spacing"><span class="nav-number">2.2.</span> <span class="nav-text">spacing</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#distribution属性"><span class="nav-number">2.3.</span> <span class="nav-text">distribution属性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#alignment-属性"><span class="nav-number">2.4.</span> <span class="nav-text">alignment 属性</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#用法"><span class="nav-number">3.</span> <span class="nav-text">用法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Jason</p>
+  <div class="site-description" itemprop="description">个人技术博客</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">57</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jason</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

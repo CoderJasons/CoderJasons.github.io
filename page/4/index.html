@@ -147,6 +147,87 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/06/iOS%E5%BA%95%E5%B1%82-alloc%E6%96%B9%E6%B3%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Jason">
+      <meta itemprop="description" content="个人技术博客">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Jason的博客">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/06/iOS%E5%BA%95%E5%B1%82-alloc%E6%96%B9%E6%B3%95/" class="post-title-link" itemprop="url">iOS底层探索-alloc方法</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-06-06 16:23:12" itemprop="dateCreated datePublished" datetime="2021-06-06T16:23:12+08:00">2021-06-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-06-20 22:21:12" itemprop="dateModified" datetime="2021-06-20T22:21:12+08:00">2021-06-20</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><code>alloc</code>是我们日常开发中经常遇到，下面我们从源码层面分析一下，<code>alloc</code>方法的底层。</p>
+<h3 id="准备工作-获取源码"><a href="#准备工作-获取源码" class="headerlink" title="准备工作-获取源码"></a>准备工作-获取源码</h3><ul>
+<li>从苹果<a href="https://opensource.apple.com/tarballs/" target="_blank" rel="noopener">开源网站</a>下载<code>objc</code>的源码。</li>
+<li>根据<a href="https://juejin.cn/post/6914265121183236104" target="_blank" rel="noopener">这个教程</a>将源码调试成可编译的状态<h3 id="开始探究"><a href="#开始探究" class="headerlink" title="开始探究"></a>开始探究</h3>我们新建一个类JSPerson<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;.h</span><br><span class="line">@interface JSPerson : NSObject</span><br><span class="line">@end</span><br><span class="line">&#x2F;&#x2F;.m</span><br><span class="line">@implementation JSPerson</span><br><span class="line">@end</span><br></pre></td></tr></table></figure>
+在<code>main</code>方法中初始化<code>JSPerson</code><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    @autoreleasepool &#123;</span><br><span class="line">        JSPerson *person &#x3D; [JSPerson alloc];</span><br><span class="line">        NSLog(@&quot;%@&quot;,person);</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+在<code>JSPerson *person = [JSPerson alloc];</code>这行添加断点运行。<br>按<code>control</code>键发现断点走到了<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">KCObjcBuild&#96;objc_alloc:</span><br><span class="line">-&gt;  0x100003f44 &lt;+0&gt;: jmpq   *0x40be(%rip)             ; (void *)0x0000000100003f76</span><br></pre></td></tr></table></figure>
+说明这个时候调用了<code>objc_alloc</code>方法，我们打一个<code>objc_alloc</code>的符号断点，继续执行程序，发现断点来到了<code>objc_alloc</code>的源码部分。<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; Calls [cls alloc].</span><br><span class="line">id</span><br><span class="line">objc_alloc(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    return callAlloc(cls, true&#x2F;*checkNil*&#x2F;, false&#x2F;*allocWithZone*&#x2F;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+我们继续进入<code>callAlloc</code>方法：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">static ALWAYS_INLINE id</span><br><span class="line">callAlloc(Class cls, bool checkNil, bool allocWithZone&#x3D;false)</span><br><span class="line">&#123;</span><br><span class="line">#if __OBJC2__</span><br><span class="line">    if (slowpath(checkNil &amp;&amp; !cls)) return nil;</span><br><span class="line">    if (fastpath(!cls-&gt;ISA()-&gt;hasCustomAWZ())) &#123;</span><br><span class="line">        return _objc_rootAllocWithZone(cls, nil);</span><br><span class="line">    &#125;</span><br><span class="line">#endif</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; No shortcuts available.</span><br><span class="line">    if (allocWithZone) &#123;</span><br><span class="line">        return ((id(*)(id, SEL, struct _NSZone *))objc_msgSend)(cls, @selector(allocWithZone:), nil);</span><br><span class="line">    &#125;</span><br><span class="line">    return ((id(*)(id, SEL))objc_msgSend)(cls, @selector(alloc));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+我们继续走断点，发现走到了<code>return ((id(*)(id, SEL))objc_msgSend)(cls, @selector(alloc));</code>即又调用了alloc方法，也就是说<code>callAlloc</code>也会再次调用。<br>继续调试这次走到了<code>return _objc_rootAllocWithZone(cls, nil);</code>,断点进入<code>_objc_rootAllocWithZone</code>方法看一下源码：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">id</span><br><span class="line">_objc_rootAllocWithZone(Class cls, malloc_zone_t *zone __unused)</span><br><span class="line">&#123;</span><br><span class="line">    &#x2F;&#x2F; allocWithZone under __OBJC2__ ignores the zone parameter</span><br><span class="line">    return _class_createInstanceFromZone(cls, 0, nil,</span><br><span class="line">                                         OBJECT_CONSTRUCT_CALL_BADALLOC);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+代码很简单，我们继续跟进到<code>_class_createInstanceFromZone</code>方法：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">static ALWAYS_INLINE id</span><br><span class="line">_class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,</span><br><span class="line">                              int construct_flags &#x3D; OBJECT_CONSTRUCT_NONE,</span><br><span class="line">                              bool cxxConstruct &#x3D; true,</span><br><span class="line">                              size_t *outAllocatedSize &#x3D; nil)</span><br><span class="line">&#123;</span><br><span class="line">    ASSERT(cls-&gt;isRealized());</span><br><span class="line">    &#x2F;&#x2F; Read class&#39;s info bits all at once for performance</span><br><span class="line">    bool hasCxxCtor &#x3D; cxxConstruct &amp;&amp; cls-&gt;hasCxxCtor();</span><br><span class="line">    bool hasCxxDtor &#x3D; cls-&gt;hasCxxDtor();</span><br><span class="line">    bool fast &#x3D; cls-&gt;canAllocNonpointer();</span><br><span class="line">    size_t size;</span><br><span class="line">    &#x2F;&#x2F;&#x2F;获取实例大小</span><br><span class="line">    size &#x3D; cls-&gt;instanceSize(extraBytes);</span><br><span class="line">    if (outAllocatedSize) *outAllocatedSize &#x3D; size;</span><br><span class="line">    id obj;</span><br><span class="line">    if (zone) &#123;</span><br><span class="line">        obj &#x3D; (id)malloc_zone_calloc((malloc_zone_t *)zone, 1, size);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        &#x2F;&#x2F;分配内存</span><br><span class="line">        obj &#x3D; (id)calloc(1, size);</span><br><span class="line">    &#125;</span><br><span class="line">    if (slowpath(!obj)) &#123;</span><br><span class="line">        if (construct_flags &amp; OBJECT_CONSTRUCT_CALL_BADALLOC) &#123;</span><br><span class="line">            return _objc_callBadAllocHandler(cls);</span><br><span class="line">        &#125;</span><br><span class="line">        return nil;</span><br><span class="line">    &#125;</span><br><span class="line">    &#x2F;&#x2F;&#x2F;关联isa指针</span><br><span class="line">    if (!zone &amp;&amp; fast) &#123;</span><br><span class="line">        obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        &#x2F;&#x2F; Use raw pointer isa on the assumption that they might be</span><br><span class="line">        &#x2F;&#x2F; doing something weird with the zone or RR.</span><br><span class="line">        obj-&gt;initIsa(cls);</span><br><span class="line">    &#125;</span><br><span class="line">    if (fastpath(!hasCxxCtor)) &#123;</span><br><span class="line">        return obj;</span><br><span class="line">    &#125;</span><br><span class="line">    construct_flags |&#x3D; OBJECT_CONSTRUCT_FREE_ONFAILURE;</span><br><span class="line">    return object_cxxConstructFromClass(obj, cls, construct_flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<code>_class_createInstanceFromZone</code>方法有三个关键的点，我们下面分别分析：<h4 id="获取实例大小-size-cls-gt-instanceSize-extraBytes"><a href="#获取实例大小-size-cls-gt-instanceSize-extraBytes" class="headerlink" title="获取实例大小 size = cls-&gt;instanceSize(extraBytes)"></a>获取实例大小 <code>size = cls-&gt;instanceSize(extraBytes)</code></h4>内联函数<code>instanceSize</code>的作用是获取实例的大小，对象的大小取决于其<code>ivars</code>(成员变量)的大小。<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; May be unaligned depending on class&#39;s ivars.</span><br><span class="line">uint32_t unalignedInstanceSize() const &#123;</span><br><span class="line">    ASSERT(isRealized());</span><br><span class="line">    return data()-&gt;ro()-&gt;instanceSize;</span><br><span class="line">&#125;</span><br><span class="line">inline size_t instanceSize(size_t extraBytes) const &#123;</span><br><span class="line">    if (fastpath(cache.hasFastInstanceSize(extraBytes))) &#123;</span><br><span class="line">        return cache.fastInstanceSize(extraBytes);</span><br><span class="line">    &#125;</span><br><span class="line">    size_t size &#x3D; alignedInstanceSize() + extraBytes;</span><br><span class="line">    &#x2F;&#x2F; CF requires all objects be at least 16 bytes.</span><br><span class="line">    if (size &lt; 16) size &#x3D; 16;</span><br><span class="line">    return size;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+根据<code>if (size &lt; 16) size = 16;</code>可以看出，对象最小大小为16，这个就是内存对齐的概念，上面的<code>alignedInstanceSize()</code>函数,会继续调用内联函数<code>word_align</code><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; __LP64__</span><br><span class="line">#   define WORD_MASK 7UL</span><br><span class="line">static inline uint32_t word_align(uint32_t x) &#123;</span><br><span class="line">    return (x + WORD_MASK) &amp; ~WORD_MASK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+这里就引入一个概念就是字节对齐。可以看到<code>WORD_MASK=7</code>,它的作用是保证字节的大小为8的倍数。<h4 id="给对象分配内存空间"><a href="#给对象分配内存空间" class="headerlink" title="给对象分配内存空间"></a>给对象分配内存空间</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">if (zone) &#123;</span><br><span class="line">    obj &#x3D; (id)malloc_zone_calloc((malloc_zone_t *)zone, 1, size);</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    obj &#x3D; (id)calloc(1, size);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="给对象关联isa指针"><a href="#给对象关联isa指针" class="headerlink" title="给对象关联isa指针"></a>给对象关联isa指针</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">if (!zone &amp;&amp; fast) &#123;</span><br><span class="line">    obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    &#x2F;&#x2F; Use raw pointer isa on the assumption that they might be</span><br><span class="line">    &#x2F;&#x2F; doing something weird with the zone or RR.</span><br><span class="line">    obj-&gt;initIsa(cls);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3>总结来看<code>alloc</code>的流程图即为下图所示：</li>
+</ul>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/62281d7404a940a9bcf2390166545e97~tplv-k3u1fbpfcp-watermark.image" alt="alloc流程.png"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/06/06/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%B4%A2-alloc%E6%96%B9%E6%B3%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1568,64 +1649,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yujiusheng.com/2021/05/17/iOS-%E5%BA%95%E5%B1%82-%E7%B1%BB%E6%8B%93%E5%B1%95%E5%92%8C%E5%85%B3%E8%81%94%E5%AF%B9%E8%B1%A1/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Jason">
-      <meta itemprop="description" content="个人技术博客">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Jason的博客">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/05/17/iOS-%E5%BA%95%E5%B1%82-%E7%B1%BB%E6%8B%93%E5%B1%95%E5%92%8C%E5%85%B3%E8%81%94%E5%AF%B9%E8%B1%A1/" class="post-title-link" itemprop="url">iOS 底层 - 类拓展和关联对象</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-05-17 13:39:24 / 修改时间：14:02:24" itemprop="dateCreated datePublished" datetime="2021-05-17T13:39:24+08:00">2021-05-17</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1695,7 +1718,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">56</span>
+          <span class="site-state-item-count">57</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
